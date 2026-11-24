@@ -41,10 +41,11 @@ M1 (core and CLI) is done on the Mac:
 
 M2 (desktop app) has started; see `plan/15 M2 Desktop Log.md`:
 - ✅ Slice 1: the three-pane UI (Soft theme, sidebar, task cards, detail editing, keyboard). It runs on the in-process bridge, whose API has the shape the socket will copy.
-- On desktop the app now shares `tt`'s DB (`~/.local/share/tick-alt/tt.db`).
+- ✅ Slice 2: the socket API. `tt-daemon` owns the DB and serves `$XDG_RUNTIME_DIR/tick-alt.sock` (JSON lines, change events, outside writes noticed via `data_version`). The app (`TaskDb.connectOrOpen`) and `tt` go through it when it serves their DB, and open the file directly otherwise.
+- On desktop the app shares `tt`'s DB (`~/.local/share/tick-alt/tt.db`).
 - ⚠️ Not yet built for Android since these changes.
 
-**Next:** slice 2, the socket API in `tt-daemon` (JSON lines on `$XDG_RUNTIME_DIR/tick-alt.sock`, plus change events), with the bridge's desktop backend and `tt` moving onto it. The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+**Next:** slice 3, a `systemd --user` unit for `tt-daemon` (restart on failure), with the tray's Open raising the app. Then slice 4 (filter builder, tag and list colours) and slice 5 (PKGBUILD). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
 ## Continuing on the Arch laptop (handoff 2026-11-24)
 
@@ -94,7 +95,8 @@ The dev Mac's per-machine state does **not** come along: Claude's memory, the re
 core/                 tt-core: domain + SQLite. Every write is an op (oplog.rs, hlc.rs) applied with per-field LWW.
                       store (migrations/, write txn), task, organize (lists/tags), checklist, reminder,
                       recur (rrule), filter (JSON AST -> SQL), dates. tests/convergence.rs = proptest
-daemon/               tt-daemon: Spike 4 tray (ksni SNI) + reminder notifications (notify-rust) with Done/Snooze. M2 grows it
+api/                  tt-api: views (sidebar/rows/detail), request protocol (proto.rs table → Request + handle + Api), socket server (feature server) and client
+daemon/               tt-daemon: owns the desktop DB, serves the socket; tray (ksni) + reminder notifications (notify-rust) with Done/Snooze
 sync/                 tt-sync: Spike 2 iroh node (key file, ticket, pull open tasks). M3 replaces the protocol
 cli/                  `tt` CLI (`tt --help`). Short ids = LAST 8 hex chars of the UUIDv7. $TT_DB, $TT_TZ
 app/                  Flutter app (android, linux, macos). lib/desk/ = M2 shell (theme, controller, sidebar, task_list, detail, shell)
@@ -152,6 +154,8 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 - **Release builds need `INTERNET` in `src/main/AndroidManifest.xml`.** The template only puts it in debug and profile.
 - The Android QA plugin's Python scripts need Python ≥ 3.10; `scripts/env.sh` puts Homebrew's `python3` first.
 - Xcode isn't installed, so macOS Flutter builds fail and `flutter doctor` complains. That's expected.
+- **New core calls go in the `api!` table in `api/src/proto.rs`.** That makes them reachable over the socket and as an `Api` method. Bridge view types are flutter_rust_bridge mirrors of `tt-api` types: change both together, then regenerate.
+- flutter_rust_bridge scans every type under `app/rust/src/api/`, private ones too. Keep helpers outside it (see `src/changes.rs`).
 
 ## Working rules (from the user)
 
