@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["core", "cli", "app/rust", "tools/uniffi-bindgen"]
+members = ["core", "sync", "cli", "app/rust", "tools/uniffi-bindgen"]
 
 [workspace.package]
 edition = "2024"
