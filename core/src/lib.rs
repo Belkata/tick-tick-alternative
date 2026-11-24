@@ -6,6 +6,7 @@
 
 mod checklist;
 mod dates;
+pub mod filter;
 pub mod hlc;
 mod inbox;
 pub mod oplog;
@@ -17,6 +18,7 @@ mod task;
 
 pub use checklist::ChecklistItem;
 pub use dates::{Day, local_tz, parse_when};
+pub use filter::{Cond, Filter, FilterRule, SavedFilter};
 pub use organize::{List, Tag};
 pub use recur::{Completion, Repeat};
 pub use reminder::{Reminder, ReminderFire, ReminderKind};
