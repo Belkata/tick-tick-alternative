@@ -50,8 +50,45 @@ Back to [[00 Overview]] · [[10 Roadmap]]. Results of each M0 spike as it runs.
 - macOS: needs Xcode.
 - Hyprland: needs the Arch machine. Run `flutter build linux` there and check native Wayland (no XWayland).
 
-## Spike 2: iroh phone ↔ Mac
-Not started. Needs a real phone on mobile data for the "across networks" half. LAN can be tried emulator ↔ Mac first.
+## Spike 2: iroh phone ↔ Mac ✅ emulator ↔ Mac · ⚠️ relay flaky on Android · ⏸ phone on mobile data
+
+**What was built** (spike quality; M3 replaces the protocol):
+- `sync/` (`tt-sync`): an iroh 1.5.0 endpoint with the `N0` preset (n0 relays + n0 DNS address lookup).
+  - The Ed25519 key is stored next to the DB (`tt.key`, mode 0600), so the node id survives restarts.
+  - ALPN `tickalt/spike/0` and one bidirectional stream: the dialer sends `Hello{device}` as JSON and the server answers with its open tasks.
+  - The dialer then reports the selected path (direct or relay) when the reply arrives, waits up to 4 s for hole punching, and reports it again.
+  - A ticket is `tt1` + hex of the `EndpointAddr` JSON: node id, relay URL and direct addresses. It's about 600–900 characters and pasteable, but too long to type: real pairing needs QR (M3).
+  - 3 tests, including a pull between two nodes over loopback with relays off.
+- CLI: `tt sync serve` prints the ticket and serves; `tt sync pull <ticket>` dials it and prints the tasks and paths.
+- Bridge: an opaque `SyncPeer` that **owns its own tokio runtime** (iroh needs one; frb's worker threads don't provide it). Its methods `block_on` from frb's thread pool.
+- App: a Sync tab with the node status, its addresses, its ticket (copy button), a peer-ticket field, Pull, a result card and a "Served" list. Tickets and pull results are also printed to logcat (`TT_TICKET`, `TT_PULL`) for testing.
+
+**Results (release APK, Android 16 emulator, Mac on Wi-Fi):**
+
+| Test | Result |
+|---|---|
+| Mac ↔ Mac (two CLI nodes) | ✅ 2 tasks in 463 ms. Relay first, then **direct** after hole punching |
+| Phone pulls from Mac | ✅ 3 tasks in **192 ms**, direct from the first packet (rtt 4 ms). The emulator can reach the Mac's LAN address |
+| Mac pulls from phone | ✅ 3 tasks in 724 ms. **Relay first** (rtt 436 ms), because the Mac can't reach the emulator's private `10.0.2.x` addresses. Then **direct** after hole punching (rtt 16 ms) |
+| Phone node id after force-stop + relaunch | ✅ the same id |
+| Phone "Served" list | ✅ shows the Mac's pull |
+| Phone gets a home relay | ⚠️ **1 of 4 launches** within 10 s. When it misses, it never connects, even after 40 s. The Mac connected every time (5/5) |
+
+![[spike2-sync.jpg|260]]
+
+**Costs:**
+- The APK grew from 19.6 MB to **35.4 MB** (arm64 release) with iroh (QUIC, rustls/ring, relay client, DNS, portmapper).
+- A clean release Gradle build took about 15.5 minutes, because cargokit rebuilt everything with the new crates.
+
+**Learned:**
+- **iroh 1.x has no built-in LAN discovery** (no mDNS). Only the pkarr/DNS lookups and the in-memory one are in core. LAN works anyway because the ticket carries the direct addresses. Automatic peer finding on the LAN needs a separate discovery crate later (M3), or the paired peers' last-known addresses.
+- **The release manifest had no `INTERNET` permission.** The Flutter template only adds it to the debug and profile manifests, so a release build would have silently had no network. It's now in `src/main/AndroidManifest.xml`.
+- The path API is `Connection::paths()` → `Path::{is_selected, is_relay, is_ip, rtt}`; `Endpoint::online()` waits for a home relay. `iroh::protocol::Router` + `ProtocolHandler` serve an ALPN.
+- The Android QA plugin's helper scripts need Python ≥ 3.10. `scripts/env.sh` now puts Homebrew's `python3` (3.14) ahead of macOS's 3.9.
+
+**Still to do:**
+1. **Find out why the Android relay sometimes never connects.** Route iroh's `tracing` logs to logcat and look at the relay-dial and DNS errors. One guess to check: iroh's DNS resolver on Android may not use the system's DNS servers (there is no `/etc/resolv.conf`). This matters for the across-networks case, where relays are the fallback.
+2. **Across networks:** a real phone on mobile data ↔ the Mac on Wi-Fi. This needs the relay to be reliable first.
 
 ## Spike 3: Glance widget → Rust core via UniFFI ✅ (emulator, release build)
 
