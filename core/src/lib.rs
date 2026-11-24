@@ -3,6 +3,7 @@
 //! Owns the data model and the SQLite database. UIs (Flutter, the Glance
 //! widget, the `tt` CLI) only call into this crate.
 
+mod inbox;
 mod organize;
 mod store;
 mod task;
