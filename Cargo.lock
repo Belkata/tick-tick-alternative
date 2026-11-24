@@ -3816,7 +3816,9 @@ dependencies = [
  "anyhow",
  "clap",
  "dirs",
+ "tokio",
  "tt-core",
+ "tt-sync",
 ]
 
 [[package]]
