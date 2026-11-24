@@ -24,7 +24,7 @@ Back to [[00 Overview]] · [[10 Roadmap]] · [[08 Desktop App]]. The plan for M2
 2. **Socket API** ✅ (2026-11-24)
    - `tt-daemon` serves `$XDG_RUNTIME_DIR/tick-alt.sock`: one JSON request per line, one reply per line, plus `subscribe` for change events.
    - The bridge gets a desktop backend that uses it. `tt` uses it too, and opens the DB directly when no daemon runs.
-3. **Daemon as a service**
+3. **Daemon as a service** ✅ (2026-11-24)
    - A `systemd --user` unit (`tick-alt.service`). Reminders only fire from the daemon.
    - The tray's *Open* raises the app.
 4. **Filter builder, tag and list colours, Completed and Trash polish.**
@@ -130,3 +130,34 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
   - `init_app` sets `RUST_BACKTRACE=0` and `RUST_LIB_BACKTRACE=0` when they're unset, before flutter_rust_bridge's setup.
   - `Client::for_db` checks the socket with a plain connect, so the normal no-daemon case builds no error at all.
   - New integration test: an unparseable due date shows a snackbar and the app keeps running. It failed ("did not complete") before the fix; **6/6** after.
+
+## Slice 3: the daemon as a service ✅ (2026-11-24, on the Arch laptop)
+
+**What was built:**
+- **`daemon/tick-alt.service`**, a systemd user unit:
+  - `PartOf` and `After=graphical-session.target`, `WantedBy=graphical-session.target`.
+  - `Restart=on-failure` with `RestartSec=2`.
+  - `ExecStart=/usr/bin/tt-daemon` and `TT_APP=/usr/bin/tick-alt`, the paths the PKGBUILD will install (slice 5).
+  - On this laptop `graphical-session.target` is active, and the user manager already has `WAYLAND_DISPLAY`, `XDG_CURRENT_DESKTOP` and the session bus, so the tray, notifications and Open all work from the unit. waybar isn't a systemd unit; the tray copes with it starting later.
+- **`scripts/install-user-service.sh`** installs a dev copy into `~/.config/systemd/user/`, pointing at this checkout's release builds, then enables and restarts it. `--remove` undoes that.
+- **Surviving restarts** (`tt-api`):
+  - `Api` keeps the DB path and swaps its backend under one lock.
+  - When the daemon is gone it recovers: a restarted daemon if one is already back, else the file. Reads are retried. A write is retried only if it never reached the daemon (the new `Disconnected { sent }` error); a write the daemon may have applied before dying returns the error instead of risking a duplicate.
+  - `Api::upgrade()` moves back to the daemon when it serves the file again, and `Api::outside_change()` polls `data_version` while the file is open directly.
+  - The client sends with **`MSG_NOSIGNAL`** (`SO_NOSIGPIPE` on macOS). Writing to a dead daemon's socket would otherwise raise SIGPIPE and kill the Flutter process: Rust ignores SIGPIPE only in programs whose `main` is Rust.
+- **Bridge watcher thread** (desktop): through the daemon it relays events, and when the daemon disappears it triggers a reload, which recovers. While the file is open directly it checks every 2 s, switching back as soon as the daemon serves the file and ticking on other processes' commits. So the app stays live without a daemon too.
+- **Single instance** (release builds): `G_APPLICATION_DEFAULT_FLAGS`, and `activate` presents the existing window. Debug builds stay `NON_UNIQUE`, so `flutter run` and `flutter test -d linux` work while a release copy is open.
+- **Tray Open and left click** pass the tray host's XDG activation token (`ksni::current_xdg_activation_token`, retried after 1 ms) to the app as `XDG_ACTIVATION_TOKEN` and `DESKTOP_STARTUP_ID`, so Wayland may focus the window. The launched process is reaped on a thread, since a second instance exits right away.
+
+**Results:**
+- `cargo test`: 59 passed. The new `clients_survive_the_daemon_restarting` test stops and restarts a real daemon. A read falls back to the file, an outside commit is noticed, `upgrade` reconnects, and a write sent to the dead socket is retried safely.
+- Flutter: analysis clean, 6 widget and 6 integration tests pass.
+- **Live run with a temporary unit** (`systemd-run --user -p Restart=on-failure …`, so nothing was installed):
+  - A second launch while the app was open exited in 0.04 s, leaving one window.
+  - The tray's `Activate` (called over D-Bus) raised the window and started no new process.
+  - `systemctl --user kill -s SIGKILL` restarted the daemon after 2 s (`NRestarts=2`). Meanwhile the open app fell back to the file without an error (🔗 crossed out), then went back to the daemon (🔗 teal). `tt add` worked during and after the restart, and both tasks appeared live (Inbox 8 → 10).
+
+**Not done yet, or not checked:**
+- **Not installed on this laptop.** Enabling a login service is the user's call: `scripts/install-user-service.sh`.
+- Not checked whether Hyprland actually *focuses* the raised window with a real tray click (`misc:focus_on_activate` decides). D-Bus `Activate` calls carry no token.
+- LaunchAgent (macOS): not written; it needs the Mac.

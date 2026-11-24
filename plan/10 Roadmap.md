@@ -32,7 +32,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 **Exit:** I can manage tasks from the terminal on Arch. ✅ on the Mac; ✅ on Arch the 53 tests pass, clippy is clean, and every `tt` command works; ⏸ the user tries it for real. See [[14 M1 Core Log]].
 
 ## M2: Desktop app (Mac and Arch)
-- [ ] Tray daemon with socket API and systemd / LaunchAgent setup. 🟡 The socket API is done (slice 2: the daemon owns the DB, and the app and `tt` are clients). systemd and LaunchAgent are next. See [[15 M2 Desktop Log]].
+- [ ] Tray daemon with socket API and systemd / LaunchAgent setup. 🟡 The socket API is done (slice 2) and so is the systemd user unit (slice 3: restart on failure, clients reconnect, single-instance app). The LaunchAgent waits for the Mac. See [[15 M2 Desktop Log]].
 - [ ] Three-pane UI: sidebar, list, detail. Tag tree, lists, filter builder, Completed and Trash. 🟡 Slice 1 done: sidebar with tag tree, lists, saved filters, Completed and Trash; task cards; detail editing; keyboard. The filter builder is still to do. See [[15 M2 Desktop Log]].
 - [ ] Desktop notifications with Done and Snooze.
 - [ ] Packaging: PKGBUILD and a DMG.

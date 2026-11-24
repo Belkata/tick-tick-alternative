@@ -45,7 +45,9 @@ M2 (desktop app) has started; see `plan/15 M2 Desktop Log.md`:
 - On desktop the app shares `tt`'s DB (`~/.local/share/tick-alt/tt.db`).
 - ⚠️ Not yet built for Android since these changes.
 
-**Next:** slice 3, a `systemd --user` unit for `tt-daemon` (restart on failure), with the tray's Open raising the app. Then slice 4 (filter builder, tag and list colours) and slice 5 (PKGBUILD). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+- ✅ Slice 3: `daemon/tick-alt.service` (systemd user unit, restart on failure). Clients survive daemon restarts: they reconnect, or fall back to the file and switch back later. The release app is single instance, and the tray's Open raises it. The unit isn't installed on the laptop yet (`scripts/install-user-service.sh` does it, if the user agrees).
+
+**Next:** slice 4 (filter builder, tag and list colours, editing start, repeat and reminders in the detail pane), then slice 5 (PKGBUILD). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
 ## Continuing on the Arch laptop (handoff 2026-11-24)
 
@@ -156,6 +158,8 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 - Xcode isn't installed, so macOS Flutter builds fail and `flutter doctor` complains. That's expected.
 - **New core calls go in the `api!` table in `api/src/proto.rs`.** That makes them reachable over the socket and as an `Api` method. Bridge view types are flutter_rust_bridge mirrors of `tt-api` types: change both together, then regenerate.
 - **Never let a Rust backtrace be captured in the app process.** It segfaults: libflutter_linux_gtk.so bundles libunwind and clashes with libgcc_s. `init_app` sets `RUST_BACKTRACE=0` for that reason, so don't remove it, and don't run the app with `RUST_BACKTRACE=1`.
+- **The release app is single instance** (GApplication). Launching it again only raises the open copy, so a test launch of a release build while the user's copy is open doesn't start anything. Debug builds aren't unique. Test the daemon under systemd with a temporary unit (`systemd-run --user --unit=tick-alt-test -p Restart=on-failure …`) rather than installing one.
+- Hyprland 0.57 takes Lua in `hyprctl dispatch`. Useful for QA: `hl.dsp.send_shortcut({ mods = "", key = "Down", window = "class:dev.tickalt.tick_alt" })` and `hl.dsp.window.close({ window = "class:dev.tickalt.tick_alt" })`.
 - flutter_rust_bridge scans every type under `app/rust/src/api/`, private ones too. Keep helpers outside it (see `src/changes.rs`).
 
 ## Working rules (from the user)
