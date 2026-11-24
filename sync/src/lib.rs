@@ -444,7 +444,11 @@ mod tests {
         .unwrap();
         let mut served = a.subscribe_served();
 
-        let report = b.pull(&a.ticket().unwrap()).await.unwrap();
+        // Dial loopback only, so the test doesn't depend on the LAN, VPNs or firewalls.
+        let port = a.endpoint().bound_sockets()[0].port();
+        let local = EndpointAddr::new(a.endpoint().id())
+            .with_ip_addr(std::net::SocketAddr::from(([127, 0, 0, 1], port)));
+        let report = b.pull(&encode_ticket(&local).unwrap()).await.unwrap();
         let mut titles: Vec<_> = report.tasks.iter().map(|t| t.title.as_str()).collect();
         titles.sort();
         assert_eq!(titles, ["Buy milk", "Renew passport"]);
