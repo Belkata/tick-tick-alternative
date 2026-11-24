@@ -173,7 +173,9 @@ class _SpikeCalendarPageState extends State<SpikeCalendarPage> {
                 onEventCreate: (e) => CalEvent(start: e.start, end: e.end, title: 'New task', isTask: true),
                 onEventCreated: (e) => _events.addEvent(e),
                 onEventChanged: _onChanged,
-                onEventTapped: (e) => _toast((e as CalEvent).title),
+                // Selecting is up to the app; a selected task shows its resize handles.
+                onEventTapped: (e) => (e as CalEvent).isTask ? _calendar.selectEvent(e) : _toast(e.title),
+                onTapped: (_) => _calendar.deselectEvent(),
               ),
             ),
           ),
