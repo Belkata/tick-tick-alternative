@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../src/rust/api/tasks.dart';
 import 'controller.dart';
+import 'filter_builder.dart';
+import 'style_dialog.dart';
 import 'theme.dart';
 
 /// Inbox, Lists, Filters, the Tags tree, Completed and Trash (plan/08).
@@ -34,6 +36,7 @@ class DeskSidebar extends StatelessWidget {
       int? count,
       int depth = 0,
       Key? key,
+      VoidCallback? onEdit,
     }) => NavTile(
       key: key,
       label: label,
@@ -45,6 +48,7 @@ class DeskSidebar extends StatelessWidget {
         c.open(v);
         onPicked?.call();
       },
+      onEdit: onEdit,
     );
 
     Widget icon(IconData i) => Icon(i, size: 16, color: s.mute);
@@ -124,19 +128,38 @@ class DeskSidebar extends StatelessWidget {
             nav(
               TaskView(kind: ViewKind.list, id: l.id),
               l.name,
-              lead: emojiOr(l.icon, icon(Icons.format_list_bulleted)),
-              count: l.count,
-            ),
-          if ((sb?.filters ?? const []).isNotEmpty) ...[
-            section('Filters'),
-            for (final f in sb!.filters)
-              nav(
-                TaskView(kind: ViewKind.filter, id: f.id),
-                f.name,
-                lead: emojiOr(f.icon, icon(Icons.filter_alt_outlined)),
-                count: f.count,
+              lead: emojiOr(
+                l.icon,
+                l.color == null
+                    ? icon(Icons.format_list_bulleted)
+                    : Icon(
+                        Icons.format_list_bulleted,
+                        size: 16,
+                        color: hexColor(l.color, s.mute),
+                      ),
               ),
-          ],
+              count: l.count,
+              key: Key('nav-list-${l.name}'),
+              onEdit: () => showStyleDialog(context, c, item: l, isTag: false),
+            ),
+          section(
+            'Filters',
+            action: _SmallButton(
+              key: const Key('new-filter'),
+              icon: Icons.add,
+              tooltip: 'New filter',
+              onTap: () => showFilterBuilder(context, c),
+            ),
+          ),
+          for (final f in sb?.filters ?? const <NavItem>[])
+            nav(
+              TaskView(kind: ViewKind.filter, id: f.id),
+              f.name,
+              lead: emojiOr(f.icon, icon(Icons.filter_alt_outlined)),
+              count: f.count,
+              key: Key('nav-filter-${f.name}'),
+              onEdit: () => showFilterBuilder(context, c, filterId: f.id),
+            ),
           if ((sb?.tags ?? const []).isNotEmpty) ...[
             section('Tags'),
             for (final t in sb!.tags)
@@ -146,6 +169,8 @@ class DeskSidebar extends StatelessWidget {
                 lead: emojiOr(t.icon, dot(t.color)),
                 count: t.count,
                 depth: t.depth,
+                key: Key('nav-tag-${t.name}'),
+                onEdit: () => showStyleDialog(context, c, item: t, isTag: true),
               ),
           ],
           const SizedBox(height: 10),
@@ -183,10 +208,14 @@ class NavTile extends StatelessWidget {
     this.lead,
     this.count,
     this.depth = 0,
+    this.onEdit,
   });
 
   final String label;
   final bool selected;
+
+  /// Right-click or long-press: edit this list, tag or filter.
+  final VoidCallback? onEdit;
   final VoidCallback onTap;
   final Widget? lead;
   final int? count;
@@ -205,6 +234,8 @@ class NavTile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,
+          onSecondaryTap: onEdit,
+          onLongPress: onEdit,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
