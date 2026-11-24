@@ -154,8 +154,41 @@ EndeavourOS, kernel 7.3.5-zen, Hyprland with waybar (tray module on) and dunst.
 - A midnight and timezone refresh.
 - Showing due dates on rows.
 
-## Spike 4: Tray and notifications (Hyprland/waybar, macOS)
-Not started. Needs the Arch machine. The macOS half needs Xcode.
+## Spike 4: Tray and notifications ✅ Hyprland · ⏸ macOS
+
+**Decision (Hyprland): the tray and the reminder notifications live in the Rust daemon (`tt-daemon`), not in Flutter.** The macOS half still needs Xcode.
+
+**What was built** (spike quality; M2 grows it into the real daemon):
+- `daemon/` (`tt-daemon`): a ksni 0.3.7 StatusNotifierItem tray and notify-rust 4.19.0 notifications, both on tokio.
+  - The tray icon is a teal check drawn as an ARGB pixmap at 22, 32 and 48 px, so it doesn't depend on the icon theme. It's dimmed when the Inbox is empty.
+  - The title is `Tick Alt (N)` and the tooltip reads "N tasks in Inbox". It refreshes every 5 s.
+  - Menu: the Inbox count, the first 5 Inbox tasks (clicking one sends its notification), Open (starts `$TT_APP` or `tick_alt`), Refresh, Sync now (disabled until M3) and Quit. Left click opens the app.
+  - The reminder loop calls `upcoming_reminders(last_check, now)` every 5 s and sends a notification for each fire, with `Done` and `Snooze 10 min` actions. Done calls `complete_task`; Snooze shows it again after `$TT_SNOOZE_SECS` (default 600).
+  - `tt-daemon notify <id>` sends one notification right away, for testing.
+  - Each DB access opens the store briefly on the blocking pool, like the CLI. M2 makes the daemon own the DB and the socket API.
+
+**Results on Hyprland (waybar tray, dunst 1.13.2):**
+- ✅ The tray registers with waybar's `org.kde.StatusNotifierWatcher` and shows in the `tray` module. Title and tooltip read correctly over D-Bus.
+- ✅ Reminder: a task due 21:38 with `tt remind <id> 0` popped up at 21:38 (within the 5 s tick) as "(A) Stand-up call"; dunst's `(A)` marks actions.
+- ✅ Actions: picking **Snooze** sent `ActionInvoked "snooze"` and the reminder came back about 12 s into a 20 s snooze (the 5 s tick adds slack). Picking **Done** completed the task in the DB (`tt completed` shows it).
+- Memory: `tt-daemon` uses about **19 MB RSS**, and the release binary is 15 MB. The Flutter tray test app used **128 MB RSS** with its window.
+
+**Flutter comparison** (a throwaway app outside the repo, not committed):
+- `tray_manager` 0.9.1 now sits on `nativeapi` 0.6 (C++), which exports its own SNI over GDBus. It doesn't use libappindicator, but it links GTK3, X11 and Xi. ✅ Its icon and menu show in waybar.
+- `flutter_local_notifications` 23.0.4 shows a notification with actions in dunst. ✅ It appears; I didn't exercise its actions.
+- **Why not Flutter for the tray:** the tray only exists while the Flutter process runs. plan/08 needs reminders and sync to keep running with the window closed, so the tray belongs in the daemon. Flutter keeps `flutter_local_notifications` for Android (M4).
+
+**Learned:**
+- ⚠️ **dunst has no inline action buttons.** Middle click runs `do_action`: with one action it runs it, and with two or more it opens a picker through the `dmenu` command in dunstrc. On this laptop that pointed at `/usr/bin/dmenu`, which isn't installed, so the actions did nothing. Fixed by setting `dmenu = /usr/bin/rofi -dmenu -p dunst:` (backup: `~/.config/dunst/dunstrc.bak-before-tickalt`). `dunstctl context` opens the same picker, which is useful to bind to a key (a touchpad middle click is easy to miss).
+- So the notification should offer **no `default` action**, or dunst's middle click would run it instead of offering Done or Snooze. M2 could also put a key hint in the body.
+- notify-rust's default `z` feature pulls in zbus's async-io runtime. With ksni on tokio, use `default-features = false, features = ["z-with-tokio"]`.
+- `wait_for_action` blocks, so run it on `spawn_blocking` and send the result back over a channel.
+
+![[spike4-tray.jpg|400]]
+
+**Still to do for Spike 4:**
+- macOS menu bar and `UNUserNotificationCenter`: needs Xcode.
+- Small CLI bug found on the way: `tt show <id> | head` panics with "failed printing to stdout: Broken pipe". Reset SIGPIPE or handle `BrokenPipe` in the CLI.
 
 ## Spike 5: Flutter week grid (drag and resize) ✅ with kalender 0.34.0
 

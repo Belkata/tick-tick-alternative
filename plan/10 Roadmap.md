@@ -15,7 +15,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [ ] Spike 1: Rust core library plus `flutter_rust_bridge` running on an Android phone, macOS and Hyprland. ✅ Android (emulator); ✅ Hyprland (native Wayland); macOS waits for Xcode. See [[13 M0 Spike Log]].
 - [ ] Spike 2: iroh connects phone ↔ Mac on LAN and across networks (phone on mobile data). ✅ Emulator ↔ Mac both directions (direct after hole punching); ⚠️ Android relay connects only sometimes; ⏸ real phone on mobile data. See [[13 M0 Spike Log]].
 - [x] Spike 3: Glance widget calls the Rust core through UniFFI and completes a task. ✅ Emulator, release build; see [[13 M0 Spike Log]].
-- [ ] Spike 4: tray icon and notification on Hyprland (waybar) and macOS.
+- [ ] Spike 4: tray icon and notification on Hyprland (waybar) and macOS. ✅ Hyprland: Rust tray in `tt-daemon` (ksni + notify-rust), Done and Snooze work through dunst; macOS waits for Xcode. See [[13 M0 Spike Log]].
 - [x] Spike 5: Flutter week grid with drag and resize (evaluate the `kalender` package against a custom build). ✅ Use kalender 0.34; see [[13 M0 Spike Log]].
 
 **Exit:** the stack is confirmed, or we switch to Option B.
