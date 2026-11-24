@@ -17,6 +17,7 @@ A personal, local-first TickTick replacement. The pieces:
 | `plan/10 Roadmap.md` | Milestones M0–M6 and what is ticked |
 | `plan/11 Open Questions.md` | Undecided items. Ask the user before deciding them |
 | `plan/13 M0 Spike Log.md` | **Spike results and every gotcha found so far. Read before touching Android or Gradle.** |
+| `plan/14 M1 Core Log.md` | How the core is built (op-log, HLC, filters, recurrence) and where it differs from plan/04 and plan/05 |
 
 The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manrope headings) **with Material outlined tag chips**. The mockups are in `plan/ui-styles/styles.html`.
 
@@ -30,14 +31,22 @@ M0 (decisions and spikes) is mostly done:
 - 🟡 **Spike 2**: iroh 1.5 works emulator ↔ Mac in both directions (`tt sync serve/pull`, the app's Sync tab), going direct after hole punching. ⚠️ On Android the relay connects in only about 1 of 4 launches (not yet diagnosed). ⏸ Real phone on mobile data.
 - ⬜ **Spike 4**: tray icon and notifications. Needs the Arch machine (waybar) and Xcode (macOS).
 
-Next step: diagnose the Android relay (route iroh's tracing to logcat), then the real-phone test; or start M1 (core and CLI). Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+M1 (core and CLI) is done on the Mac:
+- The schema v2 migrations, op-log, HLC, model, filters, recurrence, reminders and the full `tt` CLI are in place.
+- 46 unit tests plus convergence property tests.
+- ⏸ Try the CLI on Arch. ⏸ Rebuild the Android app on the new core.
+- Open questions: plan/11 #10 (the answer is ambiguous) and #12 (create the GitHub repo: needs the user's go-ahead, private or public).
+
+Next: M2 (desktop app), the Android relay diagnosis, or the Arch check. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
 ## Repo layout
 
 ```
-core/                 tt-core: Rust domain + SQLite (rusqlite bundled). Store, tasks, lists, tags, Inbox view
+core/                 tt-core: domain + SQLite. Every write is an op (oplog.rs, hlc.rs) applied with per-field LWW.
+                      store (migrations/, write txn), task, organize (lists/tags), checklist, reminder,
+                      recur (rrule), filter (JSON AST -> SQL), dates. tests/convergence.rs = proptest
 sync/                 tt-sync: Spike 2 iroh node (key file, ticket, pull open tasks). M3 replaces the protocol
-cli/                  `tt` CLI (add / ls / done / rm). Short ids = LAST 8 hex chars of the UUIDv7
+cli/                  `tt` CLI (`tt --help`). Short ids = LAST 8 hex chars of the UUIDv7. $TT_DB, $TT_TZ
 app/                  Flutter app (android, linux, macos)
   rust/               tt_bridge crate: Dart API (src/api/, flutter_rust_bridge) + Kotlin API (src/kotlin.rs, UniFFI)
   lib/                main.dart (Inbox), calendar/spike_calendar.dart, widget_bridge.dart
@@ -85,6 +94,9 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
   - Gboard's stylus tutorial and Google sign-in screens pop up over the app. Dismiss them, skipping sign-in.
   - `adb input` can't do long-press drags; use Flutter widget tests instead.
 - Flutter's `integration_test` plugin pins `androidx.test:runner` to 1.3.0. Don't declare a newer one.
+- **Core writes go through `Store::write` and its `Writer::set` op path.** Never `UPDATE` tables directly, or sync loses the change. Don't call a public `Store` method from inside `write` (the nested `BEGIN` fails); use the `pub(crate)` helpers that take a `Writer`.
+- New syncable fields need an entry in `oplog::field_spec`; anything not listed is rejected.
+- `cargo fmt --all` reformats the generated `app/rust/src/frb_generated.rs`. Revert it with `git checkout` and don't commit it.
 - **Release builds need `INTERNET` in `src/main/AndroidManifest.xml`.** The template only puts it in debug and profile.
 - The Android QA plugin's Python scripts need Python ≥ 3.10; `scripts/env.sh` puts Homebrew's `python3` first.
 - Xcode isn't installed, so macOS Flutter builds fail and `flutter doctor` complains. That's expected.
