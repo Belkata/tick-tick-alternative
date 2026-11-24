@@ -90,7 +90,9 @@ class _InboxPageState extends State<InboxPage> {
                 hintText: 'Add a task',
                 border: OutlineInputBorder(),
               ),
+              // Keep the keyboard up so several tasks can be added in a row.
               onSubmitted: (_) => _add(),
+              onEditingComplete: () {},
             ),
           ),
           Expanded(
