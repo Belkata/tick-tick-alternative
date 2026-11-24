@@ -15,6 +15,8 @@ case "$(uname -s)" in
       if [ -d "$jbr" ]; then export JAVA_HOME="$jbr"; break; fi
     done
     export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
+    # Flutter is a git checkout of the release tag (git clone -b 3.50.1 https://github.com/flutter/flutter.git ~/flutter).
+    if [ -d "$HOME/flutter/bin" ]; then export PATH="$HOME/flutter/bin:$PATH"; fi
     ;;
 esac
 
