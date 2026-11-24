@@ -58,9 +58,27 @@ impl IntoWire<Option<String>> for Option<String> {
     }
 }
 
+impl IntoWire<Option<String>> for Option<&String> {
+    fn into_wire(self) -> Option<String> {
+        self.cloned()
+    }
+}
+
 impl IntoWire<Vec<String>> for &[String] {
     fn into_wire(self) -> Vec<String> {
         self.to_vec()
+    }
+}
+
+impl<const N: usize> IntoWire<Vec<String>> for &[String; N] {
+    fn into_wire(self) -> Vec<String> {
+        self.to_vec()
+    }
+}
+
+impl IntoWire<Vec<String>> for Vec<String> {
+    fn into_wire(self) -> Vec<String> {
+        self
     }
 }
 

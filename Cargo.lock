@@ -4157,6 +4157,7 @@ dependencies = [
  "dirs",
  "serde_json",
  "tokio",
+ "tt-api",
  "tt-core",
  "tt-sync",
 ]

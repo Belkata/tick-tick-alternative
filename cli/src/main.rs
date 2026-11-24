@@ -9,8 +9,9 @@ use anyhow::{Context, Result, bail};
 use chrono_tz::Tz;
 use clap::{Args, Parser, Subcommand};
 use show::{SHORT_ID_LEN, line, offset_label, parse_offset, priority_name, short_id, when};
+use tt_api::Api;
 use tt_core::{
-    Filter, FilterRule, NewTask, ReminderKind, Repeat, RepeatMode, Schedule, Store, Task, local_tz,
+    Filter, FilterRule, NewTask, ReminderKind, Repeat, RepeatMode, Schedule, Task, local_tz,
     parse_when,
 };
 use tt_sync::{Relays, SyncNode};
@@ -282,7 +283,9 @@ fn main() -> Result<()> {
     if let Command::Sync(cmd) = cli.command {
         return run_sync(db, cmd);
     }
-    let store = Store::open(&db).with_context(|| format!("opening {}", db.display()))?;
+    // Through tt-daemon when it serves this database; else open the file directly
+    // (the daemon notices those writes and tells the app).
+    let store = Api::connect_or_open(&db).with_context(|| format!("opening {}", db.display()))?;
     let ctx = Ctx {
         store,
         tz: local_tz(),
@@ -292,7 +295,7 @@ fn main() -> Result<()> {
 }
 
 struct Ctx {
-    store: Store,
+    store: Api,
     tz: Tz,
     now: i64,
 }
@@ -372,7 +375,7 @@ impl Ctx {
                 if let Some(l) = &fields.list {
                     s.set_task_list(&id, Some(&self.list_id(l)?))?;
                 } else if no_list {
-                    s.set_task_list(&id, None)?;
+                    s.set_task_list(&id, None::<&str>)?;
                 }
                 for t in &fields.tags {
                     s.tag_task(&id, &s.ensure_tag_path(t)?)?;
@@ -389,7 +392,7 @@ impl Ctx {
                 if let Some(p) = parent {
                     s.set_parent(&id, Some(&self.task_id(&p)?))?;
                 } else if no_parent {
-                    s.set_parent(&id, None)?;
+                    s.set_parent(&id, None::<&str>)?;
                 }
                 println!(
                     "{}",
@@ -532,7 +535,7 @@ impl Ctx {
                         .context("no item with that number")
                 };
                 if !item.is_empty() {
-                    s.add_checklist_item(&id, &item.join(" "))?;
+                    s.add_checklist_item(&id, item.join(" "))?;
                 } else if let Some(n) = toggle {
                     let it = pick(n)?;
                     s.set_checklist_done(&it.id, !it.done)?;
@@ -638,7 +641,7 @@ impl Ctx {
         let s = &self.store;
         let run = |rule: &str| -> Result<Vec<Task>> {
             let rule: FilterRule = serde_json::from_str(rule)?;
-            Ok(s.run_rule(&rule, &[], a.done, self.now, self.tz)?)
+            s.run_rule(&rule, &[], a.done, self.now, self.tz)
         };
         let cond = |field: &str, op: &str, value: &str| {
             serde_json::json!({"field": field, "op": op, "value": value}).to_string()

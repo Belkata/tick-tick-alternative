@@ -9,6 +9,7 @@ publish.workspace = true
 anyhow = "1.0.105"
 clap = { version = "4.6.9", features = ["derive"] }
 dirs = "7.0.0"
+tt-api = { path = "../api" }
 tt-core = { version = "0.1.0", path = "../core" }
 tt-sync = { version = "0.1.0", path = "../sync" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }

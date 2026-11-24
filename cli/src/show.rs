@@ -1,7 +1,8 @@
 //! How `tt` prints tasks, dates and tags.
 
 use chrono_tz::Tz;
-use tt_core::{Store, Task};
+use tt_api::Api;
+use tt_core::Task;
 pub use tt_core::{offset_label, when_label as when};
 
 /// Characters of the task id that `tt` prints and accepts.
@@ -31,7 +32,7 @@ pub fn priority_name(p: u8) -> &'static str {
 }
 
 /// One line per task: `id  !! title   due · @list #tag`.
-pub fn line(store: &Store, t: &Task, now_ms: i64, tz: Tz, indent: usize) -> String {
+pub fn line(store: &Api, t: &Task, now_ms: i64, tz: Tz, indent: usize) -> String {
     let mut extras = Vec::new();
     if let Some(due) = t.due_at {
         let mut s = when(due, t.all_day, now_ms, tz);
