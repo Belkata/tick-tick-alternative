@@ -100,6 +100,24 @@ impl Store {
             .optional()?)
     }
 
+    /// Resolve a short id (the end of a UUID, as the CLI prints it) to a full id.
+    /// Returns `None` if nothing matches or the suffix is ambiguous.
+    pub fn resolve_task_id(&self, suffix: &str) -> Result<Option<String>> {
+        if suffix.is_empty() || !suffix.chars().all(|c| c.is_ascii_hexdigit() || c == '-') {
+            return Ok(None);
+        }
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id FROM task WHERE id LIKE '%' || ?1 LIMIT 2")?;
+        let ids: Vec<String> = stmt
+            .query_map([suffix.to_ascii_lowercase()], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        Ok(match ids.as_slice() {
+            [one] => Some(one.clone()),
+            _ => None,
+        })
+    }
+
     /// Open tasks, oldest first.
     pub fn open_tasks(&self) -> Result<Vec<Task>> {
         let sql = format!(
