@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+
+# Obsidian: per-device UI state (keep shared vault settings)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.trash/
+
+# Rust
+target/
+
+# Flutter / Dart
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+
+# Android / Gradle
+.gradle/
+local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Secrets
+.env
+*.pem
+client_secret*.json
