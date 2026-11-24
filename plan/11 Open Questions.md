@@ -18,7 +18,6 @@ Back to [[00 Overview]]. Answer these inline, and I'll fold the answers into the
 7. ~~**Work list kanban columns.**~~ ✅ Decided (2026-11-24): **drop them** on import.
 8. ~~**Duplicate reminders.**~~ ✅ Decided (2026-11-24): **every device rings.** No "silent desktop" mode.
 9. ~~**"Won't Do".**~~ ✅ Decided (2026-11-24): **complete and trash are enough.** Three statuses only: open, done, deleted. TickTick "won't do" imports as done.
-10. **DB encryption at rest.** Is relying on OS disk encryption enough? - db encryption is enough
-    - ❓ *Your answer can be read two ways: "OS disk encryption is enough" (no app-level encryption in v1), or "the app should encrypt its database". Which one?*
+10. ~~**DB encryption at rest.**~~ ✅ Decided (2026-11-24): **OS disk encryption is enough** (FileVault, LUKS, Android FBE). No app-level DB encryption in v1.
 11. ~~**Inbox rule edge case.**~~ ✅ Decided (2026-11-24): **yes, a priority-only task stays in Inbox.** Priority doesn't triage a task.
 12. ~~**Repo hosting.**~~ ✅ Decided (2026-11-24): **GitHub, public:** https://github.com/Belkata/tick-tick-alternative. Commits are authored as `belkata.okfo@gmail.com` (set in this repo's git config).

@@ -35,7 +35,6 @@ M1 (core and CLI) is done on the Mac:
 - The schema v2 migrations, op-log, HLC, model, filters, recurrence, reminders and the full `tt` CLI are in place.
 - 46 unit tests plus convergence property tests.
 - ⏸ Try the CLI on Arch. ⏸ Rebuild the Android app on the new core.
-- Open question: plan/11 #10 (the answer is ambiguous).
 - Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`). It's public, so never commit secrets, tokens, `.key` files or personal data.
 
 Next: M2 (desktop app), the Android relay diagnosis, or the Arch check. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
