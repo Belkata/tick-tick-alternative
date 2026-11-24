@@ -21,11 +21,11 @@ A personal, local-first TickTick replacement. The pieces:
 
 The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manrope headings) **with Material outlined tag chips**. The mockups are in `plan/ui-styles/styles.html`.
 
-## Where things stand (2026-11-24)
+## Where things stand (2026-11-24, evening, on the Arch laptop)
 
 M0 (decisions and spikes) is mostly done:
 - ✅ Stack and UI style chosen; library versions confirmed.
-- ✅ **Spike 1** passes on the Android emulator: Flutter calls the Rust core through `flutter_rust_bridge`. ⏸ The macOS check needs Xcode: not installed, and the user's Apple account got locked trying the App Store. When it's unlocked, download the `.xip` from developer.apple.com rather than using the App Store (it's a work Mac). ⏸ Hyprland: next, on the Arch laptop.
+- ✅ **Spike 1** passes on the Android emulator: Flutter calls the Rust core through `flutter_rust_bridge`. ⏸ The macOS check needs Xcode: not installed, and the user's Apple account got locked trying the App Store. When it's unlocked, download the `.xip` from developer.apple.com rather than using the App Store (it's a work Mac). ✅ Hyprland: native Wayland (`xwayland: 0`), and the Inbox integration test passes with `-d linux`.
 - ✅ **Spike 3**: the Glance Inbox widget completes tasks through UniFFI. Refresh works in both directions (app → widget, widget → app). Verified with a release build.
 - ✅ **Spike 5**: the calendar uses `kalender` 0.34. Drag, resize and dropping from the unscheduled strip all work, with 6 widget tests.
 - 🟡 **Spike 2**: iroh 1.5 works emulator ↔ Mac in both directions (`tt sync serve/pull`, the app's Sync tab), going direct after hole punching. ⚠️ On Android the relay connects in only about 1 of 4 launches (not yet diagnosed). ⏸ Real phone on mobile data.
@@ -35,10 +35,10 @@ M1 (core and CLI) is done on the Mac:
 - The schema v2 migrations, op-log, HLC, model, filters, recurrence, reminders and the full `tt` CLI are in place.
 - 46 unit tests plus convergence property tests.
 - ✅ The Android app is rebuilt on the new core and checked on the emulator: the spike DB migrated, add/complete work, the widget works. Published as pre-release **v0.1.0** on GitHub for the user's phone.
-- ⏸ The M1 exit check, using `tt` on Arch, is next on the Arch laptop.
+- ✅ On Arch, `cargo test --workspace` passes (53 tests), clippy is clean and every `tt` command works. ⏸ The user still needs to try `tt` for real to close the M1 exit.
 - Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`). It's public, so never commit secrets, tokens, `.key` files or personal data.
 
-**Next (the user is moving to the Arch laptop):** set it up as in "Continuing on the Arch laptop" below, then the M1 exit check and Spikes 1 and 4 on Hyprland. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+**Next:** The Arch laptop is set up (Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang; no Android SDK yet). Spike 4 (tray and notifications) on Hyprland is next. waybar provides `org.kde.StatusNotifierWatcher` and dunst provides `org.freedesktop.Notifications`. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
 ## Continuing on the Arch laptop (handoff 2026-11-24)
 
