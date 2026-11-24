@@ -2,7 +2,10 @@ package dev.tickalt.tick_alt.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.unit.dp
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -18,9 +21,13 @@ import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.items
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.updateAll
+import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
+import androidx.glance.currentState
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -44,9 +51,17 @@ import kotlinx.coroutines.withContext
  * Choosing a list or filter per widget comes in M4.
  */
 class TaskListWidget : GlanceAppWidget() {
+    // Glance calls provideGlance once per session and later updates only recompose, so
+    // data loaded up front would go stale. Instead a "version" lives in the widget's
+    // Glance state; refreshAll() bumps it and the composition reloads from the core.
+    override val stateDefinition = PreferencesGlanceStateDefinition
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val tasks = loadInbox(context)
         provideContent {
+            val version = currentState(versionKey) ?: 0L
+            val tasks by produceState<Result<List<WidgetTask>>?>(initialValue = null, version) {
+                value = loadInbox(context)
+            }
             GlanceTheme { Content(tasks) }
         }
     }
@@ -55,13 +70,22 @@ class TaskListWidget : GlanceAppWidget() {
         withContext(Dispatchers.IO) { runCatching { TtCore.db(context).inbox() } }
 
     companion object {
-        /** Redraw every placed Tick Alt widget, e.g. after the app changed tasks. */
-        suspend fun refreshAll(context: Context) = TaskListWidget().updateAll(context)
+        private val versionKey = longPreferencesKey("version")
+
+        /** Reload and redraw every placed Tick Alt widget, e.g. after tasks changed. */
+        suspend fun refreshAll(context: Context) {
+            val ids = GlanceAppWidgetManager(context).getGlanceIds(TaskListWidget::class.java)
+            for (id in ids) {
+                updateAppWidgetState(context, id) { it[versionKey] = System.nanoTime() }
+                TaskListWidget().update(context, id)
+            }
+        }
     }
 }
 
 @Composable
-private fun Content(tasks: Result<List<WidgetTask>>) {
+private fun Content(tasks: Result<List<WidgetTask>>?) {
+    if (tasks == null) return Message("Loading…")
     val list = tasks.getOrDefault(emptyList())
     Column(
         modifier = GlanceModifier
@@ -99,10 +123,8 @@ private fun Content(tasks: Result<List<WidgetTask>>) {
         when {
             tasks.isFailure -> Message("Couldn't read tasks")
             list.isEmpty() -> Message("Inbox is empty 🎉")
-            // Kotlin 2.4.20 crashes inlining Glance 1.2's `items(list)` helper, so use the
-            // non-inline `items(count)` member instead.
             else -> LazyColumn {
-                items(list.size, itemId = { i -> list[i].id.hashCode().toLong() }) { i -> TaskRow(list[i]) }
+                items(list, itemId = { it.id.hashCode().toLong() }) { task -> TaskRow(task) }
             }
         }
     }
@@ -144,7 +166,8 @@ class CompleteTaskAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val id = parameters[taskId] ?: return
         withContext(Dispatchers.IO) { TtCore.db(context).complete(id) }
-        TaskListWidget().update(context, glanceId)
+        // Redraw every placed widget, not just this one, so copies never disagree.
+        TaskListWidget.refreshAll(context)
     }
 
     companion object {
