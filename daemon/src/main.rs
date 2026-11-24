@@ -41,7 +41,10 @@ enum Cmd {
         task_id: String,
         title: String,
     },
-    OpenApp,
+    /// Start or raise the app, with the tray host's Wayland activation token if it gave one.
+    OpenApp {
+        token: Option<String>,
+    },
     Quit,
 }
 
@@ -87,7 +90,9 @@ impl ksni::Tray for TickTray {
 
     /// Left click opens the app.
     fn activate(&mut self, _x: i32, _y: i32) {
-        self.send(Cmd::OpenApp);
+        self.send(Cmd::OpenApp {
+            token: activation_token(),
+        });
     }
 
     fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
@@ -122,7 +127,11 @@ impl ksni::Tray for TickTray {
             StandardItem {
                 label: "Open".into(),
                 icon_name: "window-new".into(),
-                activate: Box::new(|t: &mut Self| t.send(Cmd::OpenApp)),
+                activate: Box::new(|t: &mut Self| {
+                    t.send(Cmd::OpenApp {
+                        token: activation_token(),
+                    })
+                }),
                 ..Default::default()
             }
             .into(),
@@ -267,10 +276,28 @@ fn snooze_delay() -> Duration {
 }
 
 /// Starts the Flutter app: $TT_APP, else `tick_alt` on PATH.
-fn open_app() {
+/// The tray host's XDG activation token for the click being handled. It may arrive just
+/// after the event, so look twice (ksni's advice).
+fn activation_token() -> Option<String> {
+    ksni::current_xdg_activation_token().or_else(|| {
+        std::thread::sleep(Duration::from_millis(1));
+        ksni::current_xdg_activation_token()
+    })
+}
+
+/// Start the Flutter app (`$TT_APP`, else `tick_alt` on PATH). A release build is single
+/// instance, so if it's already open this raises its window. The token lets Wayland focus it.
+fn open_app(token: Option<String>) {
     let app = std::env::var("TT_APP").unwrap_or_else(|_| "tick_alt".into());
-    if let Err(e) = std::process::Command::new(&app).spawn() {
-        eprintln!("could not start {app}: {e}");
+    let mut cmd = std::process::Command::new(&app);
+    if let Some(t) = &token {
+        cmd.env("XDG_ACTIVATION_TOKEN", t)
+            .env("DESKTOP_STARTUP_ID", t);
+    }
+    match cmd.spawn() {
+        // Reap it when it exits (a second instance exits right after raising the first).
+        Ok(mut child) => drop(std::thread::spawn(move || child.wait())),
+        Err(e) => eprintln!("could not start {app}: {e}"),
     }
 }
 
@@ -370,7 +397,7 @@ async fn main() -> Result<()> {
                         let _ = tx.send(Cmd::Notify { task_id, title });
                     });
                 }
-                Cmd::OpenApp => open_app(),
+                Cmd::OpenApp { token } => open_app(token),
                 Cmd::Quit => break,
             },
             _ = tokio::signal::ctrl_c() => break,
