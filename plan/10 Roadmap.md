@@ -35,13 +35,13 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [ ] Tray daemon with socket API and systemd / LaunchAgent setup. 🟡 The socket API is done (slice 2) and so is the systemd user unit (slice 3: restart on failure, clients reconnect, single-instance app). The LaunchAgent waits for the Mac. See [[15 M2 Desktop Log]].
 - [ ] Three-pane UI: sidebar, list, detail. Tag tree, lists, filter builder, Completed and Trash. 🟡 Slices 1 and 4 done: sidebar (tag tree, lists, saved filters, Completed, Trash), task cards, detail editing (dates, repeat, reminders), keyboard, the visual filter builder, and tag and list colours and icons. Trash purge waits for the core. See [[15 M2 Desktop Log]].
 - [ ] Desktop notifications with Done and Snooze.
-- [ ] Packaging: PKGBUILD and a DMG.
+- [ ] Packaging: PKGBUILD and a DMG. 🟡 PKGBUILD done (`packaging/arch`, test-built with makepkg); the DMG waits for the Mac.
 
 **Exit:** usable daily on one machine.
 
 ## M3: P2P sync (desktop ↔ desktop)
-- [ ] Device identity, QR / text pairing, trusted peers.
-- [ ] Sync protocol: version vectors and op streaming. Compaction and snapshots.
+- [ ] Device identity, QR / text pairing, trusted peers. 🟡 Text pairing (`tt2` tickets) and trusted peers done; QR waits for M4. See [[16 M3 Sync Log]].
+- [ ] Sync protocol: version vectors and op streaming. Compaction and snapshots. 🟡 Version vectors and op streaming done; compaction and snapshots to do.
 - [ ] Property-based convergence tests and a network simulation.
 - [ ] Tray sync status.
 

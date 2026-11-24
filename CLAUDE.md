@@ -18,6 +18,7 @@ A personal, local-first TickTick replacement. The pieces:
 | `plan/11 Open Questions.md` | Undecided items. Ask the user before deciding them |
 | `plan/13 M0 Spike Log.md` | **Spike results and every gotcha found so far. Read before touching Android or Gradle.** |
 | `plan/14 M1 Core Log.md` | How the core is built (op-log, HLC, filters, recurrence) and where it differs from plan/04 and plan/05 |
+| `plan/16 M3 Sync Log.md` | M3 sync protocol, pairing, what's next |
 | `plan/15 M2 Desktop Log.md` | **M2 plan, slices and the bridge contract.** The socket API must copy the bridge API |
 
 The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manrope headings) **with Material outlined tag chips**. The mockups are in `plan/ui-styles/styles.html`.
@@ -49,7 +50,10 @@ M2 (desktop app) has started; see `plan/15 M2 Desktop Log.md`:
 
 - ✅ Slice 4: the visual filter builder (all/any/not, nested groups, live count), right-click edit for lists, tags and filters (rename, colour, icon, delete), and start, repeat and reminder editing in the detail pane.
 
-**Next:** slice 5 (PKGBUILD: app, daemon, CLI, unit, `.desktop`), which completes M2 for Arch. Then ask the user: M3 (P2P sync) or the Android catch-up (no SDK on the laptop yet). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+- ✅ Slice 5: `packaging/arch/PKGBUILD` (builds from GitHub; test-built, 33 MB; not installed).
+- M3 slice 1 ✅: sync protocol, pairing and `tt sync` (see `plan/16 M3 Sync Log.md`). Schema v3.
+
+**Next:** M3 slice 2, the daemon runs sync, with tray status and a Devices page (see plan/16). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
 ## Continuing on the Arch laptop (handoff 2026-11-24)
 
