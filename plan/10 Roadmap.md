@@ -16,7 +16,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [ ] Spike 2: iroh connects phone ↔ Mac on LAN and across networks (phone on mobile data).
 - [ ] Spike 3: Glance widget calls the Rust core through UniFFI and completes a task.
 - [ ] Spike 4: tray icon and notification on Hyprland (waybar) and macOS.
-- [ ] Spike 5: Flutter week grid with drag and resize (evaluate the `kalender` package against a custom build).
+- [x] Spike 5: Flutter week grid with drag and resize (evaluate the `kalender` package against a custom build). ✅ Use kalender 0.34; see [[13 M0 Spike Log]].
 
 **Exit:** the stack is confirmed, or we switch to Option B.
 
