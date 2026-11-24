@@ -4162,6 +4162,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tt-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono-tz",
+ "dirs",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tt-core",
+]
+
+[[package]]
 name = "tt-core"
 version = "0.1.0"
 dependencies = [
