@@ -35,7 +35,8 @@ M1 (core and CLI) is done on the Mac:
 - The schema v2 migrations, op-log, HLC, model, filters, recurrence, reminders and the full `tt` CLI are in place.
 - 46 unit tests plus convergence property tests.
 - ⏸ Try the CLI on Arch. ⏸ Rebuild the Android app on the new core.
-- Open questions: plan/11 #10 (the answer is ambiguous) and #12 (create the GitHub repo: needs the user's go-ahead, private or public).
+- Open question: plan/11 #10 (the answer is ambiguous).
+- Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`). It's public, so never commit secrets, tokens, `.key` files or personal data.
 
 Next: M2 (desktop app), the Android relay diagnosis, or the Arch check. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
@@ -105,6 +106,7 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 
 - **Small commits.** One logical change per commit; never commit large files or big mixed changes at once. Shrink screenshots before committing them (JPEG, about 400 px wide, into `plan/attachments/`).
 - No `Co-Authored-By` trailers or "Generated with" footers in commit messages.
+- Commit as `belkata.okfo@gmail.com` (this repo's `user.email`; the global git email is a work address). Push with the `Belkata` gh account.
 - Check a library's actual version (lockfile, crates.io, pub.dev, Google Maven) before using its API, and record new versions in `plan/02`. Use the `context7` MCP for docs.
 - Write readable multi-line shell commands with `\` continuations. Use `git -C <path>` outside the repo root.
 - Plan before implementing. Interview the user when unsure; anything listed in `plan/11` is the user's call.

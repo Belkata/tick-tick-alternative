@@ -21,4 +21,4 @@ Back to [[00 Overview]]. Answer these inline, and I'll fold the answers into the
 10. **DB encryption at rest.** Is relying on OS disk encryption enough? - db encryption is enough
     - ❓ *Your answer can be read two ways: "OS disk encryption is enough" (no app-level encryption in v1), or "the app should encrypt its database". Which one?*
 11. ~~**Inbox rule edge case.**~~ ✅ Decided (2026-11-24): **yes, a priority-only task stays in Inbox.** Priority doesn't triage a task.
-12. ~~**Repo hosting.**~~ ✅ Decided (2026-11-24): **GitHub, under your `belkata` profile.** Creating the repo is waiting on your go-ahead (private or public).
+12. ~~**Repo hosting.**~~ ✅ Decided (2026-11-24): **GitHub, public:** https://github.com/Belkata/tick-tick-alternative. Commits are authored as `belkata.okfo@gmail.com` (set in this repo's git config).
