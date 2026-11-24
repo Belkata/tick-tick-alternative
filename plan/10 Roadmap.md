@@ -21,15 +21,15 @@ Each milestone ends with something usable. Building the core first means the CLI
 **Exit:** the stack is confirmed, or we switch to Option B.
 
 ## M1: Core and CLI
-- [ ] SQLite schema and migrations. Model for tasks, lists, tags (nested), checklist and subtasks.
-- [ ] Inbox rule view.
-- [ ] Filter AST, SQL compiler and tests.
-- [ ] Recurrence (fixed and after-completion) and the completion history.
-- [ ] Reminder schedule computation.
-- [ ] Op-log and HLC from day one, even before sync exists.
-- [ ] The `tt` CLI: add, ls, done, tags, filters.
+- [x] SQLite schema and migrations. Model for tasks, lists, tags (nested), checklist and subtasks.
+- [x] Inbox rule view.
+- [x] Filter AST, SQL compiler and tests.
+- [x] Recurrence (fixed and after-completion) and the completion history.
+- [x] Reminder schedule computation.
+- [x] Op-log and HLC from day one, even before sync exists. Convergence is property-tested.
+- [x] The `tt` CLI: add, ls, done, tags, filters (plus edit, show, lists, repeat, remind, check, completed, trash).
 
-**Exit:** I can manage tasks from the terminal on Arch.
+**Exit:** I can manage tasks from the terminal on Arch. ✅ on the Mac; ⏸ build and try it on the Arch machine. See [[14 M1 Core Log]].
 
 ## M2: Desktop app (Mac and Arch)
 - [ ] Tray daemon with socket API and systemd / LaunchAgent setup.

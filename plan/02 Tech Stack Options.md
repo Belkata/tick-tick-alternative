@@ -109,7 +109,10 @@ Before committing, a short **spike (milestone M0 in [[10 Roadmap]])** checks:
 > | flutter_rust_bridge | 2.13.0 | crate and pub package match |
 > | UniFFI | 0.32.2 | still 0.x: pin exactly |
 > | rusqlite | 0.43.0 | `bundled` feature for FTS5 |
-> | rrule | 0.14.0 | last release 2025-04; check it still builds |
+> | rrule | 0.14.0 | last release 2025-04; ✅ builds on Rust 1.100 and shares chrono-tz 0.10 (M1) |
+> | chrono / chrono-tz | 0.4.45 / 0.10.4 | dates and IANA zones (M1) |
+> | serde / serde_json | 1.0.229 / 1.0.154 | ops and filter rules as JSON (M1) |
+> | proptest | 1.12.0 | dev-only: HLC and convergence property tests (M1) |
 > | tokio | 1.54.1 | |
 > | Flutter stable | 3.50.1 (Dart 3.14.0) | |
 > | Jetpack Glance | 1.2.0 stable | 1.3.0 is alpha only |
