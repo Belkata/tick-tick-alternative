@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:tick_alt/main.dart';
+import 'package:tick_alt/src/rust/api/sync.dart';
 import 'package:tick_alt/src/rust/api/tasks.dart';
 import 'package:tick_alt/src/rust/frb_generated.dart';
 
@@ -18,7 +19,13 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('tt');
     final db = await TaskDb.open(path: '${dir.path}/tt.db');
 
-    await tester.pumpWidget(TickAltApp(db: db));
+    final peer = SyncPeer.start(
+      dbPath: '${dir.path}/tt.db',
+      keyPath: '${dir.path}/tt.key',
+      device: 'test',
+    );
+
+    await tester.pumpWidget(TickAltApp(db: db, peer: peer));
     await tester.pumpAndSettle();
     expect(find.text('Inbox is empty'), findsOneWidget);
 

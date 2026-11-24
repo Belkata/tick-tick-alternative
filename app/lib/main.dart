@@ -1,11 +1,16 @@
 // kalender is built on flutter/material; material_ui is a separate copy that it can't see.
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
+
+import 'dart:io';
+
 import 'package:path_provider/path_provider.dart';
 
 import 'calendar/spike_calendar.dart';
+import 'src/rust/api/sync.dart';
 import 'src/rust/api/tasks.dart';
 import 'src/rust/frb_generated.dart';
+import 'sync/sync_page.dart';
 import 'widget_bridge.dart';
 
 /// M0 spike: an Inbox screen backed by the Rust core.
@@ -15,32 +20,42 @@ Future<void> main() async {
   await RustLib.init();
   final dir = await getApplicationSupportDirectory();
   final db = await TaskDb.open(path: '${dir.path}/tt.db');
-  runApp(TickAltApp(db: db));
+  // Spike 2: bind the iroh node in the background so the first frame isn't held up.
+  final peer = SyncPeer.start(
+    dbPath: '${dir.path}/tt.db',
+    keyPath: '${dir.path}/tt.key',
+    device: '${Platform.operatingSystem}-${Platform.localHostname}',
+  );
+  runApp(TickAltApp(db: db, peer: peer));
 }
 
 class TickAltApp extends StatelessWidget {
-  const TickAltApp({super.key, required this.db});
+  const TickAltApp({super.key, required this.db, required this.peer});
 
   final TaskDb db;
+  final Future<SyncPeer> peer;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Tick Alt',
       theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF14B8A6), // Soft teal (placeholder accent)
+        colorSchemeSeed: const Color(
+          0xFF14B8A6,
+        ), // Soft teal (placeholder accent)
         useMaterial3: true,
       ),
-      home: HomeShell(db: db),
+      home: HomeShell(db: db, peer: peer),
     );
   }
 }
 
 /// Bottom navigation between the spike screens.
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key, required this.db});
+  const HomeShell({super.key, required this.db, required this.peer});
 
   final TaskDb db;
+  final Future<SyncPeer> peer;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -54,14 +69,25 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       body: IndexedStack(
         index: _tab,
-        children: [InboxPage(db: widget.db), const SpikeCalendarPage()],
+        children: [
+          InboxPage(db: widget.db),
+          const SpikeCalendarPage(),
+          SyncPage(peer: widget.peer),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.inbox_outlined), label: 'Inbox'),
-          NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
+          NavigationDestination(
+            icon: Icon(Icons.inbox_outlined),
+            label: 'Inbox',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            label: 'Calendar',
+          ),
+          NavigationDestination(icon: Icon(Icons.sync), label: 'Sync'),
         ],
       ),
     );
@@ -105,7 +131,11 @@ class _InboxPageState extends State<InboxPage> with WidgetsBindingObserver {
     final ok = await WidgetBridge.pin();
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This launcher can’t add widgets from apps. Add it from the home screen.')),
+        const SnackBar(
+          content: Text(
+            'This launcher can’t add widgets from apps. Add it from the home screen.',
+          ),
+        ),
       );
     }
   }

@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Spike 2: iroh P2P sync (QUIC over UDP, relays over HTTPS). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="tick_alt"
         android:name="${applicationName}"
