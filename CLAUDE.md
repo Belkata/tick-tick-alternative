@@ -25,7 +25,7 @@ The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manro
 
 M0 (decisions and spikes) is mostly done:
 - ✅ Stack and UI style chosen; library versions confirmed.
-- ✅ **Spike 1** passes on the Android emulator: Flutter calls the Rust core through `flutter_rust_bridge`. ⏸ The macOS check needs Xcode, which the user declined for now. ⏸ The Hyprland check needs the user's Arch machine.
+- ✅ **Spike 1** passes on the Android emulator: Flutter calls the Rust core through `flutter_rust_bridge`. ⏸ The macOS check needs Xcode: not installed, and the user's Apple account got locked trying the App Store. When it's unlocked, download the `.xip` from developer.apple.com rather than using the App Store (it's a work Mac). ⏸ Hyprland: next, on the Arch laptop.
 - ✅ **Spike 3**: the Glance Inbox widget completes tasks through UniFFI. Refresh works in both directions (app → widget, widget → app). Verified with a release build.
 - ✅ **Spike 5**: the calendar uses `kalender` 0.34. Drag, resize and dropping from the unscheduled strip all work, with 6 widget tests.
 - 🟡 **Spike 2**: iroh 1.5 works emulator ↔ Mac in both directions (`tt sync serve/pull`, the app's Sync tab), going direct after hole punching. ⚠️ On Android the relay connects in only about 1 of 4 launches (not yet diagnosed). ⏸ Real phone on mobile data.
@@ -34,10 +34,53 @@ M0 (decisions and spikes) is mostly done:
 M1 (core and CLI) is done on the Mac:
 - The schema v2 migrations, op-log, HLC, model, filters, recurrence, reminders and the full `tt` CLI are in place.
 - 46 unit tests plus convergence property tests.
-- ⏸ Try the CLI on Arch. ⏸ Rebuild the Android app on the new core.
+- ✅ The Android app is rebuilt on the new core and checked on the emulator: the spike DB migrated, add/complete work, the widget works. Published as pre-release **v0.1.0** on GitHub for the user's phone.
+- ⏸ The M1 exit check, using `tt` on Arch, is next on the Arch laptop.
 - Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`). It's public, so never commit secrets, tokens, `.key` files or personal data.
 
-Next: M2 (desktop app), the Android relay diagnosis, or the Arch check. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+**Next (the user is moving to the Arch laptop):** set it up as in "Continuing on the Arch laptop" below, then the M1 exit check and Spikes 1 and 4 on Hyprland. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+
+## Continuing on the Arch laptop (handoff 2026-11-24)
+
+The dev Mac's per-machine state does **not** come along: Claude's memory, the repo-local git config, the Android debug keystore and the toolchain. Set these up first:
+
+1. **Clone and set your identity.** The commit email is per-repo, and the user's global email may be a work one.
+   ```bash
+   git clone https://github.com/Belkata/tick-tick-alternative.git
+   ```
+   ```bash
+   git -C tick-tick-alternative config user.email belkata.okfo@gmail.com
+   ```
+   ```bash
+   git -C tick-tick-alternative config user.name "Boris Belev"
+   ```
+   Push with the `Belkata` GitHub account (`gh auth login`). Ask the user before installing anything (downloads need their OK).
+2. **Toolchain.** Match the Mac's versions where it matters:
+   - Rust 1.100 (`rustup`).
+   - Flutter 3.50.1 / Dart 3.14.
+   - `flutter_rust_bridge_codegen` 2.13.0 (`cargo install --locked`).
+   - Flutter's Linux build needs `clang cmake ninja pkgconf gtk3` (pacman).
+   - Android work also needs Android Studio, SDK platform 36 and NDK 28.2.13676358 (see plan/13).
+   - Then `source scripts/env.sh`; it now handles Linux paths too.
+3. **Check the core:**
+   ```bash
+   cargo test --workspace
+   ```
+   ```bash
+   cargo build --release -p tt
+   ```
+   - The M1 exit is "I can manage tasks from the terminal on Arch", so let the user try `tt` for real (`tt --help`).
+   - `$TT_TZ` overrides the zone if `/etc/localtime` isn't a symlink.
+4. **Spike 1 on Hyprland:**
+   ```bash
+   cd app && flutter build linux
+   ```
+   Run it and confirm it's **native Wayland** (no XWayland: e.g. `hyprctl clients` shows `xwayland: 0`). Log the result in plan/13 and tick the roadmap.
+5. **Spike 4 on Hyprland:** a tray icon in waybar (StatusNotifierItem) and a desktop notification (mako/dunst), with Done and Snooze actions. Compare Flutter `tray_manager` with a Rust tray in the daemon (plan/08).
+6. **Android APKs from Arch:** a phone only accepts updates signed with the same key, and v0.1.0 was signed with the Mac's debug key (`~/.android/debug.keystore`).
+   - To keep updating the installed app, have the user copy that file to the Arch laptop's `~/.android/`.
+   - **Never commit it**: the repo is public.
+   - Without it, the phone needs an uninstall (local data is lost) before installing an Arch-built APK.
 
 ## Repo layout
 
