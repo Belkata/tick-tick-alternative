@@ -70,6 +70,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RustStreamSink<int> dco_decode_StreamSink_u_32_Sse(dynamic raw);
+
+  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
@@ -79,7 +82,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
 
   @protected
+  TaskDetail dco_decode_box_autoadd_task_detail(dynamic raw);
+
+  @protected
+  TaskView dco_decode_box_autoadd_task_view(dynamic raw);
+
+  @protected
   BigInt dco_decode_box_autoadd_u_64(dynamic raw);
+
+  @protected
+  ChecklistRow dco_decode_checklist_row(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
@@ -88,16 +103,40 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
+  List<ChecklistRow> dco_decode_list_checklist_row(dynamic raw);
+
+  @protected
+  List<NavItem> dco_decode_list_nav_item(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<ReminderRow> dco_decode_list_reminder_row(dynamic raw);
 
   @protected
   List<ServedItem> dco_decode_list_served_item(dynamic raw);
 
   @protected
+  List<TagChip> dco_decode_list_tag_chip(dynamic raw);
+
+  @protected
   List<TaskItem> dco_decode_list_task_item(dynamic raw);
 
   @protected
+  List<TaskRow> dco_decode_list_task_row(dynamic raw);
+
+  @protected
+  NavItem dco_decode_nav_item(dynamic raw);
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw);
+
+  @protected
   PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
+
+  @protected
+  TaskDetail? dco_decode_opt_box_autoadd_task_detail(dynamic raw);
 
   @protected
   BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw);
@@ -106,10 +145,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PullResult dco_decode_pull_result(dynamic raw);
 
   @protected
+  ReminderRow dco_decode_reminder_row(dynamic raw);
+
+  @protected
   ServedItem dco_decode_served_item(dynamic raw);
 
   @protected
+  Sidebar dco_decode_sidebar(dynamic raw);
+
+  @protected
+  TagChip dco_decode_tag_chip(dynamic raw);
+
+  @protected
+  TaskDetail dco_decode_task_detail(dynamic raw);
+
+  @protected
   TaskItem dco_decode_task_item(dynamic raw);
+
+  @protected
+  TaskRow dco_decode_task_row(dynamic raw);
+
+  @protected
+  TaskView dco_decode_task_view(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -125,6 +182,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt dco_decode_usize(dynamic raw);
+
+  @protected
+  ViewKind dco_decode_view_kind(dynamic raw);
 
   @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
@@ -166,6 +226,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RustStreamSink<int> sse_decode_StreamSink_u_32_Sse(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
@@ -175,7 +240,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
+  TaskDetail sse_decode_box_autoadd_task_detail(SseDeserializer deserializer);
+
+  @protected
+  TaskView sse_decode_box_autoadd_task_view(SseDeserializer deserializer);
+
+  @protected
   BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
+
+  @protected
+  ChecklistRow sse_decode_checklist_row(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
@@ -184,16 +261,44 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
+  List<ChecklistRow> sse_decode_list_checklist_row(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<NavItem> sse_decode_list_nav_item(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<ReminderRow> sse_decode_list_reminder_row(SseDeserializer deserializer);
 
   @protected
   List<ServedItem> sse_decode_list_served_item(SseDeserializer deserializer);
 
   @protected
+  List<TagChip> sse_decode_list_tag_chip(SseDeserializer deserializer);
+
+  @protected
   List<TaskItem> sse_decode_list_task_item(SseDeserializer deserializer);
 
   @protected
+  List<TaskRow> sse_decode_list_task_row(SseDeserializer deserializer);
+
+  @protected
+  NavItem sse_decode_nav_item(SseDeserializer deserializer);
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
   PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
+  TaskDetail? sse_decode_opt_box_autoadd_task_detail(
+    SseDeserializer deserializer,
+  );
 
   @protected
   BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer);
@@ -202,10 +307,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PullResult sse_decode_pull_result(SseDeserializer deserializer);
 
   @protected
+  ReminderRow sse_decode_reminder_row(SseDeserializer deserializer);
+
+  @protected
   ServedItem sse_decode_served_item(SseDeserializer deserializer);
 
   @protected
+  Sidebar sse_decode_sidebar(SseDeserializer deserializer);
+
+  @protected
+  TagChip sse_decode_tag_chip(SseDeserializer deserializer);
+
+  @protected
+  TaskDetail sse_decode_task_detail(SseDeserializer deserializer);
+
+  @protected
   TaskItem sse_decode_task_item(SseDeserializer deserializer);
+
+  @protected
+  TaskRow sse_decode_task_row(SseDeserializer deserializer);
+
+  @protected
+  TaskView sse_decode_task_view(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -223,7 +346,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
+  ViewKind sse_decode_view_kind(SseDeserializer deserializer);
 
   @protected
   void sse_encode_AnyhowException(
@@ -274,6 +397,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_StreamSink_u_32_Sse(
+    RustStreamSink<int> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
@@ -286,7 +415,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_task_detail(
+    TaskDetail self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_task_view(
+    TaskView self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_checklist_row(ChecklistRow self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
@@ -295,8 +442,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_checklist_row(
+    List<ChecklistRow> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_nav_item(List<NavItem> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_reminder_row(
+    List<ReminderRow> self,
     SseSerializer serializer,
   );
 
@@ -307,11 +469,29 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_tag_chip(List<TagChip> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_task_item(List<TaskItem> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_task_row(List<TaskRow> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_nav_item(NavItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_i_64(
     PlatformInt64? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_task_detail(
+    TaskDetail? self,
     SseSerializer serializer,
   );
 
@@ -322,10 +502,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_pull_result(PullResult self, SseSerializer serializer);
 
   @protected
+  void sse_encode_reminder_row(ReminderRow self, SseSerializer serializer);
+
+  @protected
   void sse_encode_served_item(ServedItem self, SseSerializer serializer);
 
   @protected
+  void sse_encode_sidebar(Sidebar self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_tag_chip(TagChip self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_task_detail(TaskDetail self, SseSerializer serializer);
+
+  @protected
   void sse_encode_task_item(TaskItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_task_row(TaskRow self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_task_view(TaskView self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
@@ -343,7 +541,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_usize(BigInt self, SseSerializer serializer);
 
   @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
+  void sse_encode_view_kind(ViewKind self, SseSerializer serializer);
 }
 
 // Section: wire_class

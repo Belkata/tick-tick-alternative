@@ -7,24 +7,286 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `lock`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
+// These functions are ignored because they are not marked as `pub`: `changed`, `id`, `lock`, `now_ms`, `sinks`, `task_row`, `write`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `from`
+
+/// The desktop database: the same file `tt` and `tt-daemon` use
+/// (`~/.local/share/tick-alt/tt.db` on Linux, `~/Library/Application Support/tick-alt/tt.db`
+/// on macOS), so the app, the CLI and the tray share one store until the socket lands.
+String desktopDbPath() => RustLib.instance.api.crateApiTasksDesktopDbPath();
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>>
 abstract class TaskDb implements RustOpaqueInterface {
   Future<TaskItem> add({required String title});
 
+  /// Quick add: a plain title, in the current list or tag; everything else lands in Inbox.
+  Future<String> addIn({required TaskView view, required String title});
+
+  Future<String> addSubtask({required String parentId, required String title});
+
+  /// Ticks with a new version number after every write made through this handle.
+  /// The socket backend (M2 slice 2) will also tick for writes from other processes.
+  Stream<int> changes();
+
+  Future<void> checklistAdd({required String taskId, required String title});
+
+  Future<void> checklistRemove({required String itemId});
+
+  Future<void> checklistSet({required String itemId, required bool done});
+
   /// Returns false if the task was already done.
   Future<bool> complete({required String id});
+
+  Future<String> createList({required String name});
 
   Future<List<TaskItem>> inbox();
 
   /// Open (or create) the database file at `path`.
   static Future<TaskDb> open({required String path}) =>
       RustLib.instance.api.crateApiTasksTaskDbOpen(path: path);
+
+  Future<void> restore({required String id});
+
+  /// Set the due date from text like `fri`, `tomorrow 14:30` or `2026-12-01`, or clear it.
+  /// Switching between all-day and timed drops the start date rather than mixing kinds.
+  Future<void> setDue({required String id, String? text});
+
+  Future<void> setList({required String id, String? listId});
+
+  Future<void> setNotes({required String id, required String notes});
+
+  Future<void> setPriority({required String id, required int priority});
+
+  Future<void> setTagStyle({required String id, String? color, String? icon});
+
+  Future<void> setTitle({required String id, required String title});
+
+  Future<Sidebar> sidebar();
+
+  /// Tag a task by path (`home/garden`); missing tags are created.
+  Future<void> tag({required String id, required String path});
+
+  Future<TaskDetail?> task({required String id});
+
+  Future<List<TaskRow>> tasks({required TaskView view});
+
+  /// Complete an open task, or reopen a done one. Returns the new done state.
+  Future<bool> toggleDone({required String id});
+
+  Future<void> trash({required String id});
+
+  Future<void> untag({required String id, required String tagId});
 }
 
-/// A task as the UI sees it.
+class ChecklistRow {
+  final String id;
+  final String title;
+  final bool done;
+
+  const ChecklistRow({
+    required this.id,
+    required this.title,
+    required this.done,
+  });
+
+  @override
+  int get hashCode => id.hashCode ^ title.hashCode ^ done.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChecklistRow &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          done == other.done;
+}
+
+/// A sidebar entry: a list, a saved filter or a tag.
+class NavItem {
+  final String id;
+  final String name;
+  final String? color;
+  final String? icon;
+
+  /// Open tasks it shows (a tag counts its children's too).
+  final int count;
+
+  /// Nesting level for tags; 0 for lists and filters.
+  final int depth;
+  final String? parentId;
+
+  const NavItem({
+    required this.id,
+    required this.name,
+    this.color,
+    this.icon,
+    required this.count,
+    required this.depth,
+    this.parentId,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      color.hashCode ^
+      icon.hashCode ^
+      count.hashCode ^
+      depth.hashCode ^
+      parentId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NavItem &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          color == other.color &&
+          icon == other.icon &&
+          count == other.count &&
+          depth == other.depth &&
+          parentId == other.parentId;
+}
+
+class ReminderRow {
+  final String id;
+
+  /// `15m before`, `today 09:00`…
+  final String label;
+
+  const ReminderRow({required this.id, required this.label});
+
+  @override
+  int get hashCode => id.hashCode ^ label.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ReminderRow &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          label == other.label;
+}
+
+class Sidebar {
+  final int inbox;
+  final List<NavItem> lists;
+  final List<NavItem> filters;
+  final List<NavItem> tags;
+
+  const Sidebar({
+    required this.inbox,
+    required this.lists,
+    required this.filters,
+    required this.tags,
+  });
+
+  @override
+  int get hashCode =>
+      inbox.hashCode ^ lists.hashCode ^ filters.hashCode ^ tags.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Sidebar &&
+          runtimeType == other.runtimeType &&
+          inbox == other.inbox &&
+          lists == other.lists &&
+          filters == other.filters &&
+          tags == other.tags;
+}
+
+/// A tag as a chip on a task card.
+class TagChip {
+  final String id;
+  final String name;
+  final String path;
+
+  /// `#rrggbb`, or none for the default.
+  final String? color;
+  final String? icon;
+
+  const TagChip({
+    required this.id,
+    required this.name,
+    required this.path,
+    this.color,
+    this.icon,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      path.hashCode ^
+      color.hashCode ^
+      icon.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TagChip &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          path == other.path &&
+          color == other.color &&
+          icon == other.icon;
+}
+
+/// Everything the detail pane shows.
+class TaskDetail {
+  final TaskRow row;
+  final String notes;
+  final String? listId;
+  final String? startLabel;
+
+  /// The RRULE body, e.g. `FREQ=WEEKLY;BYDAY=MO`.
+  final String? repeatRule;
+  final List<ChecklistRow> checklist;
+  final List<TaskRow> subtasks;
+  final List<ReminderRow> reminders;
+
+  const TaskDetail({
+    required this.row,
+    required this.notes,
+    this.listId,
+    this.startLabel,
+    this.repeatRule,
+    required this.checklist,
+    required this.subtasks,
+    required this.reminders,
+  });
+
+  @override
+  int get hashCode =>
+      row.hashCode ^
+      notes.hashCode ^
+      listId.hashCode ^
+      startLabel.hashCode ^
+      repeatRule.hashCode ^
+      checklist.hashCode ^
+      subtasks.hashCode ^
+      reminders.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskDetail &&
+          runtimeType == other.runtimeType &&
+          row == other.row &&
+          notes == other.notes &&
+          listId == other.listId &&
+          startLabel == other.startLabel &&
+          repeatRule == other.repeatRule &&
+          checklist == other.checklist &&
+          subtasks == other.subtasks &&
+          reminders == other.reminders;
+}
+
+/// A task as the M0 Inbox page sees it.
 class TaskItem {
   final String id;
   final String title;
@@ -56,3 +318,118 @@ class TaskItem {
           priority == other.priority &&
           dueAt == other.dueAt;
 }
+
+/// One task card.
+class TaskRow {
+  final String id;
+  final String title;
+  final int priority;
+  final PlatformInt64? dueAt;
+  final bool allDay;
+
+  /// `today`, `Fri 14:30`, `3 Dec`…
+  final String? dueLabel;
+  final bool overdue;
+  final bool dueToday;
+  final bool done;
+  final bool deleted;
+  final bool repeating;
+  final String? listName;
+  final List<TagChip> tags;
+  final int checklistDone;
+  final int checklistTotal;
+  final int subtasks;
+  final String? parentId;
+
+  /// When it was completed (Completed view) or trashed (Trash view).
+  final String? whenLabel;
+
+  const TaskRow({
+    required this.id,
+    required this.title,
+    required this.priority,
+    this.dueAt,
+    required this.allDay,
+    this.dueLabel,
+    required this.overdue,
+    required this.dueToday,
+    required this.done,
+    required this.deleted,
+    required this.repeating,
+    this.listName,
+    required this.tags,
+    required this.checklistDone,
+    required this.checklistTotal,
+    required this.subtasks,
+    this.parentId,
+    this.whenLabel,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      title.hashCode ^
+      priority.hashCode ^
+      dueAt.hashCode ^
+      allDay.hashCode ^
+      dueLabel.hashCode ^
+      overdue.hashCode ^
+      dueToday.hashCode ^
+      done.hashCode ^
+      deleted.hashCode ^
+      repeating.hashCode ^
+      listName.hashCode ^
+      tags.hashCode ^
+      checklistDone.hashCode ^
+      checklistTotal.hashCode ^
+      subtasks.hashCode ^
+      parentId.hashCode ^
+      whenLabel.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskRow &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          priority == other.priority &&
+          dueAt == other.dueAt &&
+          allDay == other.allDay &&
+          dueLabel == other.dueLabel &&
+          overdue == other.overdue &&
+          dueToday == other.dueToday &&
+          done == other.done &&
+          deleted == other.deleted &&
+          repeating == other.repeating &&
+          listName == other.listName &&
+          tags == other.tags &&
+          checklistDone == other.checklistDone &&
+          checklistTotal == other.checklistTotal &&
+          subtasks == other.subtasks &&
+          parentId == other.parentId &&
+          whenLabel == other.whenLabel;
+}
+
+/// What the task list shows. `id` names the list, tag or filter; it's unused otherwise.
+/// (A plain struct rather than a data enum, so Dart needs no `freezed`.)
+class TaskView {
+  final ViewKind kind;
+  final String? id;
+
+  const TaskView({required this.kind, this.id});
+
+  @override
+  int get hashCode => kind.hashCode ^ id.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskView &&
+          runtimeType == other.runtimeType &&
+          kind == other.kind &&
+          id == other.id;
+}
+
+/// Which kind of view the task list shows.
+enum ViewKind { inbox, list, tag, filter, completed, trash }
