@@ -81,14 +81,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.9"
-  cupertino_ui:
-    dependency: transitive
-    description:
-      name: cupertino_ui
-      sha256: c3eaf7f5bdfee36deb0b14a4cbf7602f1b6b8d8b8576b81f38fc08c25881c94c
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.7"
   fake_async:
     dependency: transitive
     description:
@@ -131,11 +123,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
-  flutter_localizations:
-    dependency: transitive
-    description: flutter
-    source: sdk
-    version: "0.0.0"
   flutter_rust_bridge:
     dependency: "direct main"
     description:
@@ -162,6 +149,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  http:
+    dependency: transitive
+    description:
+      name: http
+      sha256: "87721a4a50b19c7f1d49001e51409bddc46303966ce89a65af4f4e6004896412"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.6.0"
+  http_parser:
+    dependency: transitive
+    description:
+      name: http_parser
+      sha256: "178d74305e7866013777bab2c3d8726205dc5a4dd935297175b19a23a2e66571"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.1.2"
   integration_test:
     dependency: "direct dev"
     description: flutter
@@ -199,6 +202,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  kalender:
+    dependency: "direct main"
+    description:
+      name: kalender
+      sha256: "5a7525f05a93cae542e6a0a03285ca5fb41dd9a494b81a3861cec6acf7391d1a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.34.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -223,6 +234,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.2"
+  linked_pageview:
+    dependency: transitive
+    description:
+      name: linked_pageview
+      sha256: "795972b7d7c9b8cdf133c0328956ce32f068ebfdff7bb2012068df8fcd8a1664"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.5"
   lints:
     dependency: transitive
     description:
@@ -263,14 +282,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
-  material_ui:
-    dependency: "direct main"
-    description:
-      name: material_ui
-      sha256: a6b19012df437a356cbc01f8ea22a105e07194c47c9a6009da0032a0ce35c4ab
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.11.1"
   meta:
     dependency: transitive
     description:
@@ -391,6 +402,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  scrollable_positioned_list:
+    dependency: transitive
+    description:
+      name: scrollable_positioned_list
+      sha256: "1b54d5f1329a1e263269abc9e2543d90806131aa14fe7c6062a8054d57249287"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.8"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -452,6 +471,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.14"
+  timezone:
+    dependency: transitive
+    description:
+      name: timezone
+      sha256: "9f4e5a1a0e4fef7dd3424842c0575db01bfb7a11730e8d55753fcd5c5c98767b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.11.2"
   tt_bridge:
     dependency: "direct main"
     description:
@@ -459,6 +486,22 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  typed_data:
+    dependency: transitive
+    description:
+      name: typed_data
+      sha256: f9049c039ebfeb4cf7a7104a675823cd72dba8297f264b6637062516699fa006
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
+  universal_platform:
+    dependency: transitive
+    description:
+      name: universal_platform
+      sha256: "64e16458a0ea9b99260ceb5467a214c1f298d647c659af1bff6d3bf82536b1ec"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   vector_math:
     dependency: transitive
     description:
@@ -509,4 +552,4 @@ packages:
     version: "3.1.4"
 sdks:
   dart: ">=3.14.0 <4.0.0"
-  flutter: ">=3.47.0"
+  flutter: ">=3.38.4"
