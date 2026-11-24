@@ -29,7 +29,7 @@ M0 (decisions and spikes) is mostly done:
 - ✅ **Spike 3**: the Glance Inbox widget completes tasks through UniFFI. Refresh works in both directions (app → widget, widget → app). Verified with a release build.
 - ✅ **Spike 5**: the calendar uses `kalender` 0.34. Drag, resize and dropping from the unscheduled strip all work, with 6 widget tests.
 - 🟡 **Spike 2**: iroh 1.5 works emulator ↔ Mac in both directions (`tt sync serve/pull`, the app's Sync tab), going direct after hole punching. ⚠️ On Android the relay connects in only about 1 of 4 launches (not yet diagnosed). ⏸ Real phone on mobile data.
-- ⬜ **Spike 4**: tray icon and notifications. Needs the Arch machine (waybar) and Xcode (macOS).
+- ✅ **Spike 4** on Hyprland: the tray and reminders live in the Rust daemon (`daemon/`, ksni + notify-rust), not in Flutter. It shows in waybar, and Done/Snooze work through dunst. dunst needs a working `dmenu =` picker (set to rofi on the Arch laptop). ⏸ macOS needs Xcode.
 
 M1 (core and CLI) is done on the Mac:
 - The schema v2 migrations, op-log, HLC, model, filters, recurrence, reminders and the full `tt` CLI are in place.
@@ -38,7 +38,7 @@ M1 (core and CLI) is done on the Mac:
 - ✅ On Arch, `cargo test --workspace` passes (53 tests), clippy is clean and every `tt` command works. ⏸ The user still needs to try `tt` for real to close the M1 exit.
 - Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`). It's public, so never commit secrets, tokens, `.key` files or personal data.
 
-**Next:** The Arch laptop is set up (Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang; no Android SDK yet). Spike 4 (tray and notifications) on Hyprland is next. waybar provides `org.kde.StatusNotifierWatcher` and dunst provides `org.freedesktop.Notifications`. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+**Next:** The Arch laptop is set up (Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang; no Android SDK yet). M0 is done on Hyprland. What remains needs Xcode (macOS) or a real phone (Spike 2). Next is M2 (desktop app: grow `tt-daemon` into the real daemon with the socket API) or the Android relay diagnosis. Ask the user. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
 ## Continuing on the Arch laptop (handoff 2026-11-24)
 
@@ -88,6 +88,7 @@ The dev Mac's per-machine state does **not** come along: Claude's memory, the re
 core/                 tt-core: domain + SQLite. Every write is an op (oplog.rs, hlc.rs) applied with per-field LWW.
                       store (migrations/, write txn), task, organize (lists/tags), checklist, reminder,
                       recur (rrule), filter (JSON AST -> SQL), dates. tests/convergence.rs = proptest
+daemon/               tt-daemon: Spike 4 tray (ksni SNI) + reminder notifications (notify-rust) with Done/Snooze. M2 grows it
 sync/                 tt-sync: Spike 2 iroh node (key file, ticket, pull open tasks). M3 replaces the protocol
 cli/                  `tt` CLI (`tt --help`). Short ids = LAST 8 hex chars of the UUIDv7. $TT_DB, $TT_TZ
 app/                  Flutter app (android, linux, macos)
