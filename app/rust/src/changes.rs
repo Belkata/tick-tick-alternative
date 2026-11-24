@@ -25,4 +25,3 @@ impl Changes {
         self.sinks.lock().unwrap_or_else(|e| e.into_inner())
     }
 }
-

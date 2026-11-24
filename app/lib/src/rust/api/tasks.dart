@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `now_ms`, `write`
+// These functions are ignored because they are not marked as `pub`: `now_ms`, `watch`, `write`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
 /// The desktop database: the same file `tt` and `tt-daemon` use (`$TT_DB`, else
@@ -37,7 +37,10 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Returns false if the task was already done.
   Future<bool> complete({required String id});
 
-  /// Desktop: use `tt-daemon` if it serves `path`, else open the file directly.
+  /// Desktop: use `tt-daemon` if it serves `path`, else open the file directly. A watcher
+  /// thread keeps the change stream live either way and follows the daemon coming and
+  /// going (systemd restarts it): its events while connected; while opened directly,
+  /// a switch back as soon as it serves the file again, and other processes' commits.
   static Future<TaskDb> connectOrOpen({required String path}) =>
       RustLib.instance.api.crateApiTasksTaskDbConnectOrOpen(path: path);
 

@@ -137,7 +137,7 @@ impl From<Task> for TaskItem {
 /// The task database, in-process or through the daemon.
 #[frb(opaque)]
 pub struct TaskDb {
-    api: Api,
+    api: Arc<Api>,
     changes: Arc<Changes>,
 }
 
@@ -145,30 +145,22 @@ impl TaskDb {
     /// Open (or create) the database file at `path` in this process (Android, tests).
     pub fn open(path: String) -> anyhow::Result<TaskDb> {
         Ok(Self {
-            api: Api::local(Store::open(path)?),
+            api: Arc::new(Api::local(Store::open(path)?)),
             changes: Arc::default(),
         })
     }
 
-    /// Desktop: use `tt-daemon` if it serves `path`, else open the file directly.
+    /// Desktop: use `tt-daemon` if it serves `path`, else open the file directly. A watcher
+    /// thread keeps the change stream live either way and follows the daemon coming and
+    /// going (systemd restarts it): its events while connected; while opened directly,
+    /// a switch back as soon as it serves the file again, and other processes' commits.
     pub fn connect_or_open(path: String) -> anyhow::Result<TaskDb> {
-        let api = Api::connect_or_open(Path::new(&path))?;
+        let api = Arc::new(Api::connect_or_open(Path::new(&path))?);
         let changes = Arc::<Changes>::default();
-        if api.is_remote() {
-            // Relay the daemon's change events: they cover this app's writes and everyone else's.
-            let changes = changes.clone();
-            std::thread::Builder::new()
-                .name("tt-events".into())
-                .spawn(move || {
-                    let socket = tt_api::paths::socket();
-                    if let Err(e) = tt_api::client::subscribe(&socket, |_| {
-                        changes.tick();
-                        true
-                    }) {
-                        eprintln!("tick-alt: lost the daemon's events: {e:#}");
-                    }
-                })?;
-        }
+        let (watch_api, watch_changes) = (api.clone(), changes.clone());
+        std::thread::Builder::new()
+            .name("tt-watch".into())
+            .spawn(move || watch(&watch_api, &watch_changes))?;
         Ok(Self { api, changes })
     }
 
@@ -340,6 +332,26 @@ impl TaskDb {
             self.changes.tick();
         }
         Ok(v)
+    }
+}
+
+/// The desktop watcher loop (see `TaskDb::connect_or_open`). Runs for the app's lifetime.
+fn watch(api: &Api, changes: &Changes) {
+    let socket = tt_api::paths::socket();
+    loop {
+        if api.is_remote() {
+            // Blocks while the daemon is up, relaying its change events.
+            let _ = tt_api::client::subscribe(&socket, |_| {
+                changes.tick();
+                true
+            });
+            // It went away: reload, which makes the next call recover (reconnect or open the file).
+            changes.tick();
+        } else if api.upgrade() || api.outside_change() {
+            changes.tick();
+            continue;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(2));
     }
 }
 
