@@ -32,8 +32,8 @@ void main() {
   double columnX(WidgetTester tester, DateTime day) =>
       tester.getCenter(find.text('${day.day}').first).dx;
 
-  /// y of a timeline label such as "3:00 PM".
-  double rowY(WidgetTester tester, String label) => tester.getCenter(find.text(label)).dy;
+  /// y of the timeline label for [hour] (24 h), found by kalender's stable key.
+  double rowY(WidgetTester tester, int hour) => tester.getCenter(find.byKey(ValueKey('time-$hour-0'))).dy;
 
   testWidgets('shows sample tasks and read-only events', (tester) async {
     await pumpCalendar(tester);
@@ -47,11 +47,39 @@ void main() {
     final before = tester.getTopLeft(find.text('Write spike log'));
 
     // Drop it 3 hours later in the same column.
-    final target = Offset(before.dx + 20, before.dy + (rowY(tester, '1:00 PM') - rowY(tester, '10:00 AM')));
+    final target = Offset(before.dx + 20, before.dy + (rowY(tester, 13) - rowY(tester, 10)));
     await longPressDrag(tester, before + const Offset(20, 10), target);
 
     final after = tester.getTopLeft(find.text('Write spike log'));
     expect(after.dy, greaterThan(before.dy + 50), reason: 'tile should move down by ~3 hours');
+  });
+
+  testWidgets('tapping a task shows handles, dragging the end handle makes it longer', (tester) async {
+    await pumpCalendar(tester);
+    final tile = find.text('Write spike log');
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+
+    final endHandle = find.byWidgetPredicate(
+      (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('ResizeDetector-End-'),
+    );
+    expect(endHandle, findsOneWidget, reason: 'tap selects the task and shows its resize handles');
+
+    final hour = rowY(tester, 11) - rowY(tester, 10);
+    final topBefore = tester.getTopLeft(tile).dy;
+    final from = tester.getCenter(endHandle);
+    final gesture = await tester.startGesture(from, kind: PointerDeviceKind.touch);
+    for (var i = 1; i <= 20; i++) {
+      await gesture.moveTo(from + Offset(0, hour * i / 20));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    // Find the tile's coloured box (the Container around the text) and check it grew by ~1 hour.
+    final box = find.ancestor(of: tile, matching: find.byType(Container)).first;
+    expect(tester.getTopLeft(tile).dy, closeTo(topBefore, 1), reason: 'start stays put');
+    expect(tester.getSize(box).height, greaterThan(hour * 1.5), reason: 'was 1 h, now ~2 h');
   });
 
   testWidgets('read-only Google events cannot be dragged', (tester) async {
@@ -68,7 +96,7 @@ void main() {
     expect(chip, findsOneWidget);
 
     final today = DateTime.now();
-    final drop = Offset(columnX(tester, today), rowY(tester, '3:00 PM'));
+    final drop = Offset(columnX(tester, today), rowY(tester, 15));
     await longPressDrag(tester, tester.getCenter(chip), drop);
 
     expect(chip, findsNothing, reason: 'chip leaves the unscheduled strip');
@@ -78,7 +106,7 @@ void main() {
         .firstWhere((d) => find.text('${d.day}').evaluate().isNotEmpty);
     final colWidth = (columnX(tester, today) - columnX(tester, neighbour)).abs();
     expect(tile.dx, inInclusiveRange(drop.dx - colWidth / 2, drop.dx), reason: "lands in today's column");
-    final hour = rowY(tester, '4:00 PM') - rowY(tester, '3:00 PM');
+    final hour = rowY(tester, 16) - rowY(tester, 15);
     expect((tile.dy - drop.dy).abs(), lessThan(hour / 2), reason: 'starts within half an hour of 3 PM');
   });
 
