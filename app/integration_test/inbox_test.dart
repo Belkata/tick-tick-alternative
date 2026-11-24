@@ -3,6 +3,7 @@ import 'dart:io';
 // kalender is built on flutter/material; material_ui is a separate copy that it can't see.
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -150,7 +151,9 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'quick-add');
   });
 
-  testWidgets('a core error shows a message instead of crashing', (tester) async {
+  testWidgets('a core error shows a message instead of crashing', (
+    tester,
+  ) async {
     // Regression: an error capturing a Rust backtrace crashed the app, because the
     // unwinder bundled in libflutter_linux_gtk.so clashes with libgcc_s
     // (the Linux runner now sets RUST_BACKTRACE=0).
@@ -163,6 +166,114 @@ void main() {
     await settle(tester);
     expect(find.byType(SnackBar), findsOneWidget);
     expect(find.text('Pick a date'), findsWidgets);
+  });
+
+  testWidgets(
+    'filter builder: create with a live count, then edit and delete',
+    (tester) async {
+      final db = await pumpApp(tester);
+      await addTask(tester, 'Mow the lawn');
+      await addTask(tester, 'Pay rent');
+      final mow = (await db.inbox()).firstWhere(
+        (t) => t.title == 'Mow the lawn',
+      );
+      await db.tag(id: mow.id, path: 'home');
+      await settle(tester);
+
+      await tester.tap(find.byKey(const Key('new-filter')));
+      await settle(tester);
+      await tester.enterText(
+        find.byKey(const Key('filter-name')),
+        'Home stuff',
+      );
+      await tester.enterText(find.byKey(const Key('cond-value')), 'home');
+      await settle(tester);
+      expect(find.text('1 open task matches'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('filter-save')));
+      await settle(tester);
+      expect(find.byKey(const Key('nav-filter-Home stuff')), findsOneWidget);
+      expect(
+        find.text('Mow the lawn'),
+        findsWidgets,
+      ); // the filter's view is open
+      expect(find.text('Pay rent'), findsNothing);
+
+      // Right-click edits; Delete (confirmed) removes it.
+      await tester.tap(
+        find.byKey(const Key('nav-filter-Home stuff')),
+        buttons: kSecondaryMouseButton,
+      );
+      await settle(tester);
+      expect(find.text('Edit filter'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('filter-delete')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('confirm')));
+      await settle(tester);
+      expect(find.byKey(const Key('nav-filter-Home stuff')), findsNothing);
+    },
+  );
+
+  testWidgets('right-click a tag to give it a colour', (tester) async {
+    final db = await pumpApp(tester);
+    await addTask(tester, 'Plant bulbs');
+    await db.tag(id: (await db.inbox()).single.id, path: 'garden');
+    await settle(tester);
+    await tester.tap(
+      find.byKey(const Key('nav-tag-garden')),
+      buttons: kSecondaryMouseButton,
+    );
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('swatch-#3fae5a')));
+    await tester.tap(find.byKey(const Key('style-save')));
+    await settle(tester);
+    final tag = (await db.sidebar()).tags.single;
+    expect(tag.color, '#3fae5a');
+  });
+
+  testWidgets('detail: start date, repeat and reminders', (tester) async {
+    final db = await pumpApp(tester);
+    await addTask(tester, 'Water plants');
+    final id = (await db.inbox()).single.id;
+    await tester.tap(find.text('Water plants'));
+    await settle(tester);
+
+    await tester.enterText(find.byKey(const Key('detail-due')), 'tomorrow');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    await tester.enterText(find.byKey(const Key('detail-start')), 'today');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    var d = (await db.task(id: id))!;
+    expect(d.startLabel, 'today');
+    expect(d.row.dueLabel, 'tomorrow');
+
+    await tester.tap(find.byKey(const Key('detail-repeat')));
+    await settle(tester);
+    await tester.tap(find.text('Every day').last);
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('repeat-after')));
+    await settle(tester);
+    d = (await db.task(id: id))!;
+    expect(d.repeatRule, 'FREQ=DAILY');
+    expect(d.repeatAfterCompletion, isTrue);
+
+    await tester.tap(find.byKey(const Key('add-reminder')));
+    await settle(tester);
+    await tester.tap(find.text('15 minutes before'));
+    await settle(tester);
+    expect(find.text('15m before'), findsOneWidget);
+    expect((await db.task(id: id))!.reminders.length, 1);
+    await tester.tap(
+      find.descendant(
+        of: find
+            .ancestor(of: find.text('15m before'), matching: find.byType(Row))
+            .first,
+        matching: find.byIcon(Icons.close),
+      ),
+    );
+    await settle(tester);
+    expect((await db.task(id: id))!.reminders, isEmpty);
   });
 
   testWidgets('narrow windows: drawer sidebar and a pushed detail', (
