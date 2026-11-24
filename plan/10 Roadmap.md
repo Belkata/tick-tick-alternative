@@ -33,7 +33,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 
 ## M2: Desktop app (Mac and Arch)
 - [ ] Tray daemon with socket API and systemd / LaunchAgent setup. 🟡 The socket API is done (slice 2) and so is the systemd user unit (slice 3: restart on failure, clients reconnect, single-instance app). The LaunchAgent waits for the Mac. See [[15 M2 Desktop Log]].
-- [ ] Three-pane UI: sidebar, list, detail. Tag tree, lists, filter builder, Completed and Trash. 🟡 Slice 1 done: sidebar with tag tree, lists, saved filters, Completed and Trash; task cards; detail editing; keyboard. The filter builder is still to do. See [[15 M2 Desktop Log]].
+- [ ] Three-pane UI: sidebar, list, detail. Tag tree, lists, filter builder, Completed and Trash. 🟡 Slices 1 and 4 done: sidebar (tag tree, lists, saved filters, Completed, Trash), task cards, detail editing (dates, repeat, reminders), keyboard, the visual filter builder, and tag and list colours and icons. Trash purge waits for the core. See [[15 M2 Desktop Log]].
 - [ ] Desktop notifications with Done and Snooze.
 - [ ] Packaging: PKGBUILD and a DMG.
 

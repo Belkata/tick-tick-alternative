@@ -27,7 +27,7 @@ Back to [[00 Overview]] · [[10 Roadmap]] · [[08 Desktop App]]. The plan for M2
 3. **Daemon as a service** ✅ (2026-11-24)
    - A `systemd --user` unit (`tick-alt.service`). Reminders only fire from the daemon.
    - The tray's *Open* raises the app.
-4. **Filter builder, tag and list colours, Completed and Trash polish.**
+4. **Filter builder, tag and list colours, Completed and Trash polish.** ✅ (2026-11-24; Trash polish deferred, see below)
 5. **Packaging:** a PKGBUILD (app, daemon, CLI, unit, `.desktop`). The DMG waits for Xcode.
 
 ## Bridge API (the contract the socket will copy)
@@ -167,3 +167,43 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
 - `scripts/install-desktop-entry.sh` installs a copy pointing at the release bundle, plus the icon (SVG and a 256 px PNG) under `~/.local/share/`, and refreshes the caches. `--remove` undoes it.
 - Installed on the Arch laptop. rofi (`SUPER+D`, drun) lists "Tick Alt", and `gtk-launch dev.tickalt.tick_alt` opens the app.
 - The PKGBUILD (slice 5) installs these to `/usr/share/applications` and `/usr/share/icons/hicolor`.
+
+## Slice 4: filter builder and editing ✅ (2026-11-24, on the Arch laptop)
+
+**What was built:**
+- **Filter builder** (`desk/filter_builder.dart`, with the model and JSON in `desk/filter_rule.dart`):
+  - Groups match **all** or **any** of their children, nested two levels deep. A **not** chip negates any condition or group.
+  - Each condition row is field → operator → a value control that fits the field:
+    - tag paths, with a picker of existing tags;
+    - list, priority and status dropdowns, and yes/no for Inbox, has-time and repeats;
+    - date tokens (`today`, `+7d`, `this_week`… or a date), and "between" with two dates;
+    - text.
+  - A **live count** ("3 open tasks match") refreshes about 250 ms after each change, through the core's `run_rule`. An invalid rule shows the core's message in red instead.
+  - Also: name, optional icon, include completed, sort.
+  - Filters cross the bridge as **JSON strings** (`filter_json`, `save_filter`, `update_filter`, `rule_count`). That keeps the recursive rule enum out of flutter_rust_bridge (which would need `freezed`); the Dart model parses and writes the core's exact JSON (5 unit tests, including the core's documented example).
+- **Sidebar:**
+  - The Filters section is always shown, with a **+**.
+  - **Right-click (or long-press)** a filter to edit it in the builder, or a list or tag to open its edit dialog: rename, colour (12 swatches tuned for light and dark, or none), icon (emoji) and delete (confirmed).
+  - Coloured lists tint their icon.
+- **Detail pane:**
+  - **Start date**, typed like the due date.
+  - **Repeat** presets: every day, weekday, week, 2 weeks, month or year. Also any other existing RRULE, or a custom one typed in, plus "from completion" (`after_completion`).
+  - **Reminders**: remove, and add one at the time, 5, 15 or 30 minutes, 1 hour or 1 day before, or at a typed date and time.
+- **tt-api and the bridge:** new calls `rule_count` and `set_start_text`. `TaskDetail.repeat_after_completion`. Repeat, reminder, filter and list or tag edits use the existing requests.
+- **Controller:**
+  - If the open list, tag or filter disappears (deleted here, by `tt` or elsewhere), the view falls back to Inbox. Other reload failures show a message instead of throwing.
+  - The delete dialogs leave the view before deleting.
+  - Found by the new filter test: deleting the open filter made the following reload ask for it, and the unhandled error broke the tests after it.
+
+**Results:**
+- `flutter analyze` is clean. Unit and widget tests: 11 (6 calendar, 5 filter model). Integration tests on Linux: **9/9**. The new ones:
+  - Build a filter (tag has "home"), see "1 open task matches", save it, see its view, then right-click → Delete.
+  - Right-click a tag → green swatch → Save.
+  - Start, due, repeat "every day" with "from completion", then add and remove a reminder.
+- `cargo test`: 59 passed.
+- ⚠️ **No screenshot of the new screens.** On desktop the integration-test binding doesn't draw into the window (it shows "Test starting…"), and Hyprland gives no way to click from a script. The user tries it in the real app.
+
+**Not done:**
+- **Trash polish:** no "empty Trash" or 30-day purge yet. The core has neither (M1's known gaps); it needs a core purge op first, which belongs with M3's op-log compaction.
+- Filter grouping (`group`), manual sort and drag-to-reorder: later.
+- Keyboard access to the builder and the edit dialogs: they're mouse-first for now.
