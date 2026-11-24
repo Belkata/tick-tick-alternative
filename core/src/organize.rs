@@ -165,6 +165,24 @@ fn create_tag_in(w: &mut Writer, name: &str, parent_id: Option<&str>) -> Result<
     Ok(id)
 }
 
+/// A colour must be `#rrggbb`; it's stored lowercase. Empty means none.
+fn clean_color(color: Option<&str>) -> Result<Option<String>> {
+    let Some(c) = color.map(str::trim).filter(|c| !c.is_empty()) else {
+        return Ok(None);
+    };
+    let hex = c.strip_prefix('#').unwrap_or(c);
+    if hex.len() != 6 || !hex.chars().all(|ch| ch.is_ascii_hexdigit()) {
+        return Err(Error::Invalid(format!("colour '{c}' isn't #rrggbb")));
+    }
+    Ok(Some(format!("#{}", hex.to_ascii_lowercase())))
+}
+
+fn clean_icon(icon: Option<&str>) -> Option<String> {
+    icon.map(str::trim)
+        .filter(|i| !i.is_empty())
+        .map(str::to_string)
+}
+
 impl Store {
     // ----- Lists -----
 
@@ -218,6 +236,17 @@ impl Store {
         self.write(|w| {
             require_list(w.conn, id)?;
             w.set(Entity::List, id, "archived", archived)
+        })
+    }
+
+    /// Set a list's colour (`#rrggbb`) and icon (an emoji or icon name). `None` clears.
+    pub fn set_list_style(&self, id: &str, color: Option<&str>, icon: Option<&str>) -> Result<()> {
+        let color = clean_color(color)?;
+        let icon = clean_icon(icon);
+        self.write(|w| {
+            require_list(w.conn, id)?;
+            w.set(Entity::List, id, "color", color.as_deref())?;
+            w.set(Entity::List, id, "icon", icon.as_deref())
         })
     }
 
@@ -314,6 +343,17 @@ impl Store {
                 }
             }
             w.set(Entity::Tag, id, "parent_id", parent_id)
+        })
+    }
+
+    /// Set a tag's colour (`#rrggbb`) and icon (an emoji or icon name). `None` clears.
+    pub fn set_tag_style(&self, id: &str, color: Option<&str>, icon: Option<&str>) -> Result<()> {
+        let color = clean_color(color)?;
+        let icon = clean_icon(icon);
+        self.write(|w| {
+            require_tag(w.conn, id)?;
+            w.set(Entity::Tag, id, "color", color.as_deref())?;
+            w.set(Entity::Tag, id, "icon", icon.as_deref())
         })
     }
 
@@ -429,5 +469,28 @@ mod tests {
         s.delete_list(&work).unwrap();
         assert_eq!(s.get_task(&t.id).unwrap().unwrap().list_id, None);
         assert_eq!(s.inbox().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn styles_validate_and_clear() {
+        let s = Store::open_in_memory().unwrap();
+        let tag = s.ensure_tag_path("home/garden").unwrap();
+        s.set_tag_style(&tag, Some("#12A594"), Some("🌱")).unwrap();
+        let t = s.find_tag(&tag).unwrap().unwrap();
+        assert_eq!(
+            (t.color.as_deref(), t.icon.as_deref()),
+            (Some("#12a594"), Some("🌱"))
+        );
+        assert!(s.set_tag_style(&tag, Some("teal"), None).is_err());
+        s.set_tag_style(&tag, Some(""), None).unwrap();
+        let t = s.find_tag(&tag).unwrap().unwrap();
+        assert_eq!((t.color, t.icon), (None, None));
+
+        let work = s.create_list("Work").unwrap();
+        s.set_list_style(&work, Some("4c8df6"), None).unwrap();
+        assert_eq!(
+            s.find_list(&work).unwrap().unwrap().color.as_deref(),
+            Some("#4c8df6")
+        );
     }
 }
