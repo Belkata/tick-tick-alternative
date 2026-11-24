@@ -4218,12 +4218,11 @@ name = "tt_bridge"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chrono-tz",
- "dirs",
  "flutter_rust_bridge",
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "tt-api",
  "tt-core",
  "tt-sync",
  "uniffi",

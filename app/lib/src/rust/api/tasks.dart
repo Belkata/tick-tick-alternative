@@ -7,12 +7,12 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `changed`, `id`, `lock`, `now_ms`, `sinks`, `task_row`, `write`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `from`
+// These functions are ignored because they are not marked as `pub`: `now_ms`, `write`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
-/// The desktop database: the same file `tt` and `tt-daemon` use
-/// (`~/.local/share/tick-alt/tt.db` on Linux, `~/Library/Application Support/tick-alt/tt.db`
-/// on macOS), so the app, the CLI and the tray share one store until the socket lands.
+/// The desktop database: the same file `tt` and `tt-daemon` use (`$TT_DB`, else
+/// `~/.local/share/tick-alt/tt.db` on Linux, `~/Library/Application Support/tick-alt/tt.db`
+/// on macOS).
 String desktopDbPath() => RustLib.instance.api.crateApiTasksDesktopDbPath();
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>>
@@ -24,8 +24,8 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   Future<String> addSubtask({required String parentId, required String title});
 
-  /// Ticks with a new version number after every write made through this handle.
-  /// The socket backend (M2 slice 2) will also tick for writes from other processes.
+  /// Ticks with a new version number after every change: this handle's writes, and on
+  /// desktop also every change the daemon reports (other windows, `tt`, outside writes).
   Stream<int> changes();
 
   Future<void> checklistAdd({required String taskId, required String title});
@@ -37,18 +37,24 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Returns false if the task was already done.
   Future<bool> complete({required String id});
 
+  /// Desktop: use `tt-daemon` if it serves `path`, else open the file directly.
+  static Future<TaskDb> connectOrOpen({required String path}) =>
+      RustLib.instance.api.crateApiTasksTaskDbConnectOrOpen(path: path);
+
   Future<String> createList({required String name});
 
   Future<List<TaskItem>> inbox();
 
-  /// Open (or create) the database file at `path`.
+  /// True when calls go through `tt-daemon`.
+  bool isRemote();
+
+  /// Open (or create) the database file at `path` in this process (Android, tests).
   static Future<TaskDb> open({required String path}) =>
       RustLib.instance.api.crateApiTasksTaskDbOpen(path: path);
 
   Future<void> restore({required String id});
 
   /// Set the due date from text like `fri`, `tomorrow 14:30` or `2026-12-01`, or clear it.
-  /// Switching between all-day and timed drops the start date rather than mixing kinds.
   Future<void> setDue({required String id, String? text});
 
   Future<void> setList({required String id, String? listId});
@@ -102,17 +108,12 @@ class ChecklistRow {
           done == other.done;
 }
 
-/// A sidebar entry: a list, a saved filter or a tag.
 class NavItem {
   final String id;
   final String name;
   final String? color;
   final String? icon;
-
-  /// Open tasks it shows (a tag counts its children's too).
   final int count;
-
-  /// Nesting level for tags; 0 for lists and filters.
   final int depth;
   final String? parentId;
 
@@ -152,8 +153,6 @@ class NavItem {
 
 class ReminderRow {
   final String id;
-
-  /// `15m before`, `today 09:00`…
   final String label;
 
   const ReminderRow({required this.id, required this.label});
@@ -198,13 +197,10 @@ class Sidebar {
           tags == other.tags;
 }
 
-/// A tag as a chip on a task card.
 class TagChip {
   final String id;
   final String name;
   final String path;
-
-  /// `#rrggbb`, or none for the default.
   final String? color;
   final String? icon;
 
@@ -236,14 +232,11 @@ class TagChip {
           icon == other.icon;
 }
 
-/// Everything the detail pane shows.
 class TaskDetail {
   final TaskRow row;
   final String notes;
   final String? listId;
   final String? startLabel;
-
-  /// The RRULE body, e.g. `FREQ=WEEKLY;BYDAY=MO`.
   final String? repeatRule;
   final List<ChecklistRow> checklist;
   final List<TaskRow> subtasks;
@@ -319,15 +312,12 @@ class TaskItem {
           dueAt == other.dueAt;
 }
 
-/// One task card.
 class TaskRow {
   final String id;
   final String title;
   final int priority;
   final PlatformInt64? dueAt;
   final bool allDay;
-
-  /// `today`, `Fri 14:30`, `3 Dec`…
   final String? dueLabel;
   final bool overdue;
   final bool dueToday;
@@ -340,8 +330,6 @@ class TaskRow {
   final int checklistTotal;
   final int subtasks;
   final String? parentId;
-
-  /// When it was completed (Completed view) or trashed (Trash view).
   final String? whenLabel;
 
   const TaskRow({
@@ -411,8 +399,6 @@ class TaskRow {
           whenLabel == other.whenLabel;
 }
 
-/// What the task list shows. `id` names the list, tag or filter; it's unused otherwise.
-/// (A plain struct rather than a data enum, so Dart needs no `freezed`.)
 class TaskView {
   final ViewKind kind;
   final String? id;
@@ -431,5 +417,4 @@ class TaskView {
           id == other.id;
 }
 
-/// Which kind of view the task list shows.
 enum ViewKind { inbox, list, tag, filter, completed, trash }

@@ -41,7 +41,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1880521753;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1855568713;
 
 // Section: executor
 
@@ -841,6 +841,41 @@ fn wire__crate__api__tasks__TaskDb_complete_impl(
         },
     )
 }
+fn wire__crate__api__tasks__TaskDb_connect_or_open_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_connect_or_open",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok = crate::api::tasks::TaskDb::connect_or_open(api_path)?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__tasks__TaskDb_create_list_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -942,6 +977,53 @@ fn wire__crate__api__tasks__TaskDb_inbox_impl(
                     })(),
                 )
             }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_is_remote_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_is_remote",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let mut api_that_guard = None;
+                let decode_indices_ =
+                    flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                        flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                            &api_that, 0, false,
+                        ),
+                    ]);
+                for i in decode_indices_ {
+                    match i {
+                        0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                        _ => unreachable!(),
+                    }
+                }
+                let api_that_guard = api_that_guard.unwrap();
+                let output_ok =
+                    Ok::<_, ()>(crate::api::tasks::TaskDb::is_remote(&*api_that_guard))?;
+                std::result::Result::Ok(output_ok)
+            })())
         },
     )
 }
@@ -1809,6 +1891,85 @@ fn wire__crate__api__tasks__init_app_impl(
     )
 }
 
+// Section: static_checks
+
+#[allow(clippy::unnecessary_literal_unwrap)]
+const _: fn() = || {
+    {
+        let ChecklistRow = None::<crate::api::tasks::ChecklistRow>.unwrap();
+        let _: String = ChecklistRow.id;
+        let _: String = ChecklistRow.title;
+        let _: bool = ChecklistRow.done;
+    }
+    {
+        let NavItem = None::<crate::api::tasks::NavItem>.unwrap();
+        let _: String = NavItem.id;
+        let _: String = NavItem.name;
+        let _: Option<String> = NavItem.color;
+        let _: Option<String> = NavItem.icon;
+        let _: u32 = NavItem.count;
+        let _: u32 = NavItem.depth;
+        let _: Option<String> = NavItem.parent_id;
+    }
+    {
+        let ReminderRow = None::<crate::api::tasks::ReminderRow>.unwrap();
+        let _: String = ReminderRow.id;
+        let _: String = ReminderRow.label;
+    }
+    {
+        let Sidebar = None::<crate::api::tasks::Sidebar>.unwrap();
+        let _: u32 = Sidebar.inbox;
+        let _: Vec<crate::api::tasks::NavItem> = Sidebar.lists;
+        let _: Vec<crate::api::tasks::NavItem> = Sidebar.filters;
+        let _: Vec<crate::api::tasks::NavItem> = Sidebar.tags;
+    }
+    {
+        let TagChip = None::<crate::api::tasks::TagChip>.unwrap();
+        let _: String = TagChip.id;
+        let _: String = TagChip.name;
+        let _: String = TagChip.path;
+        let _: Option<String> = TagChip.color;
+        let _: Option<String> = TagChip.icon;
+    }
+    {
+        let TaskDetail = None::<crate::api::tasks::TaskDetail>.unwrap();
+        let _: crate::api::tasks::TaskRow = TaskDetail.row;
+        let _: String = TaskDetail.notes;
+        let _: Option<String> = TaskDetail.list_id;
+        let _: Option<String> = TaskDetail.start_label;
+        let _: Option<String> = TaskDetail.repeat_rule;
+        let _: Vec<crate::api::tasks::ChecklistRow> = TaskDetail.checklist;
+        let _: Vec<crate::api::tasks::TaskRow> = TaskDetail.subtasks;
+        let _: Vec<crate::api::tasks::ReminderRow> = TaskDetail.reminders;
+    }
+    {
+        let TaskRow = None::<crate::api::tasks::TaskRow>.unwrap();
+        let _: String = TaskRow.id;
+        let _: String = TaskRow.title;
+        let _: u8 = TaskRow.priority;
+        let _: Option<i64> = TaskRow.due_at;
+        let _: bool = TaskRow.all_day;
+        let _: Option<String> = TaskRow.due_label;
+        let _: bool = TaskRow.overdue;
+        let _: bool = TaskRow.due_today;
+        let _: bool = TaskRow.done;
+        let _: bool = TaskRow.deleted;
+        let _: bool = TaskRow.repeating;
+        let _: Option<String> = TaskRow.list_name;
+        let _: Vec<crate::api::tasks::TagChip> = TaskRow.tags;
+        let _: u32 = TaskRow.checklist_done;
+        let _: u32 = TaskRow.checklist_total;
+        let _: u32 = TaskRow.subtasks;
+        let _: Option<String> = TaskRow.parent_id;
+        let _: Option<String> = TaskRow.when_label;
+    }
+    {
+        let TaskView = None::<crate::api::tasks::TaskView>.unwrap();
+        let _: crate::api::tasks::ViewKind = TaskView.kind;
+        let _: Option<String> = TaskView.id;
+    }
+};
+
 // Section: related_funcs
 
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
@@ -2346,24 +2507,27 @@ fn pde_ffi_dispatcher_primary_impl(
         }
         14 => wire__crate__api__tasks__TaskDb_checklist_set_impl(port, ptr, rust_vec_len, data_len),
         15 => wire__crate__api__tasks__TaskDb_complete_impl(port, ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__tasks__TaskDb_create_list_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__tasks__TaskDb_inbox_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__tasks__TaskDb_open_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__tasks__TaskDb_restore_impl(port, ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__tasks__TaskDb_set_due_impl(port, ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__tasks__TaskDb_set_list_impl(port, ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__tasks__TaskDb_set_notes_impl(port, ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__tasks__TaskDb_set_priority_impl(port, ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__tasks__TaskDb_set_tag_style_impl(port, ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__tasks__TaskDb_set_title_impl(port, ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__tasks__TaskDb_sidebar_impl(port, ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__tasks__TaskDb_tag_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__tasks__TaskDb_task_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__tasks__TaskDb_tasks_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__tasks__TaskDb_toggle_done_impl(port, ptr, rust_vec_len, data_len),
-        31 => wire__crate__api__tasks__TaskDb_trash_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__tasks__TaskDb_untag_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__tasks__init_app_impl(port, ptr, rust_vec_len, data_len),
+        16 => {
+            wire__crate__api__tasks__TaskDb_connect_or_open_impl(port, ptr, rust_vec_len, data_len)
+        }
+        17 => wire__crate__api__tasks__TaskDb_create_list_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__tasks__TaskDb_inbox_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__tasks__TaskDb_open_impl(port, ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__tasks__TaskDb_restore_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__tasks__TaskDb_set_due_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__tasks__TaskDb_set_list_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__tasks__TaskDb_set_notes_impl(port, ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__tasks__TaskDb_set_priority_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__tasks__TaskDb_set_tag_style_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__tasks__TaskDb_set_title_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__tasks__TaskDb_sidebar_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__tasks__TaskDb_tag_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__tasks__TaskDb_task_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__tasks__TaskDb_tasks_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__tasks__TaskDb_toggle_done_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__tasks__TaskDb_trash_impl(port, ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__tasks__TaskDb_untag_impl(port, ptr, rust_vec_len, data_len),
+        36 => wire__crate__api__tasks__init_app_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2376,7 +2540,8 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        33 => wire__crate__api__tasks__desktop_db_path_impl(ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__tasks__TaskDb_is_remote_impl(ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__tasks__desktop_db_path_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2414,46 +2579,51 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<TaskDb>> for TaskDb {
 }
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::tasks::ChecklistRow {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::ChecklistRow> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.id.into_into_dart().into_dart(),
-            self.title.into_into_dart().into_dart(),
-            self.done.into_into_dart().into_dart(),
+            self.0.id.into_into_dart().into_dart(),
+            self.0.title.into_into_dart().into_dart(),
+            self.0.done.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::tasks::ChecklistRow
+    for FrbWrapper<crate::api::tasks::ChecklistRow>
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::tasks::ChecklistRow>
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::tasks::ChecklistRow>>
     for crate::api::tasks::ChecklistRow
 {
-    fn into_into_dart(self) -> crate::api::tasks::ChecklistRow {
-        self
+    fn into_into_dart(self) -> FrbWrapper<crate::api::tasks::ChecklistRow> {
+        self.into()
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::tasks::NavItem {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::NavItem> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.id.into_into_dart().into_dart(),
-            self.name.into_into_dart().into_dart(),
-            self.color.into_into_dart().into_dart(),
-            self.icon.into_into_dart().into_dart(),
-            self.count.into_into_dart().into_dart(),
-            self.depth.into_into_dart().into_dart(),
-            self.parent_id.into_into_dart().into_dart(),
+            self.0.id.into_into_dart().into_dart(),
+            self.0.name.into_into_dart().into_dart(),
+            self.0.color.into_into_dart().into_dart(),
+            self.0.icon.into_into_dart().into_dart(),
+            self.0.count.into_into_dart().into_dart(),
+            self.0.depth.into_into_dart().into_dart(),
+            self.0.parent_id.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::tasks::NavItem {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::tasks::NavItem> for crate::api::tasks::NavItem {
-    fn into_into_dart(self) -> crate::api::tasks::NavItem {
-        self
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::tasks::NavItem>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::tasks::NavItem>>
+    for crate::api::tasks::NavItem
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::tasks::NavItem> {
+        self.into()
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -2481,24 +2651,24 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::sync::PullResult>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::tasks::ReminderRow {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::ReminderRow> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.id.into_into_dart().into_dart(),
-            self.label.into_into_dart().into_dart(),
+            self.0.id.into_into_dart().into_dart(),
+            self.0.label.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::tasks::ReminderRow
+    for FrbWrapper<crate::api::tasks::ReminderRow>
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::tasks::ReminderRow>
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::tasks::ReminderRow>>
     for crate::api::tasks::ReminderRow
 {
-    fn into_into_dart(self) -> crate::api::tasks::ReminderRow {
-        self
+    fn into_into_dart(self) -> FrbWrapper<crate::api::tasks::ReminderRow> {
+        self.into()
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -2521,64 +2691,77 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::sync::ServedItem>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::tasks::Sidebar {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::Sidebar> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.inbox.into_into_dart().into_dart(),
-            self.lists.into_into_dart().into_dart(),
-            self.filters.into_into_dart().into_dart(),
-            self.tags.into_into_dart().into_dart(),
+            self.0.inbox.into_into_dart().into_dart(),
+            self.0.lists.into_into_dart().into_dart(),
+            self.0.filters.into_into_dart().into_dart(),
+            self.0.tags.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::tasks::Sidebar {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::tasks::Sidebar> for crate::api::tasks::Sidebar {
-    fn into_into_dart(self) -> crate::api::tasks::Sidebar {
-        self
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::tasks::Sidebar>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::tasks::Sidebar>>
+    for crate::api::tasks::Sidebar
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::tasks::Sidebar> {
+        self.into()
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::tasks::TagChip {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::TagChip> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.id.into_into_dart().into_dart(),
-            self.name.into_into_dart().into_dart(),
-            self.path.into_into_dart().into_dart(),
-            self.color.into_into_dart().into_dart(),
-            self.icon.into_into_dart().into_dart(),
+            self.0.id.into_into_dart().into_dart(),
+            self.0.name.into_into_dart().into_dart(),
+            self.0.path.into_into_dart().into_dart(),
+            self.0.color.into_into_dart().into_dart(),
+            self.0.icon.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::tasks::TagChip {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::tasks::TagChip> for crate::api::tasks::TagChip {
-    fn into_into_dart(self) -> crate::api::tasks::TagChip {
-        self
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::tasks::TagChip>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::tasks::TagChip>>
+    for crate::api::tasks::TagChip
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::tasks::TagChip> {
+        self.into()
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::tasks::TaskDetail {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::TaskDetail> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.row.into_into_dart().into_dart(),
-            self.notes.into_into_dart().into_dart(),
-            self.list_id.into_into_dart().into_dart(),
-            self.start_label.into_into_dart().into_dart(),
-            self.repeat_rule.into_into_dart().into_dart(),
-            self.checklist.into_into_dart().into_dart(),
-            self.subtasks.into_into_dart().into_dart(),
-            self.reminders.into_into_dart().into_dart(),
+            self.0.row.into_into_dart().into_dart(),
+            self.0.notes.into_into_dart().into_dart(),
+            self.0.list_id.into_into_dart().into_dart(),
+            self.0.start_label.into_into_dart().into_dart(),
+            self.0.repeat_rule.into_into_dart().into_dart(),
+            self.0.checklist.into_into_dart().into_dart(),
+            self.0.subtasks.into_into_dart().into_dart(),
+            self.0.reminders.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::tasks::TaskDetail {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::tasks::TaskDetail>
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::tasks::TaskDetail>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::tasks::TaskDetail>>
     for crate::api::tasks::TaskDetail
 {
-    fn into_into_dart(self) -> crate::api::tasks::TaskDetail {
-        self
+    fn into_into_dart(self) -> FrbWrapper<crate::api::tasks::TaskDetail> {
+        self.into()
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -2602,75 +2785,86 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::tasks::TaskItem>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::tasks::TaskRow {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::TaskRow> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.id.into_into_dart().into_dart(),
-            self.title.into_into_dart().into_dart(),
-            self.priority.into_into_dart().into_dart(),
-            self.due_at.into_into_dart().into_dart(),
-            self.all_day.into_into_dart().into_dart(),
-            self.due_label.into_into_dart().into_dart(),
-            self.overdue.into_into_dart().into_dart(),
-            self.due_today.into_into_dart().into_dart(),
-            self.done.into_into_dart().into_dart(),
-            self.deleted.into_into_dart().into_dart(),
-            self.repeating.into_into_dart().into_dart(),
-            self.list_name.into_into_dart().into_dart(),
-            self.tags.into_into_dart().into_dart(),
-            self.checklist_done.into_into_dart().into_dart(),
-            self.checklist_total.into_into_dart().into_dart(),
-            self.subtasks.into_into_dart().into_dart(),
-            self.parent_id.into_into_dart().into_dart(),
-            self.when_label.into_into_dart().into_dart(),
+            self.0.id.into_into_dart().into_dart(),
+            self.0.title.into_into_dart().into_dart(),
+            self.0.priority.into_into_dart().into_dart(),
+            self.0.due_at.into_into_dart().into_dart(),
+            self.0.all_day.into_into_dart().into_dart(),
+            self.0.due_label.into_into_dart().into_dart(),
+            self.0.overdue.into_into_dart().into_dart(),
+            self.0.due_today.into_into_dart().into_dart(),
+            self.0.done.into_into_dart().into_dart(),
+            self.0.deleted.into_into_dart().into_dart(),
+            self.0.repeating.into_into_dart().into_dart(),
+            self.0.list_name.into_into_dart().into_dart(),
+            self.0.tags.into_into_dart().into_dart(),
+            self.0.checklist_done.into_into_dart().into_dart(),
+            self.0.checklist_total.into_into_dart().into_dart(),
+            self.0.subtasks.into_into_dart().into_dart(),
+            self.0.parent_id.into_into_dart().into_dart(),
+            self.0.when_label.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::tasks::TaskRow {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::tasks::TaskRow> for crate::api::tasks::TaskRow {
-    fn into_into_dart(self) -> crate::api::tasks::TaskRow {
-        self
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::tasks::TaskRow>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::tasks::TaskRow>>
+    for crate::api::tasks::TaskRow
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::tasks::TaskRow> {
+        self.into()
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::tasks::TaskView {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::TaskView> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.kind.into_into_dart().into_dart(),
-            self.id.into_into_dart().into_dart(),
+            self.0.kind.into_into_dart().into_dart(),
+            self.0.id.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::tasks::TaskView {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::tasks::TaskView>
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::tasks::TaskView>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::tasks::TaskView>>
     for crate::api::tasks::TaskView
 {
-    fn into_into_dart(self) -> crate::api::tasks::TaskView {
-        self
+    fn into_into_dart(self) -> FrbWrapper<crate::api::tasks::TaskView> {
+        self.into()
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::tasks::ViewKind {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::ViewKind> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        match self {
-            Self::Inbox => 0.into_dart(),
-            Self::List => 1.into_dart(),
-            Self::Tag => 2.into_dart(),
-            Self::Filter => 3.into_dart(),
-            Self::Completed => 4.into_dart(),
-            Self::Trash => 5.into_dart(),
+        match self.0 {
+            crate::api::tasks::ViewKind::Inbox => 0.into_dart(),
+            crate::api::tasks::ViewKind::List => 1.into_dart(),
+            crate::api::tasks::ViewKind::Tag => 2.into_dart(),
+            crate::api::tasks::ViewKind::Filter => 3.into_dart(),
+            crate::api::tasks::ViewKind::Completed => 4.into_dart(),
+            crate::api::tasks::ViewKind::Trash => 5.into_dart(),
             _ => unreachable!(),
         }
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::tasks::ViewKind {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::tasks::ViewKind>
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::tasks::ViewKind>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::tasks::ViewKind>>
     for crate::api::tasks::ViewKind
 {
-    fn into_into_dart(self) -> crate::api::tasks::ViewKind {
-        self
+    fn into_into_dart(self) -> FrbWrapper<crate::api::tasks::ViewKind> {
+        self.into()
     }
 }
 

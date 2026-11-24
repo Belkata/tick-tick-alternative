@@ -81,10 +81,27 @@ class DeskSidebar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-            child: Text(
-              'Tick Alt',
-              style: manrope(17, FontWeight.w800, color: s.fg),
+            padding: const EdgeInsets.fromLTRB(16, 4, 12, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Tick Alt',
+                    style: manrope(17, FontWeight.w800, color: s.fg),
+                  ),
+                ),
+                Tooltip(
+                  message: c.db.isRemote()
+                      ? 'Connected to tt-daemon'
+                      : 'Database opened directly (no daemon)',
+                  child: Icon(
+                    c.db.isRemote() ? Icons.link : Icons.link_off,
+                    key: const Key('backend-indicator'),
+                    size: 15,
+                    color: c.db.isRemote() ? s.accent : s.mute,
+                  ),
+                ),
+              ],
             ),
           ),
           nav(

@@ -24,7 +24,10 @@ Future<void> main() async {
   final dbPath = Platform.isLinux || Platform.isMacOS
       ? desktopDbPath()
       : '${dir.path}/tt.db';
-  final db = await TaskDb.open(path: dbPath);
+  // On desktop, go through tt-daemon when it serves this database (plan/15).
+  final db = Platform.isLinux || Platform.isMacOS
+      ? await TaskDb.connectOrOpen(path: dbPath)
+      : await TaskDb.open(path: dbPath);
   // Spike 2: bind the iroh node in the background so the first frame isn't held up.
   final peer = SyncPeer.start(
     dbPath: dbPath,
