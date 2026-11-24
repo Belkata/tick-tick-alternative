@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'calendar/spike_calendar.dart';
 import 'src/rust/api/tasks.dart';
 import 'src/rust/frb_generated.dart';
 
@@ -29,7 +30,39 @@ class TickAltApp extends StatelessWidget {
         colorSchemeSeed: const Color(0xFF14B8A6), // Soft teal (placeholder accent)
         useMaterial3: true,
       ),
-      home: InboxPage(db: db),
+      home: HomeShell(db: db),
+    );
+  }
+}
+
+/// Bottom navigation between the spike screens.
+class HomeShell extends StatefulWidget {
+  const HomeShell({super.key, required this.db});
+
+  final TaskDb db;
+
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  int _tab = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _tab,
+        children: [InboxPage(db: widget.db), const SpikeCalendarPage()],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (i) => setState(() => _tab = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.inbox_outlined), label: 'Inbox'),
+          NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
+        ],
+      ),
     );
   }
 }
