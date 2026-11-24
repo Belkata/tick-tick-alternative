@@ -158,6 +158,6 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
   - `systemctl --user kill -s SIGKILL` restarted the daemon after 2 s (`NRestarts=2`). Meanwhile the open app fell back to the file without an error (🔗 crossed out), then went back to the daemon (🔗 teal). `tt add` worked during and after the restart, and both tasks appeared live (Inbox 8 → 10).
 
 **Not done yet, or not checked:**
-- **Not installed on this laptop.** Enabling a login service is the user's call: `scripts/install-user-service.sh`.
+- Installed and enabled on the Arch laptop at the user's request (23:03). It serves `~/.local/share/tick-alt/tt.db` on `/run/user/1000/tick-alt.sock`, and its tray is registered with waybar.
 - Not checked whether Hyprland actually *focuses* the raised window with a real tray click (`misc:focus_on_activate` decides). D-Bus `Activate` calls carry no token.
 - LaunchAgent (macOS): not written; it needs the Mac.

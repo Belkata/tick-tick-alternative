@@ -45,7 +45,7 @@ M2 (desktop app) has started; see `plan/15 M2 Desktop Log.md`:
 - On desktop the app shares `tt`'s DB (`~/.local/share/tick-alt/tt.db`).
 - ⚠️ Not yet built for Android since these changes.
 
-- ✅ Slice 3: `daemon/tick-alt.service` (systemd user unit, restart on failure). Clients survive daemon restarts: they reconnect, or fall back to the file and switch back later. The release app is single instance, and the tray's Open raises it. The unit isn't installed on the laptop yet (`scripts/install-user-service.sh` does it, if the user agrees).
+- ✅ Slice 3: `daemon/tick-alt.service` (systemd user unit, restart on failure). Clients survive daemon restarts: they reconnect, or fall back to the file and switch back later. The release app is single instance, and the tray's Open raises it. Installed and enabled on the Arch laptop (2026-11-24) with `scripts/install-user-service.sh`: it runs this checkout's `target/release/tt-daemon` on the real DB. **After rebuilding the daemon, restart it with `systemctl --user restart tick-alt`.**
 
 **Next:** slice 4 (filter builder, tag and list colours, editing start, repeat and reminders in the detail pane), then slice 5 (PKGBUILD). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
