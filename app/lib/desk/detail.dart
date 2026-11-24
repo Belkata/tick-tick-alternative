@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../src/rust/api/tasks.dart';
 import 'controller.dart';
+import 'sidebar.dart' show askText;
 import 'task_list.dart';
 import 'theme.dart';
 
@@ -115,8 +116,27 @@ class DetailPane extends StatelessWidget {
               onSave: (v) => c.run(() => db.setDue(id: id, text: v)),
             ),
           ),
-          if (d.startLabel != null) prop('Start', label(d.startLabel!)),
-          if (d.repeatRule != null) prop('Repeats', label(d.repeatRule!)),
+          prop(
+            'Start',
+            _EditField(
+              key: const Key('detail-start'),
+              value: d.startLabel ?? '',
+              hint: 'optional',
+              style: manrope(13, FontWeight.w600, color: s.fg),
+              boxed: true,
+              onSave: (v) => c.run(() => db.setStart(id: id, text: v)),
+            ),
+          ),
+          prop(
+            'Repeat',
+            _RepeatPicker(
+              rule: d.repeatRule,
+              afterCompletion: d.repeatAfterCompletion,
+              onSet: (rule, after) => c.run(
+                () => db.setRepeat(id: id, rule: rule, afterCompletion: after),
+              ),
+            ),
+          ),
           prop(
             'List',
             Align(
@@ -219,23 +239,32 @@ class DetailPane extends StatelessWidget {
             hint: 'Add a subtask',
             onAdd: (v) => c.run(() => db.addSubtask(parentId: id, title: v)),
           ),
-          if (d.reminders.isNotEmpty) ...[
-            heading('Reminders'),
-            for (final rem in d.reminders)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.notifications_none, size: 14, color: s.mute),
-                    const SizedBox(width: 6),
-                    Text(
-                      rem.label,
-                      style: manrope(13, FontWeight.w500, color: s.fg),
-                    ),
-                  ],
+          heading('Reminders'),
+          for (final rem in d.reminders)
+            Row(
+              children: [
+                Icon(Icons.notifications_none, size: 14, color: s.mute),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    rem.label,
+                    style: manrope(13, FontWeight.w500, color: s.fg),
+                  ),
                 ),
-              ),
-          ],
+                IconButton(
+                  tooltip: 'Remove',
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(Icons.close, size: 14, color: s.mute),
+                  onPressed: () => c.run(() => db.removeReminder(id: rem.id)),
+                ),
+              ],
+            ),
+          _AddReminder(
+            onBefore: (m) =>
+                c.run(() => db.addReminderBefore(taskId: id, minutes: m)),
+            onAt: (text) =>
+                c.run(() => db.addReminderAt(taskId: id, text: text)),
+          ),
           heading('Notes'),
           _EditField(
             key: const Key('detail-notes'),
@@ -523,6 +552,143 @@ class _AddLineState extends State<_AddLine> {
         _text.clear();
         _focus.requestFocus();
       },
+    );
+  }
+}
+
+/// Repeat presets, plus whatever RRULE the task already has, and "from completion".
+class _RepeatPicker extends StatelessWidget {
+  const _RepeatPicker({
+    required this.rule,
+    required this.afterCompletion,
+    required this.onSet,
+  });
+
+  final String? rule;
+  final bool afterCompletion;
+  final void Function(String? rule, bool afterCompletion) onSet;
+
+  static const presets = {
+    'FREQ=DAILY': 'Every day',
+    'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR': 'Every weekday',
+    'FREQ=WEEKLY': 'Every week',
+    'FREQ=WEEKLY;INTERVAL=2': 'Every 2 weeks',
+    'FREQ=MONTHLY': 'Every month',
+    'FREQ=YEARLY': 'Every year',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    final current = rule;
+    final items = <String, String>{
+      '': 'Never',
+      ...presets,
+      if (current != null && !presets.containsKey(current)) current: current,
+      '…': 'Custom rule…',
+    };
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      children: [
+        DropdownButton<String>(
+          key: const Key('detail-repeat'),
+          value: current ?? '',
+          isDense: true,
+          underline: const SizedBox.shrink(),
+          style: manrope(13, FontWeight.w600, color: s.fg),
+          items: [
+            for (final e in items.entries)
+              DropdownMenuItem(value: e.key, child: Text(e.value)),
+          ],
+          onChanged: (v) async {
+            if (v == null) return;
+            if (v == '…') {
+              final custom = await askText(
+                context,
+                title: 'Repeat rule (RRULE)',
+                hint: 'FREQ=MONTHLY;BYMONTHDAY=1',
+                initial: current ?? '',
+              );
+              if (custom != null && custom.trim().isNotEmpty) {
+                onSet(custom.trim(), afterCompletion);
+              }
+              return;
+            }
+            onSet(v.isEmpty ? null : v, afterCompletion);
+          },
+        ),
+        if (current != null)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 28,
+                child: Checkbox(
+                  key: const Key('repeat-after'),
+                  value: afterCompletion,
+                  visualDensity: VisualDensity.compact,
+                  onChanged: (v) => onSet(current, v ?? false),
+                ),
+              ),
+              Text(
+                'from completion',
+                style: manrope(12, FontWeight.w500, color: s.mute),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+/// "+ Add a reminder": common offsets, or a typed date and time.
+class _AddReminder extends StatelessWidget {
+  const _AddReminder({required this.onBefore, required this.onAt});
+
+  final ValueChanged<int> onBefore;
+  final ValueChanged<String> onAt;
+
+  static const offsets = {
+    0: 'At the time',
+    5: '5 minutes before',
+    15: '15 minutes before',
+    30: '30 minutes before',
+    60: '1 hour before',
+    1440: '1 day before',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: PopupMenuButton<int>(
+        key: const Key('add-reminder'),
+        tooltip: 'Add a reminder',
+        itemBuilder: (_) => [
+          for (final e in offsets.entries)
+            PopupMenuItem(value: e.key, child: Text(e.value)),
+          const PopupMenuDivider(),
+          const PopupMenuItem(value: -1, child: Text('At a date and time…')),
+        ],
+        onSelected: (m) async {
+          if (m >= 0) return onBefore(m);
+          final text = await askText(
+            context,
+            title: 'Remind me at',
+            hint: 'tomorrow 09:00',
+          );
+          if (text != null && text.trim().isNotEmpty) onAt(text.trim());
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          child: Text(
+            '+ Add a reminder',
+            style: manrope(13, FontWeight.w500, color: s.mute),
+          ),
+        ),
+      ),
     );
   }
 }
