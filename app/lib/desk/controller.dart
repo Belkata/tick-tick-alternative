@@ -35,13 +35,29 @@ class DeskController extends ChangeNotifier {
   }
 
   /// Re-query everything the panes show. Results of an older reload are dropped.
+  /// If the open list, tag or filter is gone (deleted here, by `tt` or elsewhere),
+  /// fall back to Inbox; other failures become [error] instead of exceptions.
   Future<void> reload() async {
     final gen = ++_generation;
     final v = view;
     final sel = selectedId;
-    final sb = await db.sidebar();
-    final rows = await db.tasks(view: v);
-    final d = sel == null ? null : await db.task(id: sel);
+    final Sidebar sb;
+    final List<TaskRow> rows;
+    final TaskDetail? d;
+    try {
+      sb = await db.sidebar();
+      if (v.kind != ViewKind.inbox && !_exists(sb, v)) {
+        if (gen == _generation) open(const TaskView(kind: ViewKind.inbox));
+        return;
+      }
+      rows = await db.tasks(view: v);
+      d = sel == null ? null : await db.task(id: sel);
+    } catch (e) {
+      if (gen != _generation) return;
+      error = _clean(e);
+      notifyListeners();
+      return;
+    }
     if (gen != _generation) return;
     sidebar = sb;
     tasks = rows;
@@ -50,6 +66,17 @@ class DeskController extends ChangeNotifier {
     loaded = true;
     notifyListeners();
   }
+
+  static bool _exists(Sidebar sb, TaskView v) => switch (v.kind) {
+    ViewKind.list => sb.lists.any((n) => n.id == v.id),
+    ViewKind.tag => sb.tags.any((n) => n.id == v.id),
+    ViewKind.filter => sb.filters.any((n) => n.id == v.id),
+    _ => true,
+  };
+
+  static String _clean(Object e) => '$e'
+      .replaceFirst(RegExp(r'^(AnyhowException|Exception)\(?'), '')
+      .replaceFirst(RegExp(r'\)$'), '');
 
   void open(TaskView v) {
     view = v;
@@ -79,9 +106,7 @@ class DeskController extends ChangeNotifier {
     try {
       return await command();
     } catch (e) {
-      error = '$e'
-          .replaceFirst(RegExp(r'^(AnyhowException|Exception)\(?'), '')
-          .replaceFirst(RegExp(r'\)$'), '');
+      error = _clean(e);
       notifyListeners();
       return null;
     }
