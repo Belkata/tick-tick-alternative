@@ -507,7 +507,8 @@ impl Store {
         })
     }
 
-    /// Bring a task back from Trash as open. Returns false if it wasn't in Trash.
+    /// Bring a task back from Trash as open, with the subtasks that were trashed
+    /// along with it. Returns false if it wasn't in Trash.
     pub fn restore_task(&self, id: &str) -> Result<bool> {
         self.write(|w| {
             let t = require_task(w.conn, id)?;
@@ -515,6 +516,12 @@ impl Store {
                 return Ok(false);
             }
             write_status(w, id, Status::Open)?;
+            for d in descendants(w.conn, id)? {
+                let sub = require_task(w.conn, &d)?;
+                if sub.status == Status::Deleted && sub.deleted_at == t.deleted_at {
+                    write_status(w, &d, Status::Open)?;
+                }
+            }
             Ok(true)
         })
     }
@@ -574,6 +581,22 @@ mod tests {
         assert_eq!(
             s.get_task(&parent.id).unwrap().unwrap().status,
             Status::Open
+        );
+        assert_eq!(
+            s.get_task(&child.id).unwrap().unwrap().status,
+            Status::Open,
+            "trashed together"
+        );
+
+        // A subtask trashed on its own earlier stays in Trash when the parent comes back.
+        // (Trashing is matched by its millisecond stamp; people are slower than that.)
+        s.trash_task(&child.id).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        s.trash_task(&parent.id).unwrap();
+        s.restore_task(&parent.id).unwrap();
+        assert_eq!(
+            s.get_task(&child.id).unwrap().unwrap().status,
+            Status::Deleted
         );
     }
 
