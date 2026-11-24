@@ -18,6 +18,7 @@ A personal, local-first TickTick replacement. The pieces:
 | `plan/11 Open Questions.md` | Undecided items. Ask the user before deciding them |
 | `plan/13 M0 Spike Log.md` | **Spike results and every gotcha found so far. Read before touching Android or Gradle.** |
 | `plan/14 M1 Core Log.md` | How the core is built (op-log, HLC, filters, recurrence) and where it differs from plan/04 and plan/05 |
+| `plan/15 M2 Desktop Log.md` | **M2 plan, slices and the bridge contract.** The socket API must copy the bridge API |
 
 The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manrope headings) **with Material outlined tag chips**. The mockups are in `plan/ui-styles/styles.html`.
 
@@ -38,7 +39,12 @@ M1 (core and CLI) is done on the Mac:
 - ✅ On Arch, `cargo test --workspace` passes (53 tests), clippy is clean and every `tt` command works. ⏸ The user still needs to try `tt` for real to close the M1 exit.
 - Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`). It's public, so never commit secrets, tokens, `.key` files or personal data.
 
-**Next:** The Arch laptop is set up (Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang; no Android SDK yet). M0 is done on Hyprland. What remains needs Xcode (macOS) or a real phone (Spike 2). Next is M2 (desktop app: grow `tt-daemon` into the real daemon with the socket API) or the Android relay diagnosis. Ask the user. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+M2 (desktop app) has started; see `plan/15 M2 Desktop Log.md`:
+- ✅ Slice 1: the three-pane UI (Soft theme, sidebar, task cards, detail editing, keyboard). It runs on the in-process bridge, whose API has the shape the socket will copy.
+- On desktop the app now shares `tt`'s DB (`~/.local/share/tick-alt/tt.db`).
+- ⚠️ Not yet built for Android since these changes.
+
+**Next:** slice 2, the socket API in `tt-daemon` (JSON lines on `$XDG_RUNTIME_DIR/tick-alt.sock`, plus change events), with the bridge's desktop backend and `tt` moving onto it. The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
 ## Continuing on the Arch laptop (handoff 2026-11-24)
 
@@ -91,7 +97,7 @@ core/                 tt-core: domain + SQLite. Every write is an op (oplog.rs, 
 daemon/               tt-daemon: Spike 4 tray (ksni SNI) + reminder notifications (notify-rust) with Done/Snooze. M2 grows it
 sync/                 tt-sync: Spike 2 iroh node (key file, ticket, pull open tasks). M3 replaces the protocol
 cli/                  `tt` CLI (`tt --help`). Short ids = LAST 8 hex chars of the UUIDv7. $TT_DB, $TT_TZ
-app/                  Flutter app (android, linux, macos)
+app/                  Flutter app (android, linux, macos). lib/desk/ = M2 shell (theme, controller, sidebar, task_list, detail, shell)
   rust/               tt_bridge crate: Dart API (src/api/, flutter_rust_bridge) + Kotlin API (src/kotlin.rs, UniFFI)
   lib/                main.dart (Inbox), calendar/spike_calendar.dart, widget_bridge.dart
   android/app/src/main/kotlin/dev/tickalt/
