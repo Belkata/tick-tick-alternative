@@ -1,5 +1,9 @@
 plugins {
     id("com.android.application")
+    // gradle.properties sets android.builtInKotlin=false, so apply Kotlin here, then the
+    // Compose compiler (Glance widgets are Compose code and fail at runtime without it).
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
