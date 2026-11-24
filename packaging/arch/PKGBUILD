@@ -1,0 +1,67 @@
+# Tick Alt for Arch Linux (plan/08 Packaging, plan/15 slice 5).
+# Builds the app, the daemon and the CLI from the GitHub repository's main branch.
+#   cd packaging/arch && makepkg -si
+# Needs Flutter on PATH (AUR flutter-bin, or a checkout: source scripts/env.sh) and Rust.
+# After installing: systemctl --user enable --now tick-alt.service
+pkgname=tick-alt-git
+pkgver=r0.0000000
+pkgrel=1
+pkgdesc="Local-first task manager: Flutter desktop app, tray daemon and tt CLI"
+arch=(x86_64)
+url="https://github.com/Belkata/tick-tick-alternative"
+license=(MIT)
+depends=(gtk3 glibc gcc-libs hicolor-icon-theme)
+makedepends=(git cargo clang cmake ninja pkgconf flutter)
+optdepends=(
+  'waybar: tray icon (any StatusNotifierItem host works)'
+  'dunst: reminder notifications with Done and Snooze (any notification daemon works)'
+)
+provides=(tick-alt)
+conflicts=(tick-alt)
+# The Flutter AOT snapshot (libapp.so) must not be stripped.
+options=(!strip !debug)
+source=("tick-alt::git+https://github.com/Belkata/tick-tick-alternative.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd tick-alt
+  printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+prepare() {
+  cd tick-alt
+  export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd tick-alt
+  export CARGO_TARGET_DIR="$srcdir/tick-alt/target"
+  cargo build --release --frozen -p tt -p tt-daemon
+  cd app
+  flutter --no-version-check build linux --release
+}
+
+check() {
+  cd tick-alt
+  export CARGO_TARGET_DIR="$srcdir/tick-alt/target"
+  cargo test --release --frozen -p tt-core -p tt-api --features tt-api/server
+}
+
+package() {
+  cd tick-alt
+  install -Dm755 target/release/tt "$pkgdir/usr/bin/tt"
+  install -Dm755 target/release/tt-daemon "$pkgdir/usr/bin/tt-daemon"
+
+  # The Flutter bundle stays together (it finds lib/ and data/ next to its binary).
+  install -d "$pkgdir/usr/lib/tick-alt"
+  cp -r app/build/linux/x64/release/bundle/. "$pkgdir/usr/lib/tick-alt/"
+  ln -s /usr/lib/tick-alt/tick_alt "$pkgdir/usr/bin/tick-alt"
+
+  install -Dm644 daemon/tick-alt.service "$pkgdir/usr/lib/systemd/user/tick-alt.service"
+  install -Dm644 app/linux/packaging/dev.tickalt.tick_alt.desktop \
+    "$pkgdir/usr/share/applications/dev.tickalt.tick_alt.desktop"
+  install -Dm644 app/linux/packaging/dev.tickalt.tick_alt.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/dev.tickalt.tick_alt.svg"
+  install -Dm644 app/assets/fonts/OFL.txt "$pkgdir/usr/share/licenses/$pkgname/Manrope-OFL.txt"
+}
