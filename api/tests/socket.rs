@@ -131,3 +131,80 @@ fn a_second_daemon_cannot_take_a_live_socket() {
         .unwrap_err();
     assert!(err.to_string().contains("already listening"), "{err}");
 }
+
+/// A daemon on its own runtime that the test can stop (dropping the runtime closes every
+/// connection, like the process exiting).
+struct Daemon {
+    stop: Option<tokio::sync::oneshot::Sender<()>>,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+impl Daemon {
+    fn start(db: &std::path::Path, sock: &std::path::Path) -> Daemon {
+        let (stop, stop_rx) = tokio::sync::oneshot::channel::<()>();
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (db, sock) = (db.to_path_buf(), sock.to_path_buf());
+        let thread = std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async move {
+                let handle = Db::open(&db).unwrap();
+                let listener = server::bind(&sock).unwrap();
+                ready_tx.send(()).unwrap();
+                tokio::select! {
+                    _ = server::serve(listener, handle) => {}
+                    _ = stop_rx => {}
+                }
+            });
+            drop(rt);
+        });
+        ready_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        Daemon {
+            stop: Some(stop),
+            thread: Some(thread),
+        }
+    }
+
+    fn stop(mut self) {
+        let _ = self.stop.take().unwrap().send(());
+        self.thread.take().unwrap().join().unwrap();
+    }
+}
+
+#[test]
+fn clients_survive_the_daemon_restarting() {
+    let dir = temp_dir("restart");
+    let (db, sock) = (dir.join("tt.db"), dir.join("tt.sock"));
+    // SAFETY: only this test reads TT_SOCKET (the others connect to explicit paths).
+    unsafe { std::env::set_var("TT_SOCKET", &sock) };
+
+    let daemon = Daemon::start(&db, &sock);
+    let api = Api::connect_or_open(&db).unwrap();
+    assert!(api.is_remote());
+    api.add_task("before the restart").unwrap();
+
+    // The daemon dies: a read recovers by opening the file and still answers.
+    daemon.stop();
+    assert_eq!(api.inbox().unwrap().len(), 1);
+    assert!(!api.is_remote(), "fell back to the file");
+
+    // Opened directly, it notices another process's commit.
+    assert!(!api.outside_change());
+    Store::open(&db)
+        .unwrap()
+        .add_task("from elsewhere")
+        .unwrap();
+    assert!(api.outside_change());
+
+    // The daemon is back (systemd restarted it): switch to it.
+    let daemon = Daemon::start(&db, &sock);
+    assert!(!api.outside_change());
+    assert!(api.upgrade());
+    assert!(api.is_remote());
+    assert_eq!(api.inbox().unwrap().len(), 2);
+
+    // It dies again; a write sent to the dead socket never reached it, so it's retried on the file.
+    daemon.stop();
+    api.add_task("after the second restart").unwrap();
+    assert!(!api.is_remote());
+    assert_eq!(api.inbox().unwrap().len(), 3);
+}

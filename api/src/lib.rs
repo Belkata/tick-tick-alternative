@@ -16,65 +16,150 @@ pub mod proto;
 pub mod server;
 pub mod views;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 
 use serde::de::DeserializeOwned;
 use tt_core::Store;
 
-pub use client::Client;
+pub use client::{Client, Disconnected};
 pub use proto::{Event, Hello, Request, TzName};
 pub use views::{
     ChecklistRow, NavItem, ReminderRow, Sidebar, TagChip, TaskDetail, TaskRow, TaskView, ViewKind,
 };
 
 /// Calls into the core, in-process or through the daemon.
+///
+/// Made with [`Api::connect_or_open`], it survives the daemon coming and going (systemd
+/// restarts it on failure): a lost daemon means reconnecting, or opening the file directly
+/// when none is back; [`Api::upgrade`] moves back to the daemon when it returns.
 pub struct Api {
-    backend: Backend,
+    backend: Mutex<Backend>,
+    /// The file behind it, for recovering; `None` for [`Api::local`] (nothing to recover).
+    db: Option<PathBuf>,
 }
 
 enum Backend {
-    Local(Mutex<Store>),
+    Local { store: Store, data_version: i64 },
     Remote(Client),
+}
+
+impl Backend {
+    fn local(store: Store) -> Backend {
+        let data_version = store.data_version().unwrap_or(0);
+        Backend::Local {
+            store,
+            data_version,
+        }
+    }
 }
 
 impl Api {
     /// Use an open store directly.
     pub fn local(store: Store) -> Api {
         Api {
-            backend: Backend::Local(Mutex::new(store)),
+            backend: Mutex::new(Backend::local(store)),
+            db: None,
         }
     }
 
     pub fn remote(client: Client) -> Api {
         Api {
-            backend: Backend::Remote(client),
+            backend: Mutex::new(Backend::Remote(client)),
+            db: None,
         }
     }
 
     /// The daemon if it serves `db`, else the file opened directly.
     pub fn connect_or_open(db: &Path) -> anyhow::Result<Api> {
-        Ok(match Client::for_db(db) {
-            Some(c) => Api::remote(c),
-            None => Api::local(Store::open(db)?),
+        let backend = match Client::for_db(db) {
+            Some(c) => Backend::Remote(c),
+            None => Backend::local(Store::open(db)?),
+        };
+        Ok(Api {
+            backend: Mutex::new(backend),
+            db: Some(db.to_path_buf()),
         })
     }
 
     pub fn is_remote(&self) -> bool {
-        matches!(self.backend, Backend::Remote(_))
+        matches!(*lock(&self.backend), Backend::Remote(_))
     }
 
     /// Send any request and decode its reply.
+    ///
+    /// If the daemon is gone, recover (reconnect, else open the file) and retry when that's
+    /// safe: always for reads, and for writes only if the request never reached it. A write
+    /// the daemon may have applied before dying returns the error instead of risking a repeat.
     pub fn call<T: DeserializeOwned>(&self, req: Request) -> anyhow::Result<T> {
-        let value = match &self.backend {
-            Backend::Local(store) => proto::handle(&lock(store), req)?,
-            Backend::Remote(client) => client.call(&req)?,
+        let mut backend = lock(&self.backend);
+        let value = match &*backend {
+            Backend::Local { store, .. } => proto::handle(store, req)?,
+            Backend::Remote(client) => match client.call(&req) {
+                Ok(v) => v,
+                Err(e) => {
+                    let Some(gone) = e.downcast_ref::<Disconnected>().copied() else {
+                        return Err(e);
+                    };
+                    let Some(db) = &self.db else { return Err(e) };
+                    *backend = recover(db)?;
+                    if gone.sent && req.is_write() {
+                        return Err(e);
+                    }
+                    match &*backend {
+                        Backend::Local { store, .. } => proto::handle(store, req)?,
+                        Backend::Remote(client) => client.call(&req)?,
+                    }
+                }
+            },
         };
         Ok(serde_json::from_value(value)?)
     }
+
+    /// Opened directly but the daemon now serves this file: switch to it. True if it switched.
+    pub fn upgrade(&self) -> bool {
+        let Some(db) = &self.db else { return false };
+        let mut backend = lock(&self.backend);
+        if matches!(*backend, Backend::Remote(_)) {
+            return false;
+        }
+        match Client::for_db(db) {
+            Some(c) => {
+                *backend = Backend::Remote(c);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Opened directly: did another process commit to the file since the last check?
+    /// (Through the daemon, its events say so instead.)
+    pub fn outside_change(&self) -> bool {
+        match &mut *lock(&self.backend) {
+            Backend::Local {
+                store,
+                data_version,
+            } => match store.data_version() {
+                Ok(v) if v != *data_version => {
+                    *data_version = v;
+                    true
+                }
+                _ => false,
+            },
+            Backend::Remote(_) => false,
+        }
+    }
 }
 
-fn lock(store: &Mutex<Store>) -> MutexGuard<'_, Store> {
+/// After losing the daemon: a restarted one if it's back already, else the file itself.
+fn recover(db: &Path) -> anyhow::Result<Backend> {
+    Ok(match Client::for_db(db) {
+        Some(c) => Backend::Remote(c),
+        None => Backend::local(Store::open(db)?),
+    })
+}
+
+fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     // A panic mid-call can't leave SQLite half-written, so a poisoned lock is safe to reuse.
-    store.lock().unwrap_or_else(|e| e.into_inner())
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
