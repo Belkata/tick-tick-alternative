@@ -27,6 +27,7 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -34,6 +35,8 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Keep JNA and the UniFFI bindings, which R8 can't see being used through reflection.
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
@@ -46,4 +49,17 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Home-screen widget
+    implementation("androidx.glance:glance-appwidget:1.2.0")
+    implementation("androidx.glance:glance-material3:1.2.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+
+    // UniFFI's Kotlin bindings call the Rust core through JNA
+    implementation("net.java.dev.jna:jna:5.19.1@aar")
+
+    // The test runner itself comes from Flutter's integration_test plugin (it pins androidx.test:runner).
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }
