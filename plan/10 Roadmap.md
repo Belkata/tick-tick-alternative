@@ -11,7 +11,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 ## M0: Decisions and spike
 - [x] Choose the stack ([[02 Tech Stack Options]]): Option A, Rust core + Flutter + Kotlin Glance widget.
 - [x] Choose the UI style ([[09 UI Style Options]]): Soft with Material tag chips.
-- [ ] Confirm current versions: iroh, Flutter, flutter_rust_bridge, UniFFI, Glance.
+- [x] Confirm current versions: iroh, Flutter, flutter_rust_bridge, UniFFI, Glance. See the table in [[02 Tech Stack Options]].
 - [ ] Spike 1: Rust core library plus `flutter_rust_bridge` running on an Android phone, macOS and Hyprland.
 - [ ] Spike 2: iroh connects phone ↔ Mac on LAN and across networks (phone on mobile data).
 - [ ] Spike 3: Glance widget calls the Rust core through UniFFI and completes a task.
