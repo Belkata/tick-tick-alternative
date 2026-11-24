@@ -116,7 +116,10 @@ Before committing, a short **spike (milestone M0 in [[10 Roadmap]])** checks:
 > | tokio | 1.54.1 | |
 > | Flutter stable | 3.50.1 (Dart 3.14.0) | |
 > | Jetpack Glance | 1.2.0 stable | 1.3.0 is alpha only |
-> | `tray_manager` | 0.9.1 | |
+> | `tray_manager` | 0.9.1 | Spike 4: works on Hyprland (own SNI via nativeapi, no libappindicator), but only inside the Flutter process |
+> | ksni | 0.3.7 | Spike 4: pure-Rust StatusNotifierItem tray for `tt-daemon` (tokio) ✅ chosen for Linux |
+> | notify-rust | 4.19.0 | Spike 4: freedesktop notifications with actions; use `default-features = false, features = ["z-with-tokio"]` |
+> | `flutter_local_notifications` | 23.0.4 | Linux actions supported (`flutter_local_notifications_linux` 9.0.0); needed later on Android |
 > | `kalender` | 0.34.0 | candidate for the week grid |
 > | `home_widget` | 0.10.0 | only if the widget reads data via Flutter |
 > | `local_notifier` | 0.1.6 | last release 2024-04: likely replace with own notifications |
