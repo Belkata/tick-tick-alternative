@@ -254,6 +254,10 @@ api! {
     write ToggleDone toggle_done(id: String) -> bool => |s| views::toggle_done(s, &id);
     write SetDueText set_due_text(id: String, text: Option<String>, now_ms: i64, tz: TzName) -> ()
         => |s| views::set_due(s, &id, text.as_deref(), now_ms, tz.tz());
+    write SetStartText set_start_text(id: String, text: Option<String>, now_ms: i64, tz: TzName) -> ()
+        => |s| views::set_start(s, &id, text.as_deref(), now_ms, tz.tz());
+    read RuleCount rule_count(rule: FilterRule, now_ms: i64, tz: TzName) -> u32
+        => |s| views::rule_count(s, &rule, now_ms, tz.tz());
     write TagByPath tag_by_path(task_id: String, path: String) -> ()
         => |s| { let tag = s.ensure_tag_path(&path)?; s.tag_task(&task_id, &tag) };
 }

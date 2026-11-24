@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `now_ms`, `watch`, `write`
+// These functions are ignored because they are not marked as `pub`: `now_ms`, `tz_name`, `watch`, `write`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
 /// The desktop database: the same file `tt` and `tt-daemon` use (`$TT_DB`, else
@@ -21,6 +21,15 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   /// Quick add: a plain title, in the current list or tag; everything else lands in Inbox.
   Future<String> addIn({required TaskView view, required String title});
+
+  /// A reminder at a date and time typed like `tomorrow 09:00`.
+  Future<void> addReminderAt({required String taskId, required String text});
+
+  /// A reminder `minutes` before the task's start (else due); 0 = at that time.
+  Future<void> addReminderBefore({
+    required String taskId,
+    required PlatformInt64 minutes,
+  });
 
   Future<String> addSubtask({required String parentId, required String title});
 
@@ -46,6 +55,17 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   Future<String> createList({required String name});
 
+  Future<void> deleteFilter({required String id});
+
+  /// Delete a list. Its tasks stay, with no list.
+  Future<void> deleteList({required String id});
+
+  /// Delete a tag and the tags under it; tasks lose them.
+  Future<void> deleteTag({required String id});
+
+  /// A saved filter's definition as JSON (`name`, `icon`, `rule`, `sort`, `show_completed`).
+  Future<String?> filterJson({required String id});
+
   Future<List<TaskItem>> inbox();
 
   /// True when calls go through `tt-daemon`.
@@ -55,16 +75,42 @@ abstract class TaskDb implements RustOpaqueInterface {
   static Future<TaskDb> open({required String path}) =>
       RustLib.instance.api.crateApiTasksTaskDbOpen(path: path);
 
+  Future<void> removeReminder({required String id});
+
+  Future<void> renameList({required String id, required String name});
+
+  /// Rename a tag (its last path part).
+  Future<void> renameTag({required String id, required String name});
+
   Future<void> restore({required String id});
+
+  /// How many open tasks a rule (JSON) matches now. Errors say what's wrong with the rule.
+  Future<int> ruleCount({required String ruleJson});
+
+  /// Save a new filter from its JSON definition. Returns its id.
+  Future<String> saveFilter({required String json});
 
   /// Set the due date from text like `fri`, `tomorrow 14:30` or `2026-12-01`, or clear it.
   Future<void> setDue({required String id, String? text});
 
   Future<void> setList({required String id, String? listId});
 
+  Future<void> setListStyle({required String id, String? color, String? icon});
+
   Future<void> setNotes({required String id, required String notes});
 
   Future<void> setPriority({required String id, required int priority});
+
+  /// Repeat with an RRULE body (`FREQ=WEEKLY;BYDAY=MO`), or stop with `None`.
+  /// `after_completion` counts the next date from when it's done. The task needs a date.
+  Future<void> setRepeat({
+    required String id,
+    String? rule,
+    required bool afterCompletion,
+  });
+
+  /// Set the start date from text (like `set_due`), or clear it.
+  Future<void> setStart({required String id, String? text});
 
   Future<void> setTagStyle({required String id, String? color, String? icon});
 
@@ -85,6 +131,8 @@ abstract class TaskDb implements RustOpaqueInterface {
   Future<void> trash({required String id});
 
   Future<void> untag({required String id, required String tagId});
+
+  Future<void> updateFilter({required String id, required String json});
 }
 
 class ChecklistRow {
@@ -241,6 +289,7 @@ class TaskDetail {
   final String? listId;
   final String? startLabel;
   final String? repeatRule;
+  final bool repeatAfterCompletion;
   final List<ChecklistRow> checklist;
   final List<TaskRow> subtasks;
   final List<ReminderRow> reminders;
@@ -251,6 +300,7 @@ class TaskDetail {
     this.listId,
     this.startLabel,
     this.repeatRule,
+    required this.repeatAfterCompletion,
     required this.checklist,
     required this.subtasks,
     required this.reminders,
@@ -263,6 +313,7 @@ class TaskDetail {
       listId.hashCode ^
       startLabel.hashCode ^
       repeatRule.hashCode ^
+      repeatAfterCompletion.hashCode ^
       checklist.hashCode ^
       subtasks.hashCode ^
       reminders.hashCode;
@@ -277,6 +328,7 @@ class TaskDetail {
           listId == other.listId &&
           startLabel == other.startLabel &&
           repeatRule == other.repeatRule &&
+          repeatAfterCompletion == other.repeatAfterCompletion &&
           checklist == other.checklist &&
           subtasks == other.subtasks &&
           reminders == other.reminders;

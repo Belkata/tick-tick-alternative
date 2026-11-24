@@ -41,7 +41,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1855568713;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -903865221;
 
 // Section: executor
 
@@ -507,6 +507,120 @@ fn wire__crate__api__tasks__TaskDb_add_in_impl(
         },
     )
 }
+fn wire__crate__api__tasks__TaskDb_add_reminder_at_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_add_reminder_at",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_task_id = <String>::sse_decode(&mut deserializer);
+            let api_text = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok = crate::api::tasks::TaskDb::add_reminder_at(
+                            &*api_that_guard,
+                            api_task_id,
+                            api_text,
+                        )?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_add_reminder_before_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_add_reminder_before",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_task_id = <String>::sse_decode(&mut deserializer);
+            let api_minutes = <i64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok = crate::api::tasks::TaskDb::add_reminder_before(
+                            &*api_that_guard,
+                            api_task_id,
+                            api_minutes,
+                        )?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__tasks__TaskDb_add_subtask_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -929,6 +1043,218 @@ fn wire__crate__api__tasks__TaskDb_create_list_impl(
         },
     )
 }
+fn wire__crate__api__tasks__TaskDb_delete_filter_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_delete_filter",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok =
+                            crate::api::tasks::TaskDb::delete_filter(&*api_that_guard, api_id)?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_delete_list_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_delete_list",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok =
+                            crate::api::tasks::TaskDb::delete_list(&*api_that_guard, api_id)?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_delete_tag_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_delete_tag",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok =
+                            crate::api::tasks::TaskDb::delete_tag(&*api_that_guard, api_id)?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_filter_json_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_filter_json",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok =
+                            crate::api::tasks::TaskDb::filter_json(&*api_that_guard, api_id)?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__tasks__TaskDb_inbox_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1062,6 +1388,173 @@ fn wire__crate__api__tasks__TaskDb_open_impl(
         },
     )
 }
+fn wire__crate__api__tasks__TaskDb_remove_reminder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_remove_reminder",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok =
+                            crate::api::tasks::TaskDb::remove_reminder(&*api_that_guard, api_id)?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_rename_list_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_rename_list",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_name = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok = crate::api::tasks::TaskDb::rename_list(
+                            &*api_that_guard,
+                            api_id,
+                            api_name,
+                        )?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_rename_tag_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_rename_tag",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_name = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok = crate::api::tasks::TaskDb::rename_tag(
+                            &*api_that_guard,
+                            api_id,
+                            api_name,
+                        )?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__tasks__TaskDb_restore_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1108,6 +1601,112 @@ fn wire__crate__api__tasks__TaskDb_restore_impl(
                         let api_that_guard = api_that_guard.unwrap();
                         let output_ok =
                             crate::api::tasks::TaskDb::restore(&*api_that_guard, api_id)?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_rule_count_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_rule_count",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_rule_json = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok =
+                            crate::api::tasks::TaskDb::rule_count(&*api_that_guard, api_rule_json)?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_save_filter_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_save_filter",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_json = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok =
+                            crate::api::tasks::TaskDb::save_filter(&*api_that_guard, api_json)?;
                         std::result::Result::Ok(output_ok)
                     })(),
                 )
@@ -1226,6 +1825,65 @@ fn wire__crate__api__tasks__TaskDb_set_list_impl(
         },
     )
 }
+fn wire__crate__api__tasks__TaskDb_set_list_style_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_set_list_style",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_color = <Option<String>>::sse_decode(&mut deserializer);
+            let api_icon = <Option<String>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok = crate::api::tasks::TaskDb::set_list_style(
+                            &*api_that_guard,
+                            api_id,
+                            api_color,
+                            api_icon,
+                        )?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__tasks__TaskDb_set_notes_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1332,6 +1990,122 @@ fn wire__crate__api__tasks__TaskDb_set_priority_impl(
                             &*api_that_guard,
                             api_id,
                             api_priority,
+                        )?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_set_repeat_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_set_repeat",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_rule = <Option<String>>::sse_decode(&mut deserializer);
+            let api_after_completion = <bool>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok = crate::api::tasks::TaskDb::set_repeat(
+                            &*api_that_guard,
+                            api_id,
+                            api_rule,
+                            api_after_completion,
+                        )?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__tasks__TaskDb_set_start_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_set_start",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_text = <Option<String>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok = crate::api::tasks::TaskDb::set_start(
+                            &*api_that_guard,
+                            api_id,
+                            api_text,
                         )?;
                         std::result::Result::Ok(output_ok)
                     })(),
@@ -1825,6 +2599,63 @@ fn wire__crate__api__tasks__TaskDb_untag_impl(
         },
     )
 }
+fn wire__crate__api__tasks__TaskDb_update_filter_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "TaskDb_update_filter",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_json = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok = crate::api::tasks::TaskDb::update_filter(
+                            &*api_that_guard,
+                            api_id,
+                            api_json,
+                        )?;
+                        std::result::Result::Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__tasks__desktop_db_path_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1938,6 +2769,7 @@ const _: fn() = || {
         let _: Option<String> = TaskDetail.list_id;
         let _: Option<String> = TaskDetail.start_label;
         let _: Option<String> = TaskDetail.repeat_rule;
+        let _: bool = TaskDetail.repeat_after_completion;
         let _: Vec<crate::api::tasks::ChecklistRow> = TaskDetail.checklist;
         let _: Vec<crate::api::tasks::TaskRow> = TaskDetail.subtasks;
         let _: Vec<crate::api::tasks::ReminderRow> = TaskDetail.reminders;
@@ -2344,6 +3176,7 @@ impl SseDecode for crate::api::tasks::TaskDetail {
         let mut var_listId = <Option<String>>::sse_decode(deserializer);
         let mut var_startLabel = <Option<String>>::sse_decode(deserializer);
         let mut var_repeatRule = <Option<String>>::sse_decode(deserializer);
+        let mut var_repeatAfterCompletion = <bool>::sse_decode(deserializer);
         let mut var_checklist = <Vec<crate::api::tasks::ChecklistRow>>::sse_decode(deserializer);
         let mut var_subtasks = <Vec<crate::api::tasks::TaskRow>>::sse_decode(deserializer);
         let mut var_reminders = <Vec<crate::api::tasks::ReminderRow>>::sse_decode(deserializer);
@@ -2353,6 +3186,7 @@ impl SseDecode for crate::api::tasks::TaskDetail {
             list_id: var_listId,
             start_label: var_startLabel,
             repeat_rule: var_repeatRule,
+            repeat_after_completion: var_repeatAfterCompletion,
             checklist: var_checklist,
             subtasks: var_subtasks,
             reminders: var_reminders,
@@ -2499,35 +3333,61 @@ fn pde_ffi_dispatcher_primary_impl(
         7 => wire__crate__api__sync__SyncPeer_wait_online_impl(port, ptr, rust_vec_len, data_len),
         8 => wire__crate__api__tasks__TaskDb_add_impl(port, ptr, rust_vec_len, data_len),
         9 => wire__crate__api__tasks__TaskDb_add_in_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__tasks__TaskDb_add_subtask_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__tasks__TaskDb_changes_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__tasks__TaskDb_checklist_add_impl(port, ptr, rust_vec_len, data_len),
-        13 => {
+        10 => {
+            wire__crate__api__tasks__TaskDb_add_reminder_at_impl(port, ptr, rust_vec_len, data_len)
+        }
+        11 => wire__crate__api__tasks__TaskDb_add_reminder_before_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        12 => wire__crate__api__tasks__TaskDb_add_subtask_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__tasks__TaskDb_changes_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__tasks__TaskDb_checklist_add_impl(port, ptr, rust_vec_len, data_len),
+        15 => {
             wire__crate__api__tasks__TaskDb_checklist_remove_impl(port, ptr, rust_vec_len, data_len)
         }
-        14 => wire__crate__api__tasks__TaskDb_checklist_set_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__tasks__TaskDb_complete_impl(port, ptr, rust_vec_len, data_len),
-        16 => {
+        16 => wire__crate__api__tasks__TaskDb_checklist_set_impl(port, ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__tasks__TaskDb_complete_impl(port, ptr, rust_vec_len, data_len),
+        18 => {
             wire__crate__api__tasks__TaskDb_connect_or_open_impl(port, ptr, rust_vec_len, data_len)
         }
-        17 => wire__crate__api__tasks__TaskDb_create_list_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__tasks__TaskDb_inbox_impl(port, ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__tasks__TaskDb_open_impl(port, ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__tasks__TaskDb_restore_impl(port, ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__tasks__TaskDb_set_due_impl(port, ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__tasks__TaskDb_set_list_impl(port, ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__tasks__TaskDb_set_notes_impl(port, ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__tasks__TaskDb_set_priority_impl(port, ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__tasks__TaskDb_set_tag_style_impl(port, ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__tasks__TaskDb_set_title_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__tasks__TaskDb_sidebar_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__tasks__TaskDb_tag_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__tasks__TaskDb_task_impl(port, ptr, rust_vec_len, data_len),
-        31 => wire__crate__api__tasks__TaskDb_tasks_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__tasks__TaskDb_toggle_done_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__tasks__TaskDb_trash_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__tasks__TaskDb_untag_impl(port, ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__tasks__init_app_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__tasks__TaskDb_create_list_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__tasks__TaskDb_delete_filter_impl(port, ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__tasks__TaskDb_delete_list_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__tasks__TaskDb_delete_tag_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__tasks__TaskDb_filter_json_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__tasks__TaskDb_inbox_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__tasks__TaskDb_open_impl(port, ptr, rust_vec_len, data_len),
+        27 => {
+            wire__crate__api__tasks__TaskDb_remove_reminder_impl(port, ptr, rust_vec_len, data_len)
+        }
+        28 => wire__crate__api__tasks__TaskDb_rename_list_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__tasks__TaskDb_rename_tag_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__tasks__TaskDb_restore_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__tasks__TaskDb_rule_count_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__tasks__TaskDb_save_filter_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__tasks__TaskDb_set_due_impl(port, ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__tasks__TaskDb_set_list_impl(port, ptr, rust_vec_len, data_len),
+        35 => {
+            wire__crate__api__tasks__TaskDb_set_list_style_impl(port, ptr, rust_vec_len, data_len)
+        }
+        36 => wire__crate__api__tasks__TaskDb_set_notes_impl(port, ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__tasks__TaskDb_set_priority_impl(port, ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__tasks__TaskDb_set_repeat_impl(port, ptr, rust_vec_len, data_len),
+        39 => wire__crate__api__tasks__TaskDb_set_start_impl(port, ptr, rust_vec_len, data_len),
+        40 => wire__crate__api__tasks__TaskDb_set_tag_style_impl(port, ptr, rust_vec_len, data_len),
+        41 => wire__crate__api__tasks__TaskDb_set_title_impl(port, ptr, rust_vec_len, data_len),
+        42 => wire__crate__api__tasks__TaskDb_sidebar_impl(port, ptr, rust_vec_len, data_len),
+        43 => wire__crate__api__tasks__TaskDb_tag_impl(port, ptr, rust_vec_len, data_len),
+        44 => wire__crate__api__tasks__TaskDb_task_impl(port, ptr, rust_vec_len, data_len),
+        45 => wire__crate__api__tasks__TaskDb_tasks_impl(port, ptr, rust_vec_len, data_len),
+        46 => wire__crate__api__tasks__TaskDb_toggle_done_impl(port, ptr, rust_vec_len, data_len),
+        47 => wire__crate__api__tasks__TaskDb_trash_impl(port, ptr, rust_vec_len, data_len),
+        48 => wire__crate__api__tasks__TaskDb_untag_impl(port, ptr, rust_vec_len, data_len),
+        49 => wire__crate__api__tasks__TaskDb_update_filter_impl(port, ptr, rust_vec_len, data_len),
+        51 => wire__crate__api__tasks__init_app_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2540,8 +3400,8 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        19 => wire__crate__api__tasks__TaskDb_is_remote_impl(ptr, rust_vec_len, data_len),
-        35 => wire__crate__api__tasks__desktop_db_path_impl(ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__tasks__TaskDb_is_remote_impl(ptr, rust_vec_len, data_len),
+        50 => wire__crate__api__tasks__desktop_db_path_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2746,6 +3606,7 @@ impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::TaskDetail>
             self.0.list_id.into_into_dart().into_dart(),
             self.0.start_label.into_into_dart().into_dart(),
             self.0.repeat_rule.into_into_dart().into_dart(),
+            self.0.repeat_after_completion.into_into_dart().into_dart(),
             self.0.checklist.into_into_dart().into_dart(),
             self.0.subtasks.into_into_dart().into_dart(),
             self.0.reminders.into_into_dart().into_dart(),
@@ -3156,6 +4017,7 @@ impl SseEncode for crate::api::tasks::TaskDetail {
         <Option<String>>::sse_encode(self.list_id, serializer);
         <Option<String>>::sse_encode(self.start_label, serializer);
         <Option<String>>::sse_encode(self.repeat_rule, serializer);
+        <bool>::sse_encode(self.repeat_after_completion, serializer);
         <Vec<crate::api::tasks::ChecklistRow>>::sse_encode(self.checklist, serializer);
         <Vec<crate::api::tasks::TaskRow>>::sse_encode(self.subtasks, serializer);
         <Vec<crate::api::tasks::ReminderRow>>::sse_encode(self.reminders, serializer);

@@ -70,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1855568713;
+  int get rustContentHash => -903865221;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -117,6 +117,18 @@ abstract class RustLibApi extends BaseApi {
     required String title,
   });
 
+  Future<void> crateApiTasksTaskDbAddReminderAt({
+    required TaskDb that,
+    required String taskId,
+    required String text,
+  });
+
+  Future<void> crateApiTasksTaskDbAddReminderBefore({
+    required TaskDb that,
+    required String taskId,
+    required PlatformInt64 minutes,
+  });
+
   Future<String> crateApiTasksTaskDbAddSubtask({
     required TaskDb that,
     required String parentId,
@@ -154,15 +166,62 @@ abstract class RustLibApi extends BaseApi {
     required String name,
   });
 
+  Future<void> crateApiTasksTaskDbDeleteFilter({
+    required TaskDb that,
+    required String id,
+  });
+
+  Future<void> crateApiTasksTaskDbDeleteList({
+    required TaskDb that,
+    required String id,
+  });
+
+  Future<void> crateApiTasksTaskDbDeleteTag({
+    required TaskDb that,
+    required String id,
+  });
+
+  Future<String?> crateApiTasksTaskDbFilterJson({
+    required TaskDb that,
+    required String id,
+  });
+
   Future<List<TaskItem>> crateApiTasksTaskDbInbox({required TaskDb that});
 
   bool crateApiTasksTaskDbIsRemote({required TaskDb that});
 
   Future<TaskDb> crateApiTasksTaskDbOpen({required String path});
 
+  Future<void> crateApiTasksTaskDbRemoveReminder({
+    required TaskDb that,
+    required String id,
+  });
+
+  Future<void> crateApiTasksTaskDbRenameList({
+    required TaskDb that,
+    required String id,
+    required String name,
+  });
+
+  Future<void> crateApiTasksTaskDbRenameTag({
+    required TaskDb that,
+    required String id,
+    required String name,
+  });
+
   Future<void> crateApiTasksTaskDbRestore({
     required TaskDb that,
     required String id,
+  });
+
+  Future<int> crateApiTasksTaskDbRuleCount({
+    required TaskDb that,
+    required String ruleJson,
+  });
+
+  Future<String> crateApiTasksTaskDbSaveFilter({
+    required TaskDb that,
+    required String json,
   });
 
   Future<void> crateApiTasksTaskDbSetDue({
@@ -177,6 +236,13 @@ abstract class RustLibApi extends BaseApi {
     String? listId,
   });
 
+  Future<void> crateApiTasksTaskDbSetListStyle({
+    required TaskDb that,
+    required String id,
+    String? color,
+    String? icon,
+  });
+
   Future<void> crateApiTasksTaskDbSetNotes({
     required TaskDb that,
     required String id,
@@ -187,6 +253,19 @@ abstract class RustLibApi extends BaseApi {
     required TaskDb that,
     required String id,
     required int priority,
+  });
+
+  Future<void> crateApiTasksTaskDbSetRepeat({
+    required TaskDb that,
+    required String id,
+    String? rule,
+    required bool afterCompletion,
+  });
+
+  Future<void> crateApiTasksTaskDbSetStart({
+    required TaskDb that,
+    required String id,
+    String? text,
   });
 
   Future<void> crateApiTasksTaskDbSetTagStyle({
@@ -234,6 +313,12 @@ abstract class RustLibApi extends BaseApi {
     required TaskDb that,
     required String id,
     required String tagId,
+  });
+
+  Future<void> crateApiTasksTaskDbUpdateFilter({
+    required TaskDb that,
+    required String id,
+    required String json,
   });
 
   String crateApiTasksDesktopDbPath();
@@ -576,6 +661,86 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<void> crateApiTasksTaskDbAddReminderAt({
+    required TaskDb that,
+    required String taskId,
+    required String text,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(taskId, serializer);
+          sse_encode_String(text, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbAddReminderAtConstMeta,
+        argValues: [that, taskId, text],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbAddReminderAtConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_add_reminder_at",
+        argNames: ["that", "taskId", "text"],
+      );
+
+  @override
+  Future<void> crateApiTasksTaskDbAddReminderBefore({
+    required TaskDb that,
+    required String taskId,
+    required PlatformInt64 minutes,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(taskId, serializer);
+          sse_encode_i_64(minutes, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 11,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbAddReminderBeforeConstMeta,
+        argValues: [that, taskId, minutes],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbAddReminderBeforeConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_add_reminder_before",
+        argNames: ["that", "taskId", "minutes"],
+      );
+
+  @override
   Future<String> crateApiTasksTaskDbAddSubtask({
     required TaskDb that,
     required String parentId,
@@ -594,7 +759,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 12,
             port: port_,
           );
         },
@@ -631,7 +796,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 11,
+              funcId: 13,
               port: port_,
             );
           },
@@ -672,7 +837,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 14,
             port: port_,
           );
         },
@@ -710,7 +875,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 15,
             port: port_,
           );
         },
@@ -750,7 +915,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 16,
             port: port_,
           );
         },
@@ -788,7 +953,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 17,
             port: port_,
           );
         },
@@ -819,7 +984,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 18,
             port: port_,
           );
         },
@@ -858,7 +1023,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 19,
             port: port_,
           );
         },
@@ -880,6 +1045,158 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiTasksTaskDbDeleteFilter({
+    required TaskDb that,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbDeleteFilterConstMeta,
+        argValues: [that, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbDeleteFilterConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_delete_filter",
+        argNames: ["that", "id"],
+      );
+
+  @override
+  Future<void> crateApiTasksTaskDbDeleteList({
+    required TaskDb that,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 21,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbDeleteListConstMeta,
+        argValues: [that, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbDeleteListConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_delete_list",
+        argNames: ["that", "id"],
+      );
+
+  @override
+  Future<void> crateApiTasksTaskDbDeleteTag({
+    required TaskDb that,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 22,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbDeleteTagConstMeta,
+        argValues: [that, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbDeleteTagConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_delete_tag",
+        argNames: ["that", "id"],
+      );
+
+  @override
+  Future<String?> crateApiTasksTaskDbFilterJson({
+    required TaskDb that,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbFilterJsonConstMeta,
+        argValues: [that, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbFilterJsonConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_filter_json",
+        argNames: ["that", "id"],
+      );
+
+  @override
   Future<List<TaskItem>> crateApiTasksTaskDbInbox({required TaskDb that}) {
     return handler.executeNormal(
       NormalTask(
@@ -892,7 +1209,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 24,
             port: port_,
           );
         },
@@ -920,7 +1237,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -946,7 +1263,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 26,
             port: port_,
           );
         },
@@ -966,6 +1283,124 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "TaskDb_open", argNames: ["path"]);
 
   @override
+  Future<void> crateApiTasksTaskDbRemoveReminder({
+    required TaskDb that,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 27,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbRemoveReminderConstMeta,
+        argValues: [that, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbRemoveReminderConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_remove_reminder",
+        argNames: ["that", "id"],
+      );
+
+  @override
+  Future<void> crateApiTasksTaskDbRenameList({
+    required TaskDb that,
+    required String id,
+    required String name,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          sse_encode_String(name, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 28,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbRenameListConstMeta,
+        argValues: [that, id, name],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbRenameListConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_rename_list",
+        argNames: ["that", "id", "name"],
+      );
+
+  @override
+  Future<void> crateApiTasksTaskDbRenameTag({
+    required TaskDb that,
+    required String id,
+    required String name,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          sse_encode_String(name, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 29,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbRenameTagConstMeta,
+        argValues: [that, id, name],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbRenameTagConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_rename_tag",
+        argNames: ["that", "id", "name"],
+      );
+
+  @override
   Future<void> crateApiTasksTaskDbRestore({
     required TaskDb that,
     required String id,
@@ -982,7 +1417,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 30,
             port: port_,
           );
         },
@@ -1003,6 +1438,82 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<int> crateApiTasksTaskDbRuleCount({
+    required TaskDb that,
+    required String ruleJson,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(ruleJson, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 31,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_32,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbRuleCountConstMeta,
+        argValues: [that, ruleJson],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbRuleCountConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_rule_count",
+        argNames: ["that", "ruleJson"],
+      );
+
+  @override
+  Future<String> crateApiTasksTaskDbSaveFilter({
+    required TaskDb that,
+    required String json,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(json, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 32,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbSaveFilterConstMeta,
+        argValues: [that, json],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbSaveFilterConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_save_filter",
+        argNames: ["that", "json"],
+      );
+
+  @override
   Future<void> crateApiTasksTaskDbSetDue({
     required TaskDb that,
     required String id,
@@ -1021,7 +1532,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 33,
             port: port_,
           );
         },
@@ -1060,7 +1571,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 34,
             port: port_,
           );
         },
@@ -1081,6 +1592,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<void> crateApiTasksTaskDbSetListStyle({
+    required TaskDb that,
+    required String id,
+    String? color,
+    String? icon,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          sse_encode_opt_String(color, serializer);
+          sse_encode_opt_String(icon, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 35,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbSetListStyleConstMeta,
+        argValues: [that, id, color, icon],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbSetListStyleConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_set_list_style",
+        argNames: ["that", "id", "color", "icon"],
+      );
+
+  @override
   Future<void> crateApiTasksTaskDbSetNotes({
     required TaskDb that,
     required String id,
@@ -1099,7 +1652,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 36,
             port: port_,
           );
         },
@@ -1139,7 +1692,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 37,
             port: port_,
           );
         },
@@ -1158,6 +1711,88 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(
         debugName: "TaskDb_set_priority",
         argNames: ["that", "id", "priority"],
+      );
+
+  @override
+  Future<void> crateApiTasksTaskDbSetRepeat({
+    required TaskDb that,
+    required String id,
+    String? rule,
+    required bool afterCompletion,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          sse_encode_opt_String(rule, serializer);
+          sse_encode_bool(afterCompletion, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 38,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbSetRepeatConstMeta,
+        argValues: [that, id, rule, afterCompletion],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbSetRepeatConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_set_repeat",
+        argNames: ["that", "id", "rule", "afterCompletion"],
+      );
+
+  @override
+  Future<void> crateApiTasksTaskDbSetStart({
+    required TaskDb that,
+    required String id,
+    String? text,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          sse_encode_opt_String(text, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 39,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbSetStartConstMeta,
+        argValues: [that, id, text],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbSetStartConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_set_start",
+        argNames: ["that", "id", "text"],
       );
 
   @override
@@ -1181,7 +1816,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 40,
             port: port_,
           );
         },
@@ -1221,7 +1856,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 41,
             port: port_,
           );
         },
@@ -1255,7 +1890,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 42,
             port: port_,
           );
         },
@@ -1292,7 +1927,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 43,
             port: port_,
           );
         },
@@ -1329,7 +1964,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 44,
             port: port_,
           );
         },
@@ -1364,7 +1999,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 31,
+            funcId: 45,
             port: port_,
           );
         },
@@ -1401,7 +2036,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 32,
+            funcId: 46,
             port: port_,
           );
         },
@@ -1439,7 +2074,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 33,
+            funcId: 47,
             port: port_,
           );
         },
@@ -1476,7 +2111,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 34,
+            funcId: 48,
             port: port_,
           );
         },
@@ -1497,12 +2132,52 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<void> crateApiTasksTaskDbUpdateFilter({
+    required TaskDb that,
+    required String id,
+    required String json,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          sse_encode_String(json, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 49,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbUpdateFilterConstMeta,
+        argValues: [that, id, json],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbUpdateFilterConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_update_filter",
+        argNames: ["that", "id", "json"],
+      );
+
+  @override
   String crateApiTasksDesktopDbPath() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 50)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -1527,7 +2202,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 36,
+            funcId: 51,
             port: port_,
           );
         },
@@ -1859,17 +2534,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskDetail dco_decode_task_detail(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 8)
-      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
     return TaskDetail(
       row: dco_decode_task_row(arr[0]),
       notes: dco_decode_String(arr[1]),
       listId: dco_decode_opt_String(arr[2]),
       startLabel: dco_decode_opt_String(arr[3]),
       repeatRule: dco_decode_opt_String(arr[4]),
-      checklist: dco_decode_list_checklist_row(arr[5]),
-      subtasks: dco_decode_list_task_row(arr[6]),
-      reminders: dco_decode_list_reminder_row(arr[7]),
+      repeatAfterCompletion: dco_decode_bool(arr[5]),
+      checklist: dco_decode_list_checklist_row(arr[6]),
+      subtasks: dco_decode_list_task_row(arr[7]),
+      reminders: dco_decode_list_reminder_row(arr[8]),
     );
   }
 
@@ -2364,6 +3040,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_listId = sse_decode_opt_String(deserializer);
     var var_startLabel = sse_decode_opt_String(deserializer);
     var var_repeatRule = sse_decode_opt_String(deserializer);
+    var var_repeatAfterCompletion = sse_decode_bool(deserializer);
     var var_checklist = sse_decode_list_checklist_row(deserializer);
     var var_subtasks = sse_decode_list_task_row(deserializer);
     var var_reminders = sse_decode_list_reminder_row(deserializer);
@@ -2373,6 +3050,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       listId: var_listId,
       startLabel: var_startLabel,
       repeatRule: var_repeatRule,
+      repeatAfterCompletion: var_repeatAfterCompletion,
       checklist: var_checklist,
       subtasks: var_subtasks,
       reminders: var_reminders,
@@ -2857,6 +3535,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.listId, serializer);
     sse_encode_opt_String(self.startLabel, serializer);
     sse_encode_opt_String(self.repeatRule, serializer);
+    sse_encode_bool(self.repeatAfterCompletion, serializer);
     sse_encode_list_checklist_row(self.checklist, serializer);
     sse_encode_list_task_row(self.subtasks, serializer);
     sse_encode_list_reminder_row(self.reminders, serializer);
@@ -3007,6 +3686,24 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
         title: title,
       );
 
+  /// A reminder at a date and time typed like `tomorrow 09:00`.
+  Future<void> addReminderAt({required String taskId, required String text}) =>
+      RustLib.instance.api.crateApiTasksTaskDbAddReminderAt(
+        that: this,
+        taskId: taskId,
+        text: text,
+      );
+
+  /// A reminder `minutes` before the task's start (else due); 0 = at that time.
+  Future<void> addReminderBefore({
+    required String taskId,
+    required PlatformInt64 minutes,
+  }) => RustLib.instance.api.crateApiTasksTaskDbAddReminderBefore(
+    that: this,
+    taskId: taskId,
+    minutes: minutes,
+  );
+
   Future<String> addSubtask({
     required String parentId,
     required String title,
@@ -3045,6 +3742,21 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
   Future<String> createList({required String name}) => RustLib.instance.api
       .crateApiTasksTaskDbCreateList(that: this, name: name);
 
+  Future<void> deleteFilter({required String id}) =>
+      RustLib.instance.api.crateApiTasksTaskDbDeleteFilter(that: this, id: id);
+
+  /// Delete a list. Its tasks stay, with no list.
+  Future<void> deleteList({required String id}) =>
+      RustLib.instance.api.crateApiTasksTaskDbDeleteList(that: this, id: id);
+
+  /// Delete a tag and the tags under it; tasks lose them.
+  Future<void> deleteTag({required String id}) =>
+      RustLib.instance.api.crateApiTasksTaskDbDeleteTag(that: this, id: id);
+
+  /// A saved filter's definition as JSON (`name`, `icon`, `rule`, `sort`, `show_completed`).
+  Future<String?> filterJson({required String id}) =>
+      RustLib.instance.api.crateApiTasksTaskDbFilterJson(that: this, id: id);
+
   Future<List<TaskItem>> inbox() =>
       RustLib.instance.api.crateApiTasksTaskDbInbox(that: this);
 
@@ -3052,8 +3764,30 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
   bool isRemote() =>
       RustLib.instance.api.crateApiTasksTaskDbIsRemote(that: this);
 
+  Future<void> removeReminder({required String id}) => RustLib.instance.api
+      .crateApiTasksTaskDbRemoveReminder(that: this, id: id);
+
+  Future<void> renameList({required String id, required String name}) => RustLib
+      .instance
+      .api
+      .crateApiTasksTaskDbRenameList(that: this, id: id, name: name);
+
+  /// Rename a tag (its last path part).
+  Future<void> renameTag({required String id, required String name}) => RustLib
+      .instance
+      .api
+      .crateApiTasksTaskDbRenameTag(that: this, id: id, name: name);
+
   Future<void> restore({required String id}) =>
       RustLib.instance.api.crateApiTasksTaskDbRestore(that: this, id: id);
+
+  /// How many open tasks a rule (JSON) matches now. Errors say what's wrong with the rule.
+  Future<int> ruleCount({required String ruleJson}) => RustLib.instance.api
+      .crateApiTasksTaskDbRuleCount(that: this, ruleJson: ruleJson);
+
+  /// Save a new filter from its JSON definition. Returns its id.
+  Future<String> saveFilter({required String json}) => RustLib.instance.api
+      .crateApiTasksTaskDbSaveFilter(that: this, json: json);
 
   /// Set the due date from text like `fri`, `tomorrow 14:30` or `2026-12-01`, or clear it.
   Future<void> setDue({required String id, String? text}) => RustLib
@@ -3066,6 +3800,17 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
       .api
       .crateApiTasksTaskDbSetList(that: this, id: id, listId: listId);
 
+  Future<void> setListStyle({
+    required String id,
+    String? color,
+    String? icon,
+  }) => RustLib.instance.api.crateApiTasksTaskDbSetListStyle(
+    that: this,
+    id: id,
+    color: color,
+    icon: icon,
+  );
+
   Future<void> setNotes({required String id, required String notes}) => RustLib
       .instance
       .api
@@ -3077,6 +3822,25 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
         id: id,
         priority: priority,
       );
+
+  /// Repeat with an RRULE body (`FREQ=WEEKLY;BYDAY=MO`), or stop with `None`.
+  /// `after_completion` counts the next date from when it's done. The task needs a date.
+  Future<void> setRepeat({
+    required String id,
+    String? rule,
+    required bool afterCompletion,
+  }) => RustLib.instance.api.crateApiTasksTaskDbSetRepeat(
+    that: this,
+    id: id,
+    rule: rule,
+    afterCompletion: afterCompletion,
+  );
+
+  /// Set the start date from text (like `set_due`), or clear it.
+  Future<void> setStart({required String id, String? text}) => RustLib
+      .instance
+      .api
+      .crateApiTasksTaskDbSetStart(that: this, id: id, text: text);
 
   Future<void> setTagStyle({required String id, String? color, String? icon}) =>
       RustLib.instance.api.crateApiTasksTaskDbSetTagStyle(
@@ -3117,4 +3881,11 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
       .instance
       .api
       .crateApiTasksTaskDbUntag(that: this, id: id, tagId: tagId);
+
+  Future<void> updateFilter({required String id, required String json}) =>
+      RustLib.instance.api.crateApiTasksTaskDbUpdateFilter(
+        that: this,
+        id: id,
+        json: json,
+      );
 }

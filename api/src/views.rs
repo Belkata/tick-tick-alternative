@@ -117,6 +117,8 @@ pub struct TaskDetail {
     pub start_label: Option<String>,
     /// The RRULE body, e.g. `FREQ=WEEKLY;BYDAY=MO`.
     pub repeat_rule: Option<String>,
+    /// The next date counts from completion rather than from the schedule.
+    pub repeat_after_completion: bool,
     pub checklist: Vec<ChecklistRow>,
     pub subtasks: Vec<TaskRow>,
     pub reminders: Vec<ReminderRow>,
@@ -228,6 +230,7 @@ pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Result<Opt
         return Ok(None);
     };
     let (notes, list_id, repeat_rule) = (t.notes.clone(), t.list_id.clone(), t.repeat_rule.clone());
+    let repeat_after_completion = t.repeat_mode == tt_core::RepeatMode::AfterCompletion;
     let start_label = t.start_at.map(|ms| when_label(ms, t.all_day, now, tz));
     let checklist = s
         .checklist(id)?
@@ -260,6 +263,7 @@ pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Result<Opt
         list_id,
         start_label,
         repeat_rule,
+        repeat_after_completion,
         checklist,
         subtasks,
         reminders,
@@ -297,6 +301,28 @@ pub fn toggle_done(s: &Store, id: &str) -> tt_core::Result<bool> {
 /// Set the due date from text like `fri`, `tomorrow 14:30` or `2026-12-01`, or clear it.
 /// Switching between all-day and timed drops the start date rather than mixing kinds.
 pub fn set_due(s: &Store, id: &str, text: Option<&str>, now: i64, tz: Tz) -> tt_core::Result<()> {
+    set_date(s, id, DateField::Due, text, now, tz)
+}
+
+/// The same for the start date (it drops the due date on a kind switch).
+pub fn set_start(s: &Store, id: &str, text: Option<&str>, now: i64, tz: Tz) -> tt_core::Result<()> {
+    set_date(s, id, DateField::Start, text, now, tz)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DateField {
+    Due,
+    Start,
+}
+
+fn set_date(
+    s: &Store,
+    id: &str,
+    field: DateField,
+    text: Option<&str>,
+    now: i64,
+    tz: Tz,
+) -> tt_core::Result<()> {
     let text = text.map(str::trim).filter(|t| !t.is_empty());
     let parsed = text.map(|t| parse_when(t, now, tz)).transpose()?;
     let t = s
@@ -304,20 +330,30 @@ pub fn set_due(s: &Store, id: &str, text: Option<&str>, now: i64, tz: Tz) -> tt_
         .ok_or_else(|| tt_core::Error::NotFound(format!("task {id}")))?;
     let mut sch = Schedule {
         start_at: t.start_at,
-        due_at: None,
+        due_at: t.due_at,
         all_day: t.all_day,
         tz: t.tz.clone(),
         duration_min: t.duration_min,
     };
+    let (this, other) = match field {
+        DateField::Due => (&mut sch.due_at, &mut sch.start_at),
+        DateField::Start => (&mut sch.start_at, &mut sch.due_at),
+    };
+    *this = None;
     if let Some((ms, all_day)) = parsed {
         if all_day != t.all_day {
-            sch.start_at = None;
+            *other = None;
         }
-        sch.due_at = Some(ms);
+        *this = Some(ms);
         sch.all_day = all_day;
     }
     sch.tz = (!sch.all_day).then(|| tz.name().to_string());
     s.set_schedule(id, Some(&sch))
+}
+
+/// How many open tasks a rule matches right now (the filter builder's live count).
+pub fn rule_count(s: &Store, rule: &FilterRule, now: i64, tz: Tz) -> tt_core::Result<u32> {
+    Ok(s.run_rule(rule, &[], false, now, tz)?.len() as u32)
 }
 
 fn task_row(s: &Store, t: Task, now: i64, tz: Tz) -> tt_core::Result<TaskRow> {

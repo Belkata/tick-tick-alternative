@@ -11,7 +11,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use flutter_rust_bridge::frb;
 use tt_api::{Api, Request};
-use tt_core::{NewTask, Store, Task, local_tz};
+use tt_core::{
+    Filter, FilterRule, NewTask, ReminderKind, Repeat, RepeatMode, SavedFilter, Store, Task,
+    local_tz, parse_when,
+};
 
 use crate::changes::Changes;
 use crate::frb_generated::StreamSink;
@@ -108,6 +111,7 @@ pub struct _TaskDetail {
     pub list_id: Option<String>,
     pub start_label: Option<String>,
     pub repeat_rule: Option<String>,
+    pub repeat_after_completion: bool,
     pub checklist: Vec<ChecklistRow>,
     pub subtasks: Vec<TaskRow>,
     pub reminders: Vec<ReminderRow>,
@@ -261,12 +265,11 @@ impl TaskDb {
 
     /// Set the due date from text like `fri`, `tomorrow 14:30` or `2026-12-01`, or clear it.
     pub fn set_due(&self, id: String, text: Option<String>) -> anyhow::Result<()> {
-        let tz = tt_api::TzName(local_tz().name().to_string());
         self.write(Request::SetDueText {
             id,
             text,
             now_ms: now_ms(),
-            tz,
+            tz: tz_name(),
         })
         .map(drop)
     }
@@ -324,6 +327,122 @@ impl TaskDb {
             .map(drop)
     }
 
+    /// Set the start date from text (like `set_due`), or clear it.
+    pub fn set_start(&self, id: String, text: Option<String>) -> anyhow::Result<()> {
+        self.write(Request::SetStartText {
+            id,
+            text,
+            now_ms: now_ms(),
+            tz: tz_name(),
+        })
+        .map(drop)
+    }
+
+    /// Repeat with an RRULE body (`FREQ=WEEKLY;BYDAY=MO`), or stop with `None`.
+    /// `after_completion` counts the next date from when it's done. The task needs a date.
+    pub fn set_repeat(
+        &self,
+        id: String,
+        rule: Option<String>,
+        after_completion: bool,
+    ) -> anyhow::Result<()> {
+        let repeat = rule.map(|rule| Repeat {
+            rule,
+            mode: if after_completion {
+                RepeatMode::AfterCompletion
+            } else {
+                RepeatMode::Fixed
+            },
+        });
+        self.write(Request::SetRepeat { id, repeat }).map(drop)
+    }
+
+    /// A reminder `minutes` before the task's start (else due); 0 = at that time.
+    pub fn add_reminder_before(&self, task_id: String, minutes: i64) -> anyhow::Result<()> {
+        let kind = ReminderKind::Relative {
+            offset_min: minutes,
+        };
+        self.write(Request::AddReminder { task_id, kind })
+            .map(drop)
+    }
+
+    /// A reminder at a date and time typed like `tomorrow 09:00`.
+    pub fn add_reminder_at(&self, task_id: String, text: String) -> anyhow::Result<()> {
+        let (at, all_day) = parse_when(&text, now_ms(), local_tz())?;
+        if all_day {
+            anyhow::bail!("give a time too, e.g. \"{} 09:00\"", text.trim());
+        }
+        let kind = ReminderKind::Absolute { at };
+        self.write(Request::AddReminder { task_id, kind })
+            .map(drop)
+    }
+
+    pub fn remove_reminder(&self, id: String) -> anyhow::Result<()> {
+        self.write(Request::RemoveReminder { id }).map(drop)
+    }
+
+    // ----- Filters: definitions cross as JSON (a recursive rule tree; see tt_core::Filter) -----
+
+    /// A saved filter's definition as JSON (`name`, `icon`, `rule`, `sort`, `show_completed`).
+    pub fn filter_json(&self, id: String) -> anyhow::Result<Option<String>> {
+        let f: Option<SavedFilter> = self.api.find_filter(id)?;
+        f.map(|f| Ok(serde_json::to_string(&f.filter)?)).transpose()
+    }
+
+    /// Save a new filter from its JSON definition. Returns its id.
+    pub fn save_filter(&self, json: String) -> anyhow::Result<String> {
+        let filter: Filter = serde_json::from_str(&json)?;
+        Ok(serde_json::from_value(
+            self.write(Request::SaveFilter { filter })?,
+        )?)
+    }
+
+    pub fn update_filter(&self, id: String, json: String) -> anyhow::Result<()> {
+        let filter: Filter = serde_json::from_str(&json)?;
+        self.write(Request::UpdateFilter { id, filter }).map(drop)
+    }
+
+    pub fn delete_filter(&self, id: String) -> anyhow::Result<()> {
+        self.write(Request::DeleteFilter { id }).map(drop)
+    }
+
+    /// How many open tasks a rule (JSON) matches now. Errors say what's wrong with the rule.
+    pub fn rule_count(&self, rule_json: String) -> anyhow::Result<u32> {
+        let rule: FilterRule = serde_json::from_str(&rule_json)?;
+        self.api.rule_count(&rule, now_ms(), local_tz())
+    }
+
+    // ----- Lists and tags -----
+
+    pub fn rename_list(&self, id: String, name: String) -> anyhow::Result<()> {
+        self.write(Request::RenameList { id, name }).map(drop)
+    }
+
+    /// Delete a list. Its tasks stay, with no list.
+    pub fn delete_list(&self, id: String) -> anyhow::Result<()> {
+        self.write(Request::DeleteList { id }).map(drop)
+    }
+
+    pub fn set_list_style(
+        &self,
+        id: String,
+        color: Option<String>,
+        icon: Option<String>,
+    ) -> anyhow::Result<()> {
+        self.write(Request::SetListStyle { id, color, icon })
+            .map(drop)
+    }
+
+    /// Rename a tag (its last path part).
+    pub fn rename_tag(&self, id: String, name: String) -> anyhow::Result<()> {
+        self.write(Request::RenameTag { id, name }).map(drop)
+    }
+
+    /// Delete a tag and the tags under it; tasks lose them.
+    pub fn delete_tag(&self, id: String) -> anyhow::Result<()> {
+        self.write(Request::DeleteTag { id }).map(drop)
+    }
+
     /// Run a write. In-process, tick the change stream here; through the daemon its
     /// event does that (and reaches every other client too).
     fn write(&self, req: Request) -> anyhow::Result<serde_json::Value> {
@@ -353,6 +472,10 @@ fn watch(api: &Api, changes: &Changes) {
         }
         std::thread::sleep(std::time::Duration::from_secs(2));
     }
+}
+
+fn tz_name() -> tt_api::TzName {
+    tt_api::TzName(local_tz().name().to_string())
 }
 
 fn now_ms() -> i64 {
