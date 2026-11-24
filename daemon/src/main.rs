@@ -1,22 +1,26 @@
-//! tt-daemon, Spike 4: a tray icon and reminder notifications on Linux.
+//! tt-daemon: owns the desktop database and serves it to the app and `tt` (M2, plan/15).
 //!
-//! - The tray is a StatusNotifierItem (ksni), so waybar's `tray` module shows it.
-//!   It shows the Inbox count, with a menu: Open, Notify Inbox, Sync now (stub), Quit.
-//! - The reminder loop asks the core for reminders due since the last check and
-//!   sends freedesktop notifications (notify-rust) with Done and Snooze actions.
-//!   Done completes the task through the core; Snooze shows it again later.
+//! - **Socket:** `tt_api::server` runs one DB thread and answers JSON-line requests on
+//!   `$XDG_RUNTIME_DIR/tick-alt.sock`, with change events for subscribers. Commits other
+//!   processes make to the file (e.g. `tt` while no daemon ran) are noticed and broadcast.
+//! - **Tray** (Spike 4): a StatusNotifierItem (ksni) in waybar's `tray` module showing the
+//!   Inbox count, refreshed on every change. Menu: the first Inbox tasks, Open, Refresh,
+//!   Sync now (M3), Quit.
+//! - **Reminders:** every 5 s the core is asked for reminders due since the last check;
+//!   each becomes a notification (notify-rust) with Done and Snooze actions.
 //!
-//! Spike quality: M2 turns this into the real daemon that owns the DB and serves
-//! the socket API (plan/08). For now every DB access opens the store briefly, the
-//! same way the CLI does, and SQLite's WAL mode handles the other writers.
+//! Flags: `--db <path>`, `--socket <path>`, `--no-tray`; `tt-daemon notify <id>` sends one
+//! reminder right away. `$TT_SNOOZE_SECS` shortens Snooze for testing; `$TT_APP` is what Open starts.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use ksni::TrayMethods;
 use tokio::sync::mpsc;
-use tt_core::{Store, Task, local_tz};
+use tt_api::server::{self, Db};
+use tt_api::{Request, TzName};
+use tt_core::{ReminderFire, Task, local_tz};
 
 /// How often the tray re-reads the Inbox count and the reminder loop checks the schedule.
 const TICK: Duration = Duration::from_secs(5);
@@ -200,35 +204,27 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-/// Same lookup as `tt`: --db, then $TT_DB, then the platform data directory.
+/// `--db <path>` if given, else `$TT_DB`, else the platform data directory (as `tt`).
 fn db_path() -> Result<PathBuf> {
-    let mut args = std::env::args().skip(1);
-    while let Some(a) = args.next() {
-        if a == "--db" {
-            return args.next().map(PathBuf::from).context("--db needs a path");
-        }
+    match flag("--db") {
+        Some(p) => Ok(PathBuf::from(p)),
+        None => Ok(tt_api::paths::default_db()?),
     }
-    if let Some(p) = std::env::var_os("TT_DB") {
-        return Ok(PathBuf::from(p));
-    }
-    let dir = dirs::data_dir()
-        .context("no platform data directory; pass --db")?
-        .join("tick-alt");
-    std::fs::create_dir_all(&dir)?;
-    Ok(dir.join("tt.db"))
 }
 
-/// Runs a closure against a freshly opened store on the blocking pool.
-async fn with_store<R: Send + 'static>(
-    db: &Path,
-    f: impl FnOnce(&Store) -> tt_core::Result<R> + Send + 'static,
-) -> Result<R> {
-    let db = db.to_path_buf();
-    tokio::task::spawn_blocking(move || {
-        let store = Store::open(&db).with_context(|| format!("opening {}", db.display()))?;
-        Ok(f(&store)?)
-    })
-    .await?
+/// The value after `name` on the command line.
+fn flag(name: &str) -> Option<String> {
+    let mut args = std::env::args().skip(1);
+    while let Some(a) = args.next() {
+        if a == name {
+            return args.next();
+        }
+    }
+    None
+}
+
+fn has_flag(name: &str) -> bool {
+    std::env::args().skip(1).any(|a| a == name)
 }
 
 /// Shows a reminder notification and reports the chosen action back to the main loop.
@@ -280,66 +276,91 @@ fn open_app() {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let db = db_path()?;
-    eprintln!("tt-daemon: {}", db.display());
+    let db_file = db_path()?;
+    let socket = flag("--socket")
+        .map(PathBuf::from)
+        .unwrap_or_else(tt_api::paths::socket);
 
-    // `tt-daemon notify <id>`: one notification for a task, then wait for its action.
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    // The daemon owns the database (plan/03 rule 3): one DB thread, served on the socket.
+    let db = Db::open(&db_file).with_context(|| format!("opening {}", db_file.display()))?;
+    let listener = server::bind(&socket)?;
+    eprintln!("tt-daemon: {} on {}", db_file.display(), socket.display());
+    tokio::spawn({
+        let db = db.clone();
+        async move {
+            if let Err(e) = server::serve(listener, db).await {
+                eprintln!("tt-daemon: socket: {e:#}");
+            }
+        }
+    });
+
     let (tx, mut rx) = mpsc::unbounded_channel();
-
-    let inbox = with_store(&db, |s| s.inbox()).await?;
-    let tray = TickTray {
-        inbox,
-        tx: tx.clone(),
+    let inbox: Vec<Task> = db.get(Request::Inbox {}).await?;
+    // Without a tray host yet (waybar starts after a systemd unit), keep running: ksni
+    // registers the item as soon as a StatusNotifierWatcher appears.
+    let handle = if has_flag("--no-tray") {
+        None
+    } else {
+        Some(
+            TickTray {
+                inbox,
+                tx: tx.clone(),
+            }
+            .assume_sni_available(true)
+            .spawn()
+            .await
+            .context("starting the tray")?,
+        )
     };
-    let handle = tray
-        .spawn()
-        .await
-        .context("starting the tray (is a SNI host like waybar running?)")?;
 
+    // `tt-daemon notify <id>`: one notification for a task right away (testing actions).
+    let args: Vec<String> = std::env::args().skip(1).collect();
     if let Some(i) = args.iter().position(|a| a == "notify") {
         let suffix = args.get(i + 1).context("notify needs a task id")?.clone();
-        let task = with_store(&db, move |s| {
-            Ok(match s.resolve_task_id(&suffix)? {
-                Some(id) => s.get_task(&id)?,
-                None => None,
-            })
-        })
-        .await?
-        .context("no such task")?;
+        let id: Option<String> = db.get(Request::ResolveTaskId { suffix }).await?;
+        let task: Option<Task> = match id {
+            Some(id) => db.get(Request::GetTask { id }).await?,
+            None => None,
+        };
+        let task = task.context("no such task")?;
         let _ = tx.send(Cmd::Notify {
             task_id: task.id,
             title: task.title,
         });
     }
 
-    let tz = local_tz();
+    // Refresh the tray on every change, wherever it came from (app, `tt`, an outside write).
+    let mut changes = db.subscribe();
+    let tz = TzName(local_tz().name().to_string());
     let mut last_check = now_ms();
     let mut tick = tokio::time::interval(TICK);
     loop {
         tokio::select! {
             _ = tick.tick() => {
-                // Fire reminders due since the last tick, then refresh the count.
+                // Fire reminders due since the last tick.
                 let (from, until) = (last_check, now_ms());
                 last_check = until;
-                match with_store(&db, move |s| s.upcoming_reminders(from, until, tz)).await {
+                let req = Request::UpcomingReminders { from, until, tz: tz.clone() };
+                match db.get::<Vec<ReminderFire>>(req).await {
                     Ok(fires) => for f in fires {
                         notify(tx.clone(), f.task_id, f.title);
                     },
                     Err(e) => eprintln!("reminders: {e:#}"),
                 }
-                let _ = tx.send(Cmd::Refresh);
             }
+            Ok(_) = changes.recv() => { let _ = tx.send(Cmd::Refresh); }
             Some(cmd) = rx.recv() => match cmd {
-                Cmd::Refresh => match with_store(&db, |s| s.inbox()).await {
-                    Ok(inbox) => { handle.update(|t| t.inbox = inbox).await; }
+                Cmd::Refresh => match db.get::<Vec<Task>>(Request::Inbox {}).await {
+                    Ok(inbox) => if let Some(h) = &handle {
+                        h.update(|t| t.inbox = inbox).await;
+                    },
                     Err(e) => eprintln!("inbox: {e:#}"),
                 },
                 Cmd::Notify { task_id, title } => notify(tx.clone(), task_id, title),
                 Cmd::Complete { task_id } => {
-                    match with_store(&db, move |s| s.complete_task(&task_id)).await {
-                        Ok(_) => { let _ = tx.send(Cmd::Refresh); }
-                        Err(e) => eprintln!("complete: {e:#}"),
+                    // The DB thread broadcasts the change, which refreshes the tray.
+                    if let Err(e) = db.call(Request::CompleteTask { id: task_id }).await {
+                        eprintln!("complete: {e}");
                     }
                 }
                 Cmd::Snooze { task_id, title } => {
@@ -355,6 +376,8 @@ async fn main() -> Result<()> {
             _ = tokio::signal::ctrl_c() => break,
         }
     }
-    handle.shutdown().await;
+    if let Some(h) = handle {
+        h.shutdown().await;
+    }
     Ok(())
 }

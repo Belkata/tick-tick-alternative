@@ -4194,10 +4194,10 @@ name = "tt-daemon"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "dirs",
  "ksni",
  "notify-rust",
  "tokio",
+ "tt-api",
  "tt-core",
 ]
 

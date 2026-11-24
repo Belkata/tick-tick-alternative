@@ -7,8 +7,8 @@ publish.workspace = true
 
 [dependencies]
 anyhow = "1.0.105"
-dirs = "7.0.0"
 ksni = "0.3.7"
 notify-rust = { version = "4.19.0", default-features = false, features = ["z-with-tokio"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal", "sync"] }
+tt-api = { path = "../api", features = ["server"] }
 tt-core = { path = "../core" }
