@@ -19,7 +19,7 @@ pub const ALL_DAY_REMINDER_TIME: NaiveTime = match NaiveTime::from_hms_opt(9, 0,
     None => unreachable!(),
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ReminderKind {
     /// Minutes before the task's start (else due). 0 = at that time.
     Relative { offset_min: i64 },
@@ -27,7 +27,7 @@ pub enum ReminderKind {
     Absolute { at: i64 },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Reminder {
     pub id: String,
     pub task_id: String,
@@ -35,7 +35,7 @@ pub struct Reminder {
 }
 
 /// One notification to schedule.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReminderFire {
     pub reminder_id: String,
     pub task_id: String,

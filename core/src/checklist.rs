@@ -7,7 +7,7 @@ use crate::oplog::Entity;
 use crate::task::require_task;
 use crate::{Error, Result, Store};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ChecklistItem {
     pub id: String,
     pub task_id: String,

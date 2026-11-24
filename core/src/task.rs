@@ -11,7 +11,7 @@ use crate::{Error, Result, Store};
 pub const MAX_DEPTH: usize = 3;
 
 /// Lifecycle state of a task. "Won't do" is deliberately absent (plan/11 question 9).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Status {
     Open,
     Done,
@@ -38,7 +38,7 @@ impl Status {
 }
 
 /// How a repeating task picks its next date.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RepeatMode {
     /// Next date from the schedule, e.g. every Monday.
     Fixed,
@@ -62,7 +62,7 @@ impl RepeatMode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Task {
     pub id: String,
     pub title: String,
@@ -130,7 +130,7 @@ pub(crate) const TASK_COLUMNS: &str = "task.id, task.title, task.notes, task.lis
 
 /// When a task happens. All-day dates are floating: stored as UTC midnight of the
 /// calendar date and shown on that date in any zone.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Schedule {
     pub start_at: Option<i64>,
     pub due_at: Option<i64>,
@@ -172,7 +172,7 @@ impl Schedule {
 }
 
 /// Everything a new task can start with. `Default` gives an Inbox task.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct NewTask {
     pub title: String,
     pub notes: String,

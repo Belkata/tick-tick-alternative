@@ -8,7 +8,7 @@ use crate::store::Writer;
 use crate::task::require_task;
 use crate::{Error, Result, Store};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct List {
     pub id: String,
     pub name: String,
@@ -17,7 +17,7 @@ pub struct List {
     pub archived: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Tag {
     pub id: String,
     pub name: String,

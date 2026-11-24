@@ -72,7 +72,7 @@ pub struct Filter {
     pub show_completed: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SavedFilter {
     pub id: String,
     pub filter: Filter,

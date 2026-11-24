@@ -486,7 +486,11 @@ mod tests {
         a.add_task("mine").unwrap();
         assert_eq!(a.data_version().unwrap(), v0, "own writes don't count");
         b.add_task("theirs").unwrap();
-        assert_ne!(a.data_version().unwrap(), v0, "another connection's commit does");
+        assert_ne!(
+            a.data_version().unwrap(),
+            v0,
+            "another connection's commit does"
+        );
         drop((a, b));
         std::fs::remove_dir_all(&dir).unwrap();
     }

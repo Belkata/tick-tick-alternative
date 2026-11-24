@@ -17,7 +17,7 @@ use crate::task::{RepeatMode, Status, Task, require_task, write_status};
 use crate::{Error, Result, Store};
 
 /// A repeat rule and how the next date is counted.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Repeat {
     /// RRULE body without DTSTART, e.g. `FREQ=DAILY;INTERVAL=2`.
     pub rule: String,
@@ -25,7 +25,7 @@ pub struct Repeat {
 }
 
 /// One entry of the Completed view.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Completion {
     pub task_id: String,
     pub title: String,
