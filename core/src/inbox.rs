@@ -3,24 +3,25 @@
 //! A task is in Inbox while it is open, top-level, and has no list, no tag,
 //! no start and no due date. Giving it any of those triages it out.
 
-use crate::task::TASK_COLUMNS;
+use crate::task::{TASK_COLUMNS, query_tasks};
 use crate::{Result, Store, Task};
 
-pub(crate) const INBOX_WHERE: &str = "status = 'open' \
-     AND parent_id IS NULL \
-     AND list_id IS NULL \
-     AND start_at IS NULL \
-     AND due_at IS NULL \
-     AND NOT EXISTS (SELECT 1 FROM task_tag tt WHERE tt.task_id = task.id)";
+/// A priority alone doesn't triage a task (plan/11 question 11). Tags that were
+/// deleted on another device don't count; tags not synced yet do.
+pub(crate) const INBOX_WHERE: &str = "task.status = 'open' \
+     AND task.parent_id IS NULL \
+     AND task.list_id IS NULL \
+     AND task.start_at IS NULL \
+     AND task.due_at IS NULL \
+     AND NOT EXISTS (SELECT 1 FROM task_tag tt LEFT JOIN tag g ON g.id = tt.tag_id \
+                     WHERE tt.task_id = task.id AND coalesce(g.deleted, 0) = 0)";
 
 impl Store {
     /// Tasks currently in Inbox, oldest first.
     pub fn inbox(&self) -> Result<Vec<Task>> {
         let sql =
             format!("SELECT {TASK_COLUMNS} FROM task WHERE {INBOX_WHERE} ORDER BY created_at, id");
-        let mut stmt = self.conn.prepare(&sql)?;
-        let rows = stmt.query_map([], Task::from_row)?;
-        Ok(rows.collect::<rusqlite::Result<_>>()?)
+        query_tasks(&self.conn, &sql, [])
     }
 }
 
@@ -29,7 +30,12 @@ mod tests {
     use crate::Store;
 
     fn inbox_titles(store: &Store) -> Vec<String> {
-        store.inbox().unwrap().into_iter().map(|t| t.title).collect()
+        store
+            .inbox()
+            .unwrap()
+            .into_iter()
+            .map(|t| t.title)
+            .collect()
     }
 
     #[test]
@@ -65,6 +71,27 @@ mod tests {
         assert!(inbox_titles(&s).is_empty());
         s.untag_task(&t.id, &tag).unwrap();
         assert_eq!(inbox_titles(&s), ["t"]);
+    }
+
+    #[test]
+    fn priority_alone_keeps_task_in_inbox() {
+        let s = Store::open_in_memory().unwrap();
+        let t = s.add_task("urgent").unwrap();
+        s.set_priority(&t.id, 3).unwrap();
+        assert_eq!(inbox_titles(&s), ["urgent"]);
+    }
+
+    #[test]
+    fn subtasks_are_not_in_inbox() {
+        let s = Store::open_in_memory().unwrap();
+        let p = s.add_task("parent").unwrap();
+        s.create_task(&crate::NewTask {
+            title: "child".into(),
+            parent_id: Some(p.id),
+            ..Default::default()
+        })
+        .unwrap();
+        assert_eq!(inbox_titles(&s), ["parent"]);
     }
 
     #[test]

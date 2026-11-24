@@ -1,6 +1,5 @@
--- tt-core schema v1 (M0 spike subset: lists, tags, tasks).
+-- v1: the M0 spike schema, kept verbatim so spike databases migrate cleanly.
 -- Timestamps are Unix epoch milliseconds (UTC).
--- Sync columns (HLC per field, op-log) come in M1; see plan/05 P2P Sync.md.
 
 CREATE TABLE IF NOT EXISTS list (
     id         TEXT PRIMARY KEY,
