@@ -1,0 +1,418 @@
+<title>Tick Alt Styles</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600;8..144,700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: one long page, a section per style; each section = header + desktop mock (scrolls sideways if narrow) + phone widget + week strip */
+:root{
+  --bg:#f3f4f6; --fg:#16181d; --mute:#5d6470; --line:#dcdfe5; --card:#ffffff; --accent:#3d5afe;
+  --f-display:"Space Grotesk",system-ui,sans-serif; --f-body:"Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111317;--fg:#e8eaee;--mute:#9aa1ad;--line:#2a2e36;--card:#1a1d23;--accent:#8c9eff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111317;--fg:#e8eaee;--mute:#9aa1ad;--line:#2a2e36;--card:#1a1d23;--accent:#8c9eff;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:56px}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(28px,4vw,40px)}
+h2{font-size:26px}
+.intro{display:grid;gap:12px;max-width:68ch}
+.intro p{margin:0;color:var(--mute)}
+.jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.jump a{color:var(--fg);text-decoration:none;border:1px solid var(--line);background:var(--card);padding:6px 12px;border-radius:999px;font-size:13px;font-weight:500}
+.jump a:hover,.jump a:focus-visible{border-color:var(--accent);outline:none}
+.style{display:grid;gap:18px;scroll-margin-top:16px}
+.style-head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.style-head .t{display:grid;gap:4px;min-width:0;max-width:72ch}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600}
+.style-head p{margin:0;color:var(--mute)}
+.modes{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+.modes button{font:500 13px var(--f-body);background:none;border:0;padding:7px 14px;color:var(--mute);cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.modes button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:980px){.stage{grid-template-columns:minmax(0,1fr)}}
+.scroller{overflow-x:auto;border-radius:12px;border:1px solid var(--line)}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 24px;font-size:14px}
+.notes div{min-width:0}
+.notes b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:4px}
+.notes ul{margin:0;padding-left:18px}
+.caption{font-size:12px;color:var(--mute);margin:6px 2px 0}
+.decide{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;display:grid;gap:8px;max-width:72ch}
+.decide p{margin:0}
+
+/* ================= MOCK BASE (driven by --m-* tokens per style/mode) ================= */
+.mock{font-family:var(--m-font);color:var(--m-fg);background:var(--m-bg);font-size:13px;line-height:1.35}
+.mock *{box-sizing:border-box}
+.desk{display:grid;grid-template-columns:210px minmax(300px,1fr) 280px;min-width:860px;height:520px}
+.side{background:var(--m-side);border-right:1px solid var(--m-line);padding:14px 10px;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.side .sec{font-size:11px;color:var(--m-mute);text-transform:var(--m-sec-case);letter-spacing:.06em;padding:12px 8px 4px;font-weight:600}
+.nav{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:var(--m-r-sm);color:var(--m-fg);white-space:nowrap}
+.nav .ic{width:16px;text-align:center;flex:none;opacity:.85}
+.nav .n{margin-left:auto;color:var(--m-mute);font-size:11px;font-variant-numeric:tabular-nums}
+.nav.on{background:var(--m-sel);color:var(--m-sel-fg)}
+.nav.on .n{color:inherit}
+.nav.child{padding-left:28px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--tc);flex:none}
+.list{display:flex;flex-direction:column;overflow:hidden;background:var(--m-bg)}
+.list-h{display:flex;align-items:center;gap:10px;padding:16px 18px 10px}
+.list-h h3{margin:0;font:var(--m-h-weight) 18px var(--m-h-font);letter-spacing:-.01em}
+.list-h .cnt{color:var(--m-mute);font-size:12px}
+.add{margin:0 18px 8px;padding:8px 12px;border-radius:var(--m-r-sm);background:var(--m-input);color:var(--m-mute);border:1px solid var(--m-input-line)}
+.grp{font-size:11px;font-weight:600;color:var(--m-mute);padding:10px 18px 4px;text-transform:var(--m-sec-case);letter-spacing:.05em}
+.row{display:flex;align-items:center;gap:10px;padding:0 18px;min-height:var(--m-row);border-bottom:1px solid var(--m-row-line);margin:var(--m-row-gap)}
+.row.sel{background:var(--m-sel-row)}
+.row .title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .meta{display:flex;align-items:center;gap:6px;flex:none}
+.when{font-size:11px;color:var(--m-mute);font-variant-numeric:tabular-nums}
+.when.today{color:var(--m-today)}
+.when.late{color:var(--m-late)}
+.cb{width:16px;height:16px;flex:none;border:1.6px solid var(--pc,var(--m-mute));border-radius:var(--m-cb-r);background:var(--m-cb-bg)}
+.cb.p3{--pc:var(--m-p3)} .cb.p2{--pc:var(--m-p2)} .cb.p1{--pc:var(--m-p1)}
+.cb.done{background:var(--m-mute);border-color:var(--m-mute)}
+.row.done .title{text-decoration:line-through;color:var(--m-mute)}
+.tag{font-size:11px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.detail{border-left:1px solid var(--m-line);background:var(--m-panel);padding:18px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.detail h4{margin:0;font:var(--m-h-weight) 17px var(--m-h-font)}
+.props{display:grid;grid-template-columns:72px 1fr;gap:8px 10px;font-size:12px}
+.props .k{color:var(--m-mute)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.chk{display:grid;gap:6px;font-size:12.5px}
+.chk div{display:flex;gap:8px;align-items:center}
+.chk .cb{width:13px;height:13px}
+.notes-box{font-size:12.5px;color:var(--m-mute);border-top:1px solid var(--m-line);padding-top:12px}
+
+/* phone + widget */
+.phone{width:300px;max-width:100%;margin:0 auto;border-radius:34px;padding:12px;background:#0d0f12;box-shadow:0 1px 0 rgba(255,255,255,.06) inset}
+.screen{border-radius:24px;overflow:hidden;height:520px;position:relative;background:var(--m-wall);padding:44px 14px 14px;display:flex;flex-direction:column;gap:14px}
+.clock{font:300 54px/1 var(--m-font);color:#fff;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.25)}
+.date{color:rgba(255,255,255,.9);text-align:center;font-size:13px;margin-top:-8px}
+.widget{background:var(--m-w-bg);color:var(--m-fg);border-radius:var(--m-w-r);padding:12px 12px 6px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--m-w-line)}
+.w-h{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.w-h b{font:var(--m-h-weight) 14px var(--m-h-font)}
+.w-h .n{color:var(--m-mute);font-size:11px}
+.w-plus{margin-left:auto;width:26px;height:26px;border-radius:var(--m-plus-r);display:grid;place-items:center;background:var(--m-accent);color:var(--m-accent-fg);font-weight:700;font-size:16px;line-height:1}
+.w-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--m-row-line)}
+.w-row:first-of-type{border-top:0}
+.w-row .title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+.icons{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:auto;padding:0 6px}
+.icons i{aspect-ratio:1;border-radius:var(--m-icon-r);background:rgba(255,255,255,.22);display:block}
+
+/* week strip */
+.cal{display:grid;grid-template-columns:44px repeat(5,minmax(120px,1fr));min-width:700px;background:var(--m-bg);font-size:11px}
+.cal .hd{padding:8px 6px;border-bottom:1px solid var(--m-line);color:var(--m-mute);font-weight:600;text-transform:var(--m-sec-case);letter-spacing:.04em}
+.cal .hd.today{color:var(--m-today)}
+.cal .allday{border-bottom:1px solid var(--m-line);padding:4px;min-height:26px;display:flex;flex-direction:column;gap:3px}
+.cal .hrs{position:relative;height:300px;border-right:1px solid var(--m-row-line)}
+.cal .hrs.axis{border-right:1px solid var(--m-line)}
+.cal .hl{position:absolute;left:0;right:0;border-top:1px solid var(--m-row-line)}
+.cal .lbl{position:absolute;right:6px;transform:translateY(-50%);color:var(--m-mute);font-variant-numeric:tabular-nums}
+.blk{position:absolute;left:4px;right:4px;border-radius:var(--m-blk-r);padding:3px 6px;overflow:hidden;line-height:1.25}
+.blk small{display:block;opacity:.75}
+.blk.ev{background:var(--m-ev-bg);color:var(--m-ev-fg);border-left:var(--m-ev-edge)}
+.blk.task{background:color-mix(in srgb,var(--tc) var(--m-task-mix),var(--m-bg));color:var(--m-fg);border:1px solid color-mix(in srgb,var(--tc) 55%,transparent)}
+.blk.allday{position:static}
+.now{position:absolute;left:0;right:0;height:0;border-top:2px solid var(--m-late)}
+.now::before{content:"";position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--m-late)}
+
+/* ================= STYLE 1: QUIET ================= */
+.s-quiet .mock{
+  --m-font:"Inter",system-ui,sans-serif; --m-h-font:"Inter",system-ui,sans-serif; --m-h-weight:650;
+  --m-bg:#ffffff; --m-side:#f6f7f9; --m-panel:#fbfbfc; --m-fg:#1d2025; --m-mute:#7b828e; --m-line:#e7e9ee; --m-row-line:#f0f1f4;
+  --m-sel:#e9edff; --m-sel-fg:#2f47d6; --m-sel-row:#f4f6ff; --m-accent:#3d5afe; --m-accent-fg:#fff;
+  --m-input:#f4f5f7; --m-input-line:transparent; --m-today:#3d5afe; --m-late:#e5484d;
+  --m-p3:#e5484d; --m-p2:#f0a020; --m-p1:#3d7dfe; --m-cb-r:50%; --m-cb-bg:transparent;
+  --m-r-sm:6px; --m-row:38px; --m-row-gap:0; --m-sec-case:uppercase;
+  --m-wall:linear-gradient(160deg,#9fb3c8,#56708c 60%,#33465c); --m-w-bg:rgba(255,255,255,.92); --m-w-line:transparent; --m-w-r:20px; --m-plus-r:50%; --m-icon-r:14px;
+  --m-ev-bg:#eef0f4; --m-ev-fg:#4a515c; --m-ev-edge:3px solid #b9c0cc; --m-task-mix:16%; --m-blk-r:5px;
+}
+.s-quiet .mock.dark{
+  --m-bg:#16181c; --m-side:#1b1e23; --m-panel:#191b20; --m-fg:#e6e8ec; --m-mute:#8a919c; --m-line:#2a2e35; --m-row-line:#23262c;
+  --m-sel:#262c45; --m-sel-fg:#aab8ff; --m-sel-row:#1f2333; --m-accent:#7b8cff; --m-accent-fg:#0f1220;
+  --m-input:#202329; --m-today:#8c9cff; --m-late:#ff6b6f; --m-p1:#6a9bff;
+  --m-wall:linear-gradient(160deg,#2b3644,#151b24); --m-w-bg:rgba(24,27,32,.88); --m-ev-bg:#23272e; --m-ev-fg:#b7bdc7; --m-ev-edge:3px solid #4a515c; --m-task-mix:22%;
+}
+.s-quiet .tag::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--tc)}
+.s-quiet .tag{color:var(--m-mute)}
+
+/* ================= STYLE 2: TILING ================= */
+.s-tiling .mock{
+  --m-font:"JetBrains Mono",ui-monospace,monospace; --m-h-font:"JetBrains Mono",ui-monospace,monospace; --m-h-weight:700;
+  --m-bg:#1e1e2e; --m-side:#181825; --m-panel:#1b1b29; --m-fg:#cdd6f4; --m-mute:#7f849c; --m-line:#313244; --m-row-line:#26263a;
+  --m-sel:#313244; --m-sel-fg:#f5e0dc; --m-sel-row:#2a2b3d; --m-accent:#a6e3a1; --m-accent-fg:#11111b;
+  --m-input:#181825; --m-input-line:#313244; --m-today:#89b4fa; --m-late:#f38ba8;
+  --m-p3:#f38ba8; --m-p2:#fab387; --m-p1:#89b4fa; --m-cb-r:2px; --m-cb-bg:transparent;
+  --m-r-sm:0; --m-row:30px; --m-row-gap:0; --m-sec-case:none;
+  --m-wall:#11111b; --m-w-bg:#1e1e2e; --m-w-line:#45475a; --m-w-r:4px; --m-plus-r:2px; --m-icon-r:4px;
+  --m-ev-bg:#26263a; --m-ev-fg:#a6adc8; --m-ev-edge:2px solid #6c7086; --m-task-mix:22%; --m-blk-r:0;
+  font-size:12px;
+}
+.s-tiling .mock.dark{}
+.s-tiling .mock.light{
+  --m-bg:#eff1f5; --m-side:#e6e9ef; --m-panel:#e9ecf2; --m-fg:#4c4f69; --m-mute:#8c8fa1; --m-line:#ccd0da; --m-row-line:#dce0e8;
+  --m-sel:#ccd0da; --m-sel-fg:#1e66f5; --m-sel-row:#e1e5ee; --m-accent:#40a02b; --m-accent-fg:#fff; --m-input:#e6e9ef; --m-input-line:#ccd0da;
+  --m-today:#1e66f5; --m-late:#d20f39; --m-p3:#d20f39; --m-p2:#fe640b; --m-p1:#1e66f5;
+  --m-wall:#dce0e8; --m-w-bg:#eff1f5; --m-w-line:#bcc0cc; --m-ev-bg:#dce0e8; --m-ev-fg:#5c5f77; --m-ev-edge:2px solid #9ca0b0;
+}
+.s-tiling .tag{color:var(--tc)}
+.s-tiling .tag::before{content:"#"}
+.s-tiling .side .sec::before{content:"── "}
+.s-tiling .nav.on{box-shadow:inset 2px 0 0 var(--m-accent)}
+.s-tiling .clock{font-weight:500;font-size:44px}
+.s-tiling .phone{border-radius:28px}
+.s-tiling .desk,.s-tiling .cal{border:0}
+
+/* ================= STYLE 3: SOFT ================= */
+.s-soft .mock{
+  --m-font:"Manrope",system-ui,sans-serif; --m-h-font:"Manrope",system-ui,sans-serif; --m-h-weight:800;
+  --m-bg:#f7f8fb; --m-side:#eef1f7; --m-panel:#ffffff; --m-fg:#1f2433; --m-mute:#7a8197; --m-line:#e3e7ef; --m-row-line:transparent;
+  --m-sel:#ffffff; --m-sel-fg:#0f8b7d; --m-sel-row:#ffffff; --m-accent:#12a594; --m-accent-fg:#fff;
+  --m-input:#ffffff; --m-input-line:#e3e7ef; --m-today:#0f8b7d; --m-late:#e2525c;
+  --m-p3:#e2525c; --m-p2:#eb9b2c; --m-p1:#4c8df6; --m-cb-r:6px; --m-cb-bg:#fff;
+  --m-r-sm:10px; --m-row:42px; --m-row-gap:0 12px 6px; --m-sec-case:none;
+  --m-wall:linear-gradient(170deg,#c7e6df,#8fc1d6 55%,#6d8fc9); --m-w-bg:rgba(255,255,255,.95); --m-w-line:transparent; --m-w-r:26px; --m-plus-r:12px; --m-icon-r:18px;
+  --m-ev-bg:#e8ecf5; --m-ev-fg:#4f5770; --m-ev-edge:0; --m-task-mix:24%; --m-blk-r:10px;
+}
+.s-soft .mock.dark{
+  --m-bg:#151821; --m-side:#11141b; --m-panel:#1b1f2a; --m-fg:#e6e9f2; --m-mute:#8f97ad; --m-line:#262b38;
+  --m-sel:#1f2431; --m-sel-fg:#5fd4c4; --m-sel-row:#1f2431; --m-accent:#3cc9b5; --m-accent-fg:#06221e;
+  --m-input:#1b1f2a; --m-input-line:#262b38; --m-today:#5fd4c4; --m-late:#ff7880; --m-cb-bg:transparent;
+  --m-wall:linear-gradient(170deg,#1f3a3a,#1a2440 60%,#121726); --m-w-bg:rgba(27,31,42,.92); --m-ev-bg:#232838; --m-ev-fg:#b4bbcd; --m-task-mix:30%;
+}
+.s-soft .row{background:var(--m-panel);border-radius:12px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
+.s-soft .mock.dark .row{box-shadow:none}
+.s-soft .row.sel{outline:2px solid var(--m-accent);outline-offset:-2px}
+.s-soft .tag{padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--tc) 18%,transparent);color:color-mix(in srgb,var(--tc) 70%,var(--m-fg));font-weight:600}
+.s-soft .nav.on{box-shadow:0 1px 3px rgba(20,30,60,.08);font-weight:700}
+.s-soft .w-row{border-top:0;background:color-mix(in srgb,var(--m-fg) 4%,transparent);border-radius:12px;padding:7px 9px;margin-bottom:5px}
+
+/* ================= STYLE 4: MATERIAL ================= */
+.s-material .mock{
+  --m-font:"Roboto Flex","Roboto",system-ui,sans-serif; --m-h-font:"Roboto Flex","Roboto",system-ui,sans-serif; --m-h-weight:600;
+  --m-bg:#fbfdf8; --m-side:#eff2ea; --m-panel:#f4f7ef; --m-fg:#191d17; --m-mute:#6e7568; --m-line:#dfe4d8; --m-row-line:#edf0e8;
+  --m-sel:#cdebc4; --m-sel-fg:#0a3910; --m-sel-row:#e8f1e3; --m-accent:#3a6a33; --m-accent-fg:#fff;
+  --m-input:#eef2e9; --m-input-line:transparent; --m-today:#3a6a33; --m-late:#ba1a1a;
+  --m-p3:#ba1a1a; --m-p2:#a86a00; --m-p1:#386a9c; --m-cb-r:4px; --m-cb-bg:transparent;
+  --m-r-sm:999px; --m-row:44px; --m-row-gap:0; --m-sec-case:none;
+  --m-wall:linear-gradient(165deg,#bcd3a8,#6f9a6c 55%,#3d5f45); --m-w-bg:#eff4ea; --m-w-line:transparent; --m-w-r:28px; --m-plus-r:12px; --m-icon-r:50%;
+  --m-ev-bg:#dde5f0; --m-ev-fg:#2a3a4f; --m-ev-edge:0; --m-task-mix:28%; --m-blk-r:8px;
+}
+.s-material .mock.dark{
+  --m-bg:#11140f; --m-side:#191d17; --m-panel:#1d211b; --m-fg:#e1e4da; --m-mute:#a0a796; --m-line:#2d3329; --m-row-line:#21251f;
+  --m-sel:#23501f; --m-sel-fg:#c0edb5; --m-sel-row:#1d2a1b; --m-accent:#a4d497; --m-accent-fg:#0b380a;
+  --m-input:#1d211b; --m-today:#a4d497; --m-late:#ffb4ab; --m-p3:#ffb4ab; --m-p2:#f3bd5e; --m-p1:#9fcaff;
+  --m-wall:linear-gradient(165deg,#2c4029,#141c15); --m-w-bg:#1d241b; --m-ev-bg:#26313d; --m-ev-fg:#c5d3e4; --m-task-mix:32%;
+}
+.s-material .tag{border:1px solid color-mix(in srgb,var(--tc) 60%,var(--m-line));color:var(--m-fg);padding:1px 8px;border-radius:8px}
+.s-material .tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--tc)}
+.s-material .list-h h3{font-size:22px;font-weight:500}
+.s-material .add{border-radius:999px}
+.s-material .nav{padding:7px 12px}
+.s-material .fab{position:absolute}
+
+/* ================= CHOSEN: SOFT + MATERIAL CHIPS ================= */
+.s-soft.s-mix .tag{background:none;border:1px solid color-mix(in srgb,var(--tc) 60%,var(--m-line));color:var(--m-fg);padding:1px 8px;border-radius:8px;font-weight:500}
+.s-soft.s-mix .tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--tc)}
+.chosen-badge{display:inline-block;background:var(--accent);color:var(--bg);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle}
+
+@media (prefers-reduced-motion:no-preference){.mock{transition:background-color .2s,color .2s}}
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <div class="eyebrow">Tick Alt · UI direction</div>
+    <h1>Four styles to choose from</h1>
+    <p>Each section shows the same screens in a different style: the desktop three-pane view (Inbox, lists, filters, nested tags), the Android home-screen widget showing a filter, and the week calendar with Google events (grey) next to timed tasks (tag colour). Use the Light/Dark switch on each one. All task data is made-up sample content.</p>
+    <nav class="jump" aria-label="Styles">
+      <a href="#chosen">★ Chosen · Soft + Material chips</a><a href="#quiet">A · Quiet</a><a href="#tiling">B · Tiling</a><a href="#soft">C · Soft</a><a href="#material">D · Material</a>
+    </nav>
+  </header>
+
+  <section class="style s-soft s-mix" id="chosen" data-default="light">
+    <div class="style-head">
+      <div class="t"><div class="eyebrow">Your pick<span class="chosen-badge">Chosen</span></div><h2>Soft, with Material tag chips</h2>
+        <p>Style C's rounded task cards, bold headings and teal accent, with Style D's outlined tag chips (a coloured dot inside a thin tag-coloured border) in place of the filled pastel pills.</p></div>
+      <div class="modes" role="group" aria-label="Chosen theme"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
+    </div>
+    <div class="mount"></div>
+    <div class="notes">
+      <div><b>What changes compared with C</b><ul><li>Tags are outlined chips, so the cards stay calmer</li><li>Tag colour still shows in the dot, the border and the calendar blocks</li></ul></div>
+      <div><b>Still open</b><ul><li>Accent colour (teal for now)</li><li>Density: card spacing could be tightened on the desktop</li></ul></div>
+    </div>
+  </section>
+
+  <section class="style s-quiet" id="quiet" data-default="light">
+    <div class="style-head">
+      <div class="t"><div class="eyebrow">Style A</div><h2>Quiet</h2>
+        <p>Calm and neutral, close to TickTick and Things. Lots of whitespace, round checkboxes coloured by priority, and tags as small coloured dots.</p></div>
+      <div class="modes" role="group" aria-label="Quiet theme"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
+    </div>
+    <div class="mount"></div>
+    <div class="notes">
+      <div><b>Good for</b><ul><li>Long sessions without visual noise</li><li>Feels familiar coming from TickTick</li><li>Works on Mac and Android</li></ul></div>
+      <div><b>Trade-offs</b><ul><li>The least distinctive of the four</li><li>Tags are subtle, so they're less "first-class" at a glance</li></ul></div>
+    </div>
+  </section>
+
+  <section class="style s-tiling" id="tiling" data-default="dark">
+    <div class="style-head">
+      <div class="t"><div class="eyebrow">Style B</div><h2>Tiling</h2>
+        <p>Keyboard-first and dense, at home next to Hyprland, waybar and a terminal. Monospace type, square corners, <code>#tags</code> as coloured text and a Catppuccin-like palette.</p></div>
+      <div class="modes" role="group" aria-label="Tiling theme"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
+    </div>
+    <div class="mount"></div>
+    <div class="notes">
+      <div><b>Good for</b><ul><li>Most tasks per screen</li><li>Matches a riced Linux desktop</li><li>Tags read like the CLI (<code>tt ls -t health</code>)</li></ul></div>
+      <div><b>Trade-offs</b><ul><li>Monospace on a phone feels busy</li><li>Out of place among macOS apps</li></ul></div>
+    </div>
+  </section>
+
+  <section class="style s-soft" id="soft" data-default="light">
+    <div class="style-head">
+      <div class="t"><div class="eyebrow">Style C</div><h2>Soft</h2>
+        <p>Friendly and tactile. Each task is its own rounded card, and tags are filled pastel pills that stand out. Bold headings and a teal accent.</p></div>
+      <div class="modes" role="group" aria-label="Soft theme"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
+    </div>
+    <div class="mount"></div>
+    <div class="notes">
+      <div><b>Good for</b><ul><li>Tags are the most visible of all four</li><li>Easy to tap on the phone and widget</li><li>Pleasant on touch screens</li></ul></div>
+      <div><b>Trade-offs</b><ul><li>Fewer tasks fit on screen</li><li>Cards add visual weight with 400+ tasks</li></ul></div>
+    </div>
+  </section>
+
+  <section class="style s-material" id="material" data-default="light">
+    <div class="style-head">
+      <div class="t"><div class="eyebrow">Style D</div><h2>Material</h2>
+        <p>Android-native Material 3 (Material You): tonal surfaces, pill-shaped navigation, outlined tag chips and big rounded widgets. On Android it could follow the wallpaper's colours.</p></div>
+      <div class="modes" role="group" aria-label="Material theme"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
+    </div>
+    <div class="mount"></div>
+    <div class="notes">
+      <div><b>Good for</b><ul><li>Phone and widget feel native to Android</li><li>Flutter has Material 3 built in, so it's the least design work</li><li>Dynamic wallpaper colours on Android 12+</li></ul></div>
+      <div><b>Trade-offs</b><ul><li>Looks "Android" on the Mac and Linux desktop</li><li>Generic unless customised</li></ul></div>
+    </div>
+  </section>
+
+  <section class="decide">
+    <h2>How to choose</h2>
+    <p>Pick one, or mix them, for example "Quiet layout with Soft tag pills" or "Tiling on desktop, Material on Android". Colours, density and the tag treatment are each easy to swap. The layout (three panes, a widget with a header and a + button, a week grid) stays the same whichever style you pick.</p>
+  </section>
+</div>
+
+<script>
+(function(){
+  const T = { // tags: name -> colour
+    health:'#2fbf71', music:'#6e75f4', homelab:'#e0a800', 'via-verde':'#a259ff', theater:'#8c5efa', weekend:'#ad94c7', recipes:'#2aa7b5', work:'#e05d44'
+  };
+  const tag = n => `<span class="tag" style="--tc:${T[n]}">${n}</span>`;
+  const cb = (p,done) => `<span class="cb ${p?'p'+p:''} ${done?'done':''}" aria-hidden="true"></span>`;
+
+  const groups = [
+    {g:'High', items:[
+      {t:'Book dentist appointment', p:3, w:'Today 10:00', c:'today', tags:['health'], sel:true},
+      {t:'Draft Q1 roadmap', p:3, w:'Today 14:00', c:'today', tags:[], list:'Work'},
+      {t:'Renew passport', p:3, w:'Yesterday', c:'late', tags:[]},
+    ]},
+    {g:'Medium', items:[
+      {t:'Buy vitamin D', p:2, w:'Tomorrow', tags:['health']},
+      {t:'Rehearse the set list', p:2, w:'Fri', tags:['music']},
+      {t:'Tickets for Via Verde premiere', p:2, w:'5 Dec', tags:['via-verde']},
+    ]},
+    {g:'Low', items:[
+      {t:'Fix homelab backup job', p:1, w:'', tags:['homelab']},
+      {t:'Try the ramen recipe', p:1, w:'Sat', tags:['recipes','weekend']},
+      {t:'Water the plants', p:0, w:'Today', c:'today', tags:[], done:true},
+    ]},
+  ];
+
+  const nav = (ic, label, n, on, cls) => `<div class="nav ${on?'on':''} ${cls||''}"><span class="ic">${ic}</span>${label}${n!=null?`<span class="n">${n}</span>`:''}</div>`;
+  const navTag = (n, count, child) => `<div class="nav ${child?'child':''}"><span class="dot" style="--tc:${T[n]}"></span>${n}<span class="n">${count}</span></div>`;
+
+  function desk(){
+    const side = `<aside class="side">
+      ${nav('▢','Inbox',4,false)}
+      <div class="sec">Lists</div>${nav('◆','Work',12)}${nav('◇','Personal',8)}
+      <div class="sec">Filters</div>${nav('☀','Today + Inbox',7,true)}${nav('◌','Unscheduled',31)}${nav('▤','Widget',9)}
+      <div class="sec">Tags</div>${navTag('health',14)}${navTag('music',9)}${navTag('homelab',6)}${navTag('theater',3)}${navTag('via-verde',1,true)}${navTag('weekend',5)}
+      <div class="sec">&nbsp;</div>${nav('✓','Completed')}${nav('⌫','Trash')}
+    </aside>`;
+    const rows = groups.map(gr => `<div class="grp">${gr.g}</div>` + gr.items.map(i =>
+      `<div class="row ${i.sel?'sel':''} ${i.done?'done':''}">${cb(i.p,i.done)}<span class="title">${i.t}</span><span class="meta">${i.tags.map(tag).join('')}${i.list?`<span class="when">${i.list}</span>`:''}${i.w?`<span class="when ${i.c||''}">${i.w}</span>`:''}</span></div>`).join('')).join('');
+    const list = `<main class="list"><div class="list-h"><h3>Today + Inbox</h3><span class="cnt">7 tasks</span></div><div class="add">+ Add task to Inbox</div>${rows}</main>`;
+    const detail = `<aside class="detail">
+      <div style="display:flex;gap:10px;align-items:center">${cb(3)}<h4>Book dentist appointment</h4></div>
+      <div class="props">
+        <span class="k">Date</span><span>Today, 10:00 – 10:30</span>
+        <span class="k">Repeat</span><span>Every 6 months, after completion</span>
+        <span class="k">Remind</span><span>15 min before · 1 day before</span>
+        <span class="k">List</span><span>None</span>
+        <span class="k">Tags</span><span class="tags">${tag('health')}</span>
+      </div>
+      <div class="chk"><div>${cb(0,true)}<span style="text-decoration:line-through;opacity:.6">Find insurance card</span></div><div>${cb(0)}<span>Ask about the cleaning price</span></div><div>${cb(0)}<span>Add to calendar</span></div></div>
+      <div class="notes-box">Clinic opens at 9. Call in the morning; online booking doesn't show evening slots.</div>
+    </aside>`;
+    return `<div class="desk">${side}${list}${detail}</div>`;
+  }
+
+  function phone(){
+    const items = [
+      {t:'Book dentist appointment',p:3,w:'10:00',c:'today',tags:['health']},
+      {t:'Draft Q1 roadmap',p:3,w:'14:00',c:'today',tags:[]},
+      {t:'Renew passport',p:3,w:'Yesterday',c:'late',tags:[]},
+      {t:'Research note apps',p:0,w:'',tags:[]},
+      {t:'Gift idea for Mia',p:0,w:'',tags:[]},
+      {t:'Rehearse the set list',p:2,w:'Fri',tags:['music']},
+    ];
+    const rows = items.map(i=>`<div class="w-row">${cb(i.p)}<span class="title">${i.t}</span>${i.tags.map(n=>`<span class="dot" style="--tc:${T[n]}"></span>`).join('')}${i.w?`<span class="when ${i.c||''}">${i.w}</span>`:''}</div>`).join('');
+    return `<div><div class="phone"><div class="screen">
+      <div class="clock">9:41</div><div class="date">Tuesday, 24 November</div>
+      <div class="widget"><div class="w-h"><b>Today + Inbox</b><span class="n">7</span><span class="w-plus" aria-label="Quick add">+</span></div>${rows}</div>
+      <div class="icons"><i></i><i></i><i></i><i></i></div>
+    </div></div><p class="caption" style="text-align:center">Android widget · tap a checkbox to complete · + adds to Inbox</p></div>`;
+  }
+
+  function cal(){
+    const start=8, end=18, H=300, y = h => ((h-start)/(end-start))*H;
+    const days=['Mon 23','Tue 24','Wed 25','Thu 26','Fri 27'];
+    const ev = [ // [day, from, to, title, kind, tag]
+      [0,8,8.75,'Morning routine','ev'],[1,8,8.75,'Morning routine','ev'],[2,8,8.75,'Morning routine','ev'],[3,8,8.75,'Morning routine','ev'],[4,8,8.75,'Morning routine','ev'],
+      [0,9.5,10.5,'Team stand-up','ev'],[2,9.5,10.5,'Team stand-up','ev'],[4,9.5,10.5,'Team stand-up','ev'],
+      [1,10,10.5,'Book dentist','task','health'],[1,14,15.5,'Draft Q1 roadmap','task','work'],
+      [0,12,12.75,'Lunch walk','ev'],[1,12,12.75,'Lunch walk','ev'],[2,12,12.75,'Lunch walk','ev'],[3,12,12.75,'Lunch walk','ev'],
+      [2,16,17,'Rehearse set list','task','music'],[3,13.5,15,'Fix backup job','task','homelab'],[4,17,18,'Gym','ev'],[0,16.5,17.5,'Gym','ev']
+    ];
+    const fmt = h => `${Math.floor(h)}:${h%1? String(Math.round(h%1*60)).padStart(2,'0'):'00'}`;
+    let html = `<div class="cal"><div class="hd"></div>${days.map((d,i)=>`<div class="hd ${i===1?'today':''}">${d}</div>`).join('')}`;
+    html += `<div class="allday"></div>${days.map((d,i)=>`<div class="allday">${i===3?`<div class="blk task allday" style="--tc:${T['via-verde']}">Via Verde tickets</div>`:''}</div>`).join('')}`;
+    let axis = `<div class="hrs axis">`; for(let h=start+1;h<end;h++) axis+=`<span class="lbl" style="top:${y(h)}px">${h}:00</span>`; axis+=`</div>`;
+    html += axis;
+    days.forEach((d,i)=>{
+      let col = `<div class="hrs">`; for(let h=start+1;h<end;h++) col+=`<div class="hl" style="top:${y(h)}px"></div>`;
+      ev.filter(e=>e[0]===i).forEach(e=>{ col+=`<div class="blk ${e[4]}" style="top:${y(e[1])+1}px;height:${y(e[2])-y(e[1])-2}px;${e[5]?`--tc:${T[e[5]]}`:''}">${e[3]}<small>${fmt(e[1])}–${fmt(e[2])}</small></div>`; });
+      if(i===1) col+=`<div class="now" style="top:${y(11.2)}px"></div>`;
+      col+=`</div>`; html+=col;
+    });
+    return html+`</div>`;
+  }
+
+  document.querySelectorAll('.style').forEach(sec=>{
+    const mount = sec.querySelector('.mount');
+    const id = sec.id;
+    mount.innerHTML = `<div class="stage">
+        <div style="min-width:0"><div class="scroller"><div class="mock m-desk">${desk()}</div></div><p class="caption">Desktop (Mac / Arch) · filter "Today + Inbox" open · task detail on the right</p></div>
+        <div class="mock m-phone" style="background:none">${phone()}</div>
+      </div>
+      <div style="min-width:0"><div class="scroller"><div class="mock m-cal">${cal()}</div></div><p class="caption">Week calendar · grey = Google Calendar events (read-only) · coloured = your timed tasks, coloured by tag</p></div>`;
+    const mocks = sec.querySelectorAll('.mock');
+    const btns = sec.querySelectorAll('.modes button');
+    const set = mode => {
+      mocks.forEach(m=>{ m.classList.toggle('dark',mode==='dark'); m.classList.toggle('light',mode==='light'); });
+      btns.forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.mode===mode)));
+      try{ localStorage.setItem('tt-style-'+id, mode); }catch(e){}
+    };
+    let saved=null; try{ saved = localStorage.getItem('tt-style-'+id); }catch(e){}
+    set(saved || sec.dataset.default);
+    btns.forEach(b=>b.addEventListener('click',()=>set(b.dataset.mode)));
+  });
+})();
+</script>
