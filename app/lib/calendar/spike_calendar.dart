@@ -133,6 +133,11 @@ class _SpikeCalendarPageState extends State<SpikeCalendarPage> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Today',
+            onPressed: () => _calendar.animateToDate(DateTime.now()),
+            icon: const Icon(Icons.today_outlined),
+          ),
+          IconButton(
             tooltip: 'Previous',
             onPressed: _calendar.animateToPreviousPage,
             icon: const Icon(Icons.chevron_left),
@@ -149,7 +154,12 @@ class _SpikeCalendarPageState extends State<SpikeCalendarPage> {
               value: _calendar.viewConfiguration,
               underline: const SizedBox.shrink(),
               items: [for (final v in _views) DropdownMenuItem(value: v, child: Text(v.name))],
-              onChanged: (v) => _calendar.viewConfiguration = v!,
+              onChanged: (v) {
+                _calendar.viewConfiguration = v!;
+                // A new configuration keeps the old first visible day, which can land on
+                // the previous week or month. Go back to today once the new view is built.
+                WidgetsBinding.instance.addPostFrameCallback((_) => _calendar.jumpToDate(DateTime.now()));
+              },
             ),
           ),
           const SizedBox(width: 8),
