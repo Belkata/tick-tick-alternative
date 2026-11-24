@@ -150,6 +150,21 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'quick-add');
   });
 
+  testWidgets('a core error shows a message instead of crashing', (tester) async {
+    // Regression: an error capturing a Rust backtrace crashed the app, because the
+    // unwinder bundled in libflutter_linux_gtk.so clashes with libgcc_s
+    // (the Linux runner now sets RUST_BACKTRACE=0).
+    await pumpApp(tester);
+    await addTask(tester, 'Pick a date');
+    await tester.tap(find.text('Pick a date'));
+    await settle(tester);
+    await tester.enterText(find.byKey(const Key('detail-due')), 'someday-ish');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.text('Pick a date'), findsWidgets);
+  });
+
   testWidgets('narrow windows: drawer sidebar and a pushed detail', (
     tester,
   ) async {

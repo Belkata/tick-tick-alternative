@@ -33,7 +33,10 @@ impl Client {
     /// The daemon at the default socket, but only if it serves `db`. `None` when no daemon
     /// runs (or it serves another file), so the caller opens the database itself.
     pub fn for_db(db: &Path) -> Option<Client> {
-        let client = Client::connect(&paths::socket()).ok()?;
+        let socket = paths::socket();
+        // No daemon is the normal case: check with a plain connect so no error value is built.
+        drop(UnixStream::connect(&socket).ok()?);
+        let client = Client::connect(&socket).ok()?;
         paths::same_file(Path::new(&client.hello.db), db).then_some(client)
     }
 

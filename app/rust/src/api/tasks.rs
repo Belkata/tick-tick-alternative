@@ -360,5 +360,17 @@ pub fn desktop_db_path() -> anyhow::Result<String> {
 
 #[frb(init)]
 pub fn init_app() {
+    // Capturing a Rust backtrace segfaults inside the Flutter process: libflutter_linux_gtk.so
+    // bundles its own libunwind, so `_Unwind_GetIP` resolves there while `_Unwind_Backtrace`
+    // comes from libgcc_s. anyhow captures one for every error when RUST_BACKTRACE is set,
+    // and setup_default_user_utils sets it to 1 if it's unset; so set it to 0 first.
+    // (plan/15, slice 2: the app crashed on start whenever no daemon was running.)
+    for var in ["RUST_BACKTRACE", "RUST_LIB_BACKTRACE"] {
+        if std::env::var_os(var).is_none() {
+            // SAFETY: runs once from RustLib.init, before this library starts threads of its
+            // own; flutter_rust_bridge's setup below sets RUST_BACKTRACE the same way.
+            unsafe { std::env::set_var(var, "0") };
+        }
+    }
     flutter_rust_bridge::setup_default_user_utils();
 }
