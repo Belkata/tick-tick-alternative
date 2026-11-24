@@ -3951,8 +3951,11 @@ name = "tt"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
+ "chrono-tz",
  "clap",
  "dirs",
+ "serde_json",
  "tokio",
  "tt-core",
  "tt-sync",
