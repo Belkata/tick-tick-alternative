@@ -7,23 +7,28 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
 import 'calendar/spike_calendar.dart';
+import 'desk/shell.dart';
+import 'desk/theme.dart';
 import 'src/rust/api/sync.dart';
 import 'src/rust/api/tasks.dart';
 import 'src/rust/frb_generated.dart';
 import 'sync/sync_page.dart';
-import 'widget_bridge.dart';
 
-/// M0 spike: an Inbox screen backed by the Rust core.
-/// The real UI (Soft style with Material tag chips) comes in M2/M4.
+/// Tick Alt: the M2 three-pane shell (Soft style with Material tag chips, plan/09)
+/// over the Rust core. The calendar and sync screens are still M0 spikes.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
   final dir = await getApplicationSupportDirectory();
-  final db = await TaskDb.open(path: '${dir.path}/tt.db');
+  // Desktop shares tt's database; Android keeps it in the app's files dir (the widget reads it there).
+  final dbPath = Platform.isLinux || Platform.isMacOS
+      ? desktopDbPath()
+      : '${dir.path}/tt.db';
+  final db = await TaskDb.open(path: dbPath);
   // Spike 2: bind the iroh node in the background so the first frame isn't held up.
   final peer = SyncPeer.start(
-    dbPath: '${dir.path}/tt.db',
-    keyPath: '${dir.path}/tt.key',
+    dbPath: dbPath,
+    keyPath: dbPath.replaceFirst(RegExp(r'\.db$'), '.key'),
     device: '${Platform.operatingSystem}-${Platform.localHostname}',
   );
   runApp(TickAltApp(db: db, peer: peer));
@@ -39,175 +44,17 @@ class TickAltApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Tick Alt',
-      theme: ThemeData(
-        colorSchemeSeed: const Color(
-          0xFF14B8A6,
-        ), // Soft teal (placeholder accent)
-        useMaterial3: true,
-      ),
-      home: HomeShell(db: db, peer: peer),
-    );
-  }
-}
-
-/// Bottom navigation between the spike screens.
-class HomeShell extends StatefulWidget {
-  const HomeShell({super.key, required this.db, required this.peer});
-
-  final TaskDb db;
-  final Future<SyncPeer> peer;
-
-  @override
-  State<HomeShell> createState() => _HomeShellState();
-}
-
-class _HomeShellState extends State<HomeShell> {
-  int _tab = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _tab,
-        children: [
-          InboxPage(db: widget.db),
-          const SpikeCalendarPage(),
-          SyncPage(peer: widget.peer),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.inbox_outlined),
-            label: 'Inbox',
+      theme: softTheme(Brightness.light),
+      darkTheme: softTheme(Brightness.dark),
+      home: DeskShell(
+        db: db,
+        pages: [
+          ShellPage(
+            'Calendar',
+            Icons.calendar_month_outlined,
+            (_) => const SpikeCalendarPage(),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            label: 'Calendar',
-          ),
-          NavigationDestination(icon: Icon(Icons.sync), label: 'Sync'),
-        ],
-      ),
-    );
-  }
-}
-
-class InboxPage extends StatefulWidget {
-  const InboxPage({super.key, required this.db});
-
-  final TaskDb db;
-
-  @override
-  State<InboxPage> createState() => _InboxPageState();
-}
-
-class _InboxPageState extends State<InboxPage> with WidgetsBindingObserver {
-  final _input = TextEditingController();
-  List<TaskItem> _tasks = [];
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _reload();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _input.dispose();
-    super.dispose();
-  }
-
-  /// The home-screen widget may have completed tasks while the app was in the background.
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _reload();
-  }
-
-  Future<void> _pinWidget() async {
-    final ok = await WidgetBridge.pin();
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'This launcher can’t add widgets from apps. Add it from the home screen.',
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _reload() async {
-    final tasks = await widget.db.inbox();
-    if (mounted) setState(() => _tasks = tasks);
-  }
-
-  Future<void> _add() async {
-    final title = _input.text.trim();
-    if (title.isEmpty) return;
-    await widget.db.add(title: title);
-    _input.clear();
-    await _reload();
-    await WidgetBridge.refresh();
-  }
-
-  Future<void> _complete(TaskItem task) async {
-    await widget.db.complete(id: task.id);
-    await _reload();
-    await WidgetBridge.refresh();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Inbox (${_tasks.length})'),
-        actions: [
-          if (WidgetBridge.supported)
-            IconButton(
-              key: const Key('pin-widget'),
-              tooltip: 'Add widget to home screen',
-              onPressed: _pinWidget,
-              icon: const Icon(Icons.widgets_outlined),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              key: const Key('add-field'),
-              controller: _input,
-              decoration: const InputDecoration(
-                hintText: 'Add a task',
-                border: OutlineInputBorder(),
-              ),
-              // Keep the keyboard up so several tasks can be added in a row.
-              onSubmitted: (_) => _add(),
-              onEditingComplete: () {},
-            ),
-          ),
-          Expanded(
-            child: _tasks.isEmpty
-                ? const Center(child: Text('Inbox is empty'))
-                : ListView.builder(
-                    itemCount: _tasks.length,
-                    itemBuilder: (context, i) {
-                      final t = _tasks[i];
-                      return CheckboxListTile(
-                        key: Key('task-${t.id}'),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        value: false,
-                        title: Text(t.title),
-                        onChanged: (_) => _complete(t),
-                      );
-                    },
-                  ),
-          ),
+          ShellPage('Sync', Icons.sync, (_) => SyncPage(peer: peer)),
         ],
       ),
     );
