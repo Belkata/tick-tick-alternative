@@ -75,6 +75,7 @@ Always start with `source scripts/env.sh`. It sets up rustup, which is keg-only 
 | On-device Flutter test | `cd app && flutter test integration_test/inbox_test.dart -d emulator-5554` |
 | On-device Kotlin tests | `cd app/android && ./gradlew app:connectedDebugAndroidTest -Ptarget-platform=android-arm64` |
 | Release APK (what to try on a device) | `cd app && flutter build apk --release --target-platform android-arm64` |
+| Publish a test APK | bump `version:` in `app/pubspec.yaml`, build the release APK, then `gh release create vX.Y.Z <apk> --prerelease` (see v0.1.0) |
 
 The first Gradle build takes about 6 minutes, because cargokit compiles Rust for each Android ABI. Long builds are best run in the background.
 
@@ -97,6 +98,7 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 - **Core writes go through `Store::write` and its `Writer::set` op path.** Never `UPDATE` tables directly, or sync loses the change. Don't call a public `Store` method from inside `write` (the nested `BEGIN` fails); use the `pub(crate)` helpers that take a `Writer`.
 - New syncable fields need an entry in `oplog::field_spec`; anything not listed is rejected.
 - `cargo fmt --all` reformats the generated `app/rust/src/frb_generated.rs`. Revert it with `git checkout` and don't commit it.
+- **Release APKs are signed with this Mac's debug key** (the template's `signingConfig`). A phone only accepts updates signed with the same key, so build releases on this Mac until a real release key exists (M4: APK release via CI).
 - **Release builds need `INTERNET` in `src/main/AndroidManifest.xml`.** The template only puts it in debug and profile.
 - The Android QA plugin's Python scripts need Python ≥ 3.10; `scripts/env.sh` puts Homebrew's `python3` first.
 - Xcode isn't installed, so macOS Flutter builds fail and `flutter doctor` complains. That's expected.
