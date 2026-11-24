@@ -17,7 +17,7 @@ mod store;
 mod task;
 
 pub use checklist::ChecklistItem;
-pub use dates::{Day, local_tz, parse_when};
+pub use dates::{Day, is_overdue, local_day, local_tz, offset_label, parse_when, when_label};
 pub use filter::{Cond, Filter, FilterRule, SavedFilter};
 pub use organize::{List, Tag};
 pub use recur::{Completion, Repeat};

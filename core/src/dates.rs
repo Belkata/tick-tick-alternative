@@ -179,6 +179,77 @@ pub fn parse_when(input: &str, now_ms: i64, tz: Tz) -> Result<(i64, bool)> {
     }
 }
 
+// ----- Labels shared by the CLI and the app -----
+
+fn local_naive(ms: i64, tz: Tz) -> NaiveDateTime {
+    tz.timestamp_millis_opt(ms)
+        .single()
+        .map(|t| t.naive_local())
+        .unwrap_or_default()
+}
+
+/// The calendar day a stored date falls on: the floating date for all-day,
+/// else the local date in `tz`.
+pub fn local_day(ms: i64, all_day: bool, tz: Tz) -> Day {
+    if all_day {
+        DateTime::from_timestamp_millis(ms)
+            .unwrap_or_default()
+            .date_naive()
+    } else {
+        local_naive(ms, tz).date()
+    }
+}
+
+fn day_label(day: NaiveDate, today: NaiveDate) -> String {
+    match (day - today).num_days() {
+        0 => "today".into(),
+        1 => "tomorrow".into(),
+        -1 => "yesterday".into(),
+        2..=6 => day.format("%a").to_string(),
+        _ if day.year() == today.year() => day.format("%a %-d %b").to_string(),
+        _ => day.format("%-d %b %Y").to_string(),
+    }
+}
+
+/// `today`, `Fri 14:30`, `3 Dec`…: an all-day date or a local date and time.
+pub fn when_label(ms: i64, all_day: bool, now_ms: i64, tz: Tz) -> String {
+    let today = local_naive(now_ms, tz).date();
+    if all_day {
+        day_label(local_day(ms, true, tz), today)
+    } else {
+        let t = local_naive(ms, tz);
+        format!("{} {}", day_label(t.date(), today), t.format("%H:%M"))
+    }
+}
+
+/// Is a due date in the past? All-day dates are late from the next day on.
+pub fn is_overdue(due_ms: i64, all_day: bool, now_ms: i64, tz: Tz) -> bool {
+    if all_day {
+        local_day(due_ms, true, tz) < local_naive(now_ms, tz).date()
+    } else {
+        due_ms < now_ms
+    }
+}
+
+/// `at the time`, `15m before`, `1d2h before`.
+pub fn offset_label(min: i64) -> String {
+    if min == 0 {
+        return "at the time".into();
+    }
+    let (days, hours, mins) = (min / 1440, (min / 60) % 24, min % 60);
+    let mut parts = Vec::new();
+    if days > 0 {
+        parts.push(format!("{days}d"));
+    }
+    if hours > 0 {
+        parts.push(format!("{hours}h"));
+    }
+    if mins > 0 {
+        parts.push(format!("{mins}m"));
+    }
+    format!("{} before", parts.join(""))
+}
+
 /// Today's date in UTC (tests).
 #[cfg(test)]
 pub(crate) fn utc_today() -> NaiveDate {
@@ -239,5 +310,17 @@ mod tests {
             tz,
         );
         assert_eq!(local_datetime(ms, tz).to_string(), "2026-03-29 04:00:00");
+    }
+
+    #[test]
+    fn labels() {
+        let today = NaiveDate::from_ymd_opt(2026, 11, 25).unwrap();
+        assert_eq!(day_label(today, today), "today");
+        assert_eq!(day_label(today + Days::new(2), today), "Fri");
+        assert_eq!(day_label(today + Days::new(20), today), "Tue 15 Dec");
+        assert_eq!(day_label(today + Days::new(60), today), "24 Jan 2027");
+        assert_eq!(offset_label(90), "1h30m before");
+        assert_eq!(offset_label(0), "at the time");
+        assert_eq!(offset_label(1560), "1d2h before");
     }
 }
