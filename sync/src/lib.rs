@@ -1,8 +1,10 @@
-//! Spike 2: iroh transport between Tick Alt devices.
+//! iroh transport between Tick Alt devices.
 //!
-//! Spike-quality only. A node serves its open tasks over one QUIC bidirectional
-//! stream; a peer dials it by ticket and reports which network path it got.
-//! The real protocol (hello + version vectors + op streaming) replaces this in M3.
+//! - [`replicate`] (M3): pairing, trusted peers and op-log sync on ALPN `tickalt/sync/1`.
+//! - The Spike 2 protocol (`tickalt/spike/0`, a pull of open tasks by `tt1…` ticket) is
+//!   still served for the app's spike Sync tab and `tt sync spike-pull`.
+
+pub mod replicate;
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -22,6 +24,8 @@ const TICKET_PREFIX: &str = "tt1";
 const MAX_MSG: usize = 1 << 20;
 /// How long the client waits for hole punching to upgrade a relay path to a direct one.
 const DIRECT_WAIT: Duration = Duration::from_secs(4);
+/// How long `sync_with` waits for a peer to answer before giving up on it.
+const SYNC_CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// What the dialing side sends first.
 #[derive(Debug, Serialize, Deserialize)]
@@ -96,6 +100,7 @@ pub enum Relays {
 pub struct SyncNode {
     router: Router,
     device: String,
+    replicator: replicate::Replicator,
     served_log: Arc<Mutex<Vec<Served>>>,
     served_tx: broadcast::Sender<Served>,
 }
@@ -128,10 +133,18 @@ impl SyncNode {
             log: served_log.clone(),
             tx: served_tx.clone(),
         };
-        let router = Router::builder(endpoint).accept(ALPN, handler).spawn();
+        let replicator = replicate::Replicator::new(
+            replicate::FileReplica::new(handler.db_path.clone()),
+            device.clone(),
+        );
+        let router = Router::builder(endpoint)
+            .accept(ALPN, handler)
+            .accept(replicate::SYNC_ALPN, replicator.clone())
+            .spawn();
         Ok(Self {
             router,
             device,
+            replicator,
             served_log,
             served_tx,
         })
@@ -219,6 +232,76 @@ impl SyncNode {
             rtt,
             paths,
         })
+    }
+
+    // ----- M3 sync -----
+
+    /// A one-time pairing ticket (`tt2…`) for this node, valid for 5 minutes.
+    pub fn pairing_ticket(&self) -> Result<String> {
+        self.pairing_ticket_at(&self.endpoint().addr())
+    }
+
+    /// The same, advertising `addr` (tests use a loopback address).
+    pub fn pairing_ticket_at(&self, addr: &EndpointAddr) -> Result<String> {
+        self.replicator.offer_pairing(addr)
+    }
+
+    /// Pair with the device that made `ticket`, then sync with it.
+    pub async fn join(&self, ticket: &str) -> Result<replicate::SyncReport> {
+        let t = replicate::decode_pair_ticket(ticket)?;
+        let conn = self
+            .endpoint()
+            .connect(t.addr.clone(), replicate::SYNC_ALPN)
+            .await
+            .with_context(|| format!("connecting to {}", t.name))?;
+        self.replicator
+            .client_session(&conn, Some(self.addr_json()?), Some((t.secret, t.addr)))
+            .await
+    }
+
+    /// Sync with one trusted peer (by node id).
+    pub async fn sync_with(&self, peer: &tt_core::Peer) -> Result<replicate::SyncReport> {
+        let addr: EndpointAddr = match &peer.last_addr {
+            Some(json) => serde_json::from_str(json).context("stored peer address")?,
+            None => EndpointAddr::new(peer.node_id.parse().context("peer id")?),
+        };
+        let conn = tokio::time::timeout(
+            SYNC_CONNECT_TIMEOUT,
+            self.endpoint().connect(addr, replicate::SYNC_ALPN),
+        )
+        .await
+        .with_context(|| format!("{} didn't answer", peer.name))?
+        .with_context(|| format!("connecting to {}", peer.name))?;
+        self.replicator
+            .client_session(&conn, Some(self.addr_json()?), None)
+            .await
+    }
+
+    /// Sync with every trusted peer, one after another.
+    pub async fn sync_all(&self) -> Vec<(tt_core::Peer, Result<replicate::SyncReport>)> {
+        let peers = match self.replicator.replica.peers().await {
+            Ok(p) => p,
+            Err(_) => return Vec::new(),
+        };
+        let mut out = Vec::new();
+        for peer in peers {
+            let r = self.sync_with(&peer).await;
+            out.push((peer, r));
+        }
+        out
+    }
+
+    pub async fn peers(&self) -> Result<Vec<tt_core::Peer>> {
+        self.replicator.replica.peers().await
+    }
+
+    /// Pairing, sync and refusal events (the daemon's tray shows them).
+    pub fn subscribe_sync(&self) -> broadcast::Receiver<replicate::SyncEvent> {
+        self.replicator.subscribe()
+    }
+
+    fn addr_json(&self) -> Result<String> {
+        Ok(serde_json::to_string(&self.endpoint().addr())?)
     }
 
     pub async fn shutdown(self) {
@@ -466,5 +549,143 @@ mod tests {
 
         a.shutdown().await;
         b.shutdown().await;
+    }
+
+    // ----- M3 sync -----
+
+    async fn node(dir: &Path, name: &str) -> SyncNode {
+        SyncNode::start(
+            dir.join(format!("{name}.db")),
+            &dir.join(format!("{name}.key")),
+            name.into(),
+            Relays::Off,
+        )
+        .await
+        .unwrap()
+    }
+
+    fn loopback(n: &SyncNode) -> EndpointAddr {
+        let port = n.endpoint().bound_sockets()[0].port();
+        EndpointAddr::new(n.endpoint().id())
+            .with_ip_addr(std::net::SocketAddr::from(([127, 0, 0, 1], port)))
+    }
+
+    fn store(dir: &Path, name: &str) -> Store {
+        Store::open(dir.join(format!("{name}.db"))).unwrap()
+    }
+
+    /// Point a peer's stored address at loopback (what pairing stored may be a LAN one).
+    fn pin_loopback(dir: &Path, owner: &str, peer: &SyncNode) {
+        let s = store(dir, owner);
+        let p = s.peer(&peer.id()).unwrap().unwrap();
+        let addr = serde_json::to_string(&loopback(peer)).unwrap();
+        s.add_peer(&p.node_id, &p.name, Some(&addr), 0).unwrap();
+    }
+
+    #[tokio::test]
+    async fn pair_then_sync_converges() {
+        let dir = temp_dir("pair");
+        store(&dir, "mac").add_task("on the mac").unwrap();
+        let t = store(&dir, "arch").add_task("on arch").unwrap();
+        store(&dir, "arch")
+            .tag_task(&t.id, &store(&dir, "arch").ensure_tag_path("home").unwrap())
+            .unwrap();
+        let (mac, arch) = (node(&dir, "mac").await, node(&dir, "arch").await);
+
+        let ticket = mac.pairing_ticket_at(&loopback(&mac)).unwrap();
+        assert!(ticket.starts_with("tt2"));
+        let report = arch.join(&ticket).await.unwrap();
+        assert_eq!(report.peer_name, "mac");
+        assert!(report.sent > 0 && report.received > 0);
+
+        // Both trust each other now, and hold the same data.
+        assert!(store(&dir, "mac").is_trusted(&arch.id()).unwrap());
+        assert!(store(&dir, "arch").is_trusted(&mac.id()).unwrap());
+        assert_eq!(
+            store(&dir, "mac").state_dump().unwrap(),
+            store(&dir, "arch").state_dump().unwrap()
+        );
+
+        // Later edits on both sides meet on the next sync, either direction.
+        store(&dir, "mac")
+            .set_title(&t.id, "renamed on the mac")
+            .unwrap();
+        store(&dir, "arch").add_task("another on arch").unwrap();
+        pin_loopback(&dir, "mac", &arch);
+        let peer = store(&dir, "mac").peer(&arch.id()).unwrap().unwrap();
+        let again = mac.sync_with(&peer).await.unwrap();
+        assert_eq!((again.sent > 0, again.received > 0), (true, true));
+        let (a, b) = (store(&dir, "mac"), store(&dir, "arch"));
+        assert_eq!(a.state_dump().unwrap(), b.state_dump().unwrap());
+        assert_eq!(
+            b.get_task(&t.id).unwrap().unwrap().title,
+            "renamed on the mac"
+        );
+        assert!(b.peer(&mac.id()).unwrap().unwrap().last_seen.is_some());
+
+        // A sync with nothing new moves nothing.
+        let quiet = mac.sync_with(&peer).await.unwrap();
+        assert_eq!((quiet.sent, quiet.received), (0, 0));
+    }
+
+    #[tokio::test]
+    async fn unpaired_devices_are_refused() {
+        let dir = temp_dir("refuse");
+        let (mac, stranger) = (node(&dir, "mac").await, node(&dir, "stranger").await);
+        store(&dir, "mac").add_task("private").unwrap();
+        let mut events = mac.subscribe_sync();
+        let fake = tt_core::Peer {
+            node_id: mac.id(),
+            name: "mac".into(),
+            added_at: 0,
+            last_seen: None,
+            last_addr: Some(serde_json::to_string(&loopback(&mac)).unwrap()),
+        };
+        let err = stranger.sync_with(&fake).await.unwrap_err();
+        assert!(format!("{err:#}").contains("isn't paired"), "{err:#}");
+        assert!(store(&dir, "stranger").open_tasks().unwrap().is_empty());
+        let ev = tokio::time::timeout(Duration::from_secs(5), events.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(matches!(ev, replicate::SyncEvent::Refused { .. }));
+    }
+
+    #[tokio::test]
+    async fn a_pairing_ticket_works_once() {
+        let dir = temp_dir("once");
+        let (mac, a, b) = (
+            node(&dir, "mac").await,
+            node(&dir, "a").await,
+            node(&dir, "b").await,
+        );
+        let ticket = mac.pairing_ticket_at(&loopback(&mac)).unwrap();
+        a.join(&ticket).await.unwrap();
+        let err = b.join(&ticket).await.unwrap_err();
+        assert!(format!("{err:#}").contains("pairing refused"), "{err:#}");
+        assert!(!store(&dir, "mac").is_trusted(&b.id()).unwrap());
+    }
+
+    #[tokio::test]
+    async fn a_big_sync_streams_in_batches_both_ways() {
+        let dir = temp_dir("big");
+        {
+            let (a, b) = (store(&dir, "a"), store(&dir, "b"));
+            for i in 0..700 {
+                a.add_task(&format!("a{i}")).unwrap();
+                b.add_task(&format!("b{i}")).unwrap();
+            }
+        }
+        let (na, nb) = (node(&dir, "a").await, node(&dir, "b").await);
+        let report = nb
+            .join(&na.pairing_ticket_at(&loopback(&na)).unwrap())
+            .await
+            .unwrap();
+        assert!(report.sent > 1000 && report.received > 1000, "{report:?}");
+        assert_eq!(store(&dir, "a").open_tasks().unwrap().len(), 1400);
+        assert_eq!(
+            store(&dir, "a").state_dump().unwrap(),
+            store(&dir, "b").state_dump().unwrap()
+        );
     }
 }
