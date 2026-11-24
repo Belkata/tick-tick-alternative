@@ -475,7 +475,7 @@ pub(crate) fn hex(bytes: &[u8]) -> String {
 }
 
 pub(crate) fn unhex(s: &str) -> Result<Vec<u8>> {
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         bail!("odd length; was it cut off?");
     }
     (0..s.len())
