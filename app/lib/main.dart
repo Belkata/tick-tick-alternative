@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'calendar/spike_calendar.dart';
 import 'src/rust/api/tasks.dart';
 import 'src/rust/frb_generated.dart';
+import 'widget_bridge.dart';
 
 /// M0 spike: an Inbox screen backed by the Rust core.
 /// The real UI (Soft style with Material tag chips) comes in M2/M4.
@@ -76,20 +77,37 @@ class InboxPage extends StatefulWidget {
   State<InboxPage> createState() => _InboxPageState();
 }
 
-class _InboxPageState extends State<InboxPage> {
+class _InboxPageState extends State<InboxPage> with WidgetsBindingObserver {
   final _input = TextEditingController();
   List<TaskItem> _tasks = [];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _reload();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _input.dispose();
     super.dispose();
+  }
+
+  /// The home-screen widget may have completed tasks while the app was in the background.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _reload();
+  }
+
+  Future<void> _pinWidget() async {
+    final ok = await WidgetBridge.pin();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This launcher can’t add widgets from apps. Add it from the home screen.')),
+      );
+    }
   }
 
   Future<void> _reload() async {
@@ -103,17 +121,30 @@ class _InboxPageState extends State<InboxPage> {
     await widget.db.add(title: title);
     _input.clear();
     await _reload();
+    await WidgetBridge.refresh();
   }
 
   Future<void> _complete(TaskItem task) async {
     await widget.db.complete(id: task.id);
     await _reload();
+    await WidgetBridge.refresh();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Inbox (${_tasks.length})')),
+      appBar: AppBar(
+        title: Text('Inbox (${_tasks.length})'),
+        actions: [
+          if (WidgetBridge.supported)
+            IconButton(
+              key: const Key('pin-widget'),
+              tooltip: 'Add widget to home screen',
+              onPressed: _pinWidget,
+              icon: const Icon(Icons.widgets_outlined),
+            ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
