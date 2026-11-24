@@ -14,6 +14,7 @@ use tt_core::{
     Filter, FilterRule, NewTask, ReminderKind, Repeat, RepeatMode, Schedule, Task, local_tz,
     parse_when,
 };
+use tt_sync::replicate::SyncEvent;
 use tt_sync::{Relays, SyncNode};
 
 #[derive(Parser)]
@@ -262,13 +263,34 @@ enum FilterCmd {
 
 #[derive(Subcommand)]
 enum SyncCommand {
-    /// Print this device's ticket and serve open tasks until Ctrl-C.
+    /// Pair a new device: print a one-time ticket (valid 5 minutes), wait for it to join, sync.
+    Pair {
+        /// Don't use n0's relays (direct addresses only).
+        #[arg(long)]
+        no_relay: bool,
+    },
+    /// Join the device that printed this pairing ticket (`tt2…`), then sync with it.
+    Join {
+        ticket: String,
+        #[arg(long)]
+        no_relay: bool,
+    },
+    /// Sync now with every paired device that's online.
+    Now {
+        #[arg(long)]
+        no_relay: bool,
+    },
+    /// List paired devices.
+    Peers,
+    /// Unpair a device (by name or the start of its node id).
+    Forget { device: String },
+    /// Serve paired devices (and Spike 2 pulls) until Ctrl-C.
     Serve {
         /// Don't use n0's relays (direct addresses only).
         #[arg(long)]
         no_relay: bool,
     },
-    /// Fetch the open tasks of the device whose ticket is given.
+    /// Spike 2: fetch the open tasks of the device whose `tt1…` ticket is given.
     Pull {
         ticket: String,
         /// Don't use n0's relays (direct addresses only).
@@ -912,6 +934,83 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
     let key = db.with_extension("key");
     let device = hostname();
     match cmd {
+        SyncCommand::Pair { no_relay } => {
+            let node = SyncNode::start(db, &key, device, relays(no_relay)).await?;
+            if !no_relay && !node.wait_online(Duration::from_secs(10)).await {
+                eprintln!("warning: no relay after 10 s; the ticket has direct addresses only");
+            }
+            let mut events = node.subscribe_sync();
+            println!(
+                "On the other device run:\n\n  tt sync join {}\n\nWaiting up to 5 minutes. Ctrl-C to cancel.",
+                node.pairing_ticket()?
+            );
+            let deadline = tokio::time::sleep(tt_sync::replicate::PAIR_TTL);
+            tokio::pin!(deadline);
+            loop {
+                tokio::select! {
+                    _ = &mut deadline => { println!("The ticket expired."); break; }
+                    _ = tokio::signal::ctrl_c() => break,
+                    ev = events.recv() => match ev {
+                        Ok(SyncEvent::Paired { name, .. }) => println!("Paired with {name}."),
+                        Ok(SyncEvent::Synced(r)) => { print_report(&r); break; }
+                        Ok(SyncEvent::Refused { reason, .. }) => println!("Refused a device: {reason}"),
+                        Err(_) => {}
+                    },
+                }
+            }
+            node.shutdown().await;
+        }
+        SyncCommand::Join { ticket, no_relay } => {
+            let node = SyncNode::start(db, &key, device, relays(no_relay)).await?;
+            let r = node.join(&ticket).await?;
+            println!("Paired with {}.", r.peer_name);
+            print_report(&r);
+            node.shutdown().await;
+        }
+        SyncCommand::Now { no_relay } => {
+            let node = SyncNode::start(db, &key, device, relays(no_relay)).await?;
+            let results = node.sync_all().await;
+            if results.is_empty() {
+                println!("No paired devices. Pair one with `tt sync pair`.");
+            }
+            for (peer, r) in results {
+                match r {
+                    Ok(r) => print_report(&r),
+                    Err(e) => println!("{}: {e:#}", peer.name),
+                }
+            }
+            node.shutdown().await;
+        }
+        SyncCommand::Peers => {
+            let store = tt_core::Store::open(&db)?;
+            let (now, tz) = (now_ms(), local_tz());
+            let peers = store.peers()?;
+            if peers.is_empty() {
+                println!("No paired devices.");
+            }
+            for p in peers {
+                let seen = p.last_seen.map_or("never synced".into(), |t| {
+                    format!("synced {}", when(t, false, now, tz))
+                });
+                println!("{}  {}  ({seen})", &p.node_id[..10], p.name);
+            }
+        }
+        SyncCommand::Forget { device: who } => {
+            let store = tt_core::Store::open(&db)?;
+            let matches: Vec<_> = store
+                .peers()?
+                .into_iter()
+                .filter(|p| p.name.eq_ignore_ascii_case(&who) || p.node_id.starts_with(&who))
+                .collect();
+            match matches.as_slice() {
+                [] => bail!("no paired device '{who}'"),
+                [p] => {
+                    store.remove_peer(&p.node_id)?;
+                    println!("Forgot {}.", p.name);
+                }
+                _ => bail!("'{who}' matches several devices; use more of the node id"),
+            }
+        }
         SyncCommand::Serve { no_relay } => {
             let node = SyncNode::start(db, &key, device, relays(no_relay)).await?;
             if !no_relay && !node.wait_online(Duration::from_secs(10)).await {
@@ -926,9 +1025,15 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
                 node.ticket()?
             );
             let mut served = node.subscribe_served();
+            let mut synced = node.subscribe_sync();
             loop {
                 tokio::select! {
                     _ = tokio::signal::ctrl_c() => break,
+                    ev = synced.recv() => match ev {
+                        Ok(SyncEvent::Synced(r)) => print_report(&r),
+                        Ok(SyncEvent::Refused { peer_id, reason }) => println!("refused {}: {reason}", &peer_id[..10]),
+                        _ => {}
+                    },
                     s = served.recv() => if let Ok(s) = s {
                         println!(
                             "served {} tasks to {} ({})",
@@ -967,6 +1072,13 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn print_report(r: &tt_sync::replicate::SyncReport) {
+    println!(
+        "Synced with {}: sent {}, received {} ({} applied).",
+        r.peer_name, r.sent, r.received, r.applied
+    );
 }
 
 fn relays(no_relay: bool) -> Relays {
