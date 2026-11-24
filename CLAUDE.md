@@ -27,15 +27,16 @@ M0 (decisions and spikes) is mostly done:
 - ✅ **Spike 1** passes on the Android emulator: Flutter calls the Rust core through `flutter_rust_bridge`. ⏸ The macOS check needs Xcode, which the user declined for now. ⏸ The Hyprland check needs the user's Arch machine.
 - ✅ **Spike 3**: the Glance Inbox widget completes tasks through UniFFI. Refresh works in both directions (app → widget, widget → app). Verified with a release build.
 - ✅ **Spike 5**: the calendar uses `kalender` 0.34. Drag, resize and dropping from the unscheduled strip all work, with 6 widget tests.
-- ⬜ **Spike 2**: iroh phone ↔ Mac sync. Not started. The LAN half can use the emulator ↔ Mac; the across-networks half needs a real phone on mobile data.
+- 🟡 **Spike 2**: iroh 1.5 works emulator ↔ Mac in both directions (`tt sync serve/pull`, the app's Sync tab), going direct after hole punching. ⚠️ On Android the relay connects in only about 1 of 4 launches (not yet diagnosed). ⏸ Real phone on mobile data.
 - ⬜ **Spike 4**: tray icon and notifications. Needs the Arch machine (waybar) and Xcode (macOS).
 
-Next step: ask the user which to do, Spike 2 or starting M1 (core and CLI). Everything in the app is spike-quality; the real UI comes in M2 and M4.
+Next step: diagnose the Android relay (route iroh's tracing to logcat), then the real-phone test; or start M1 (core and CLI). Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
 ## Repo layout
 
 ```
 core/                 tt-core: Rust domain + SQLite (rusqlite bundled). Store, tasks, lists, tags, Inbox view
+sync/                 tt-sync: Spike 2 iroh node (key file, ticket, pull open tasks). M3 replaces the protocol
 cli/                  `tt` CLI (add / ls / done / rm). Short ids = LAST 8 hex chars of the UUIDv7
 app/                  Flutter app (android, linux, macos)
   rust/               tt_bridge crate: Dart API (src/api/, flutter_rust_bridge) + Kotlin API (src/kotlin.rs, UniFFI)
@@ -84,6 +85,8 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
   - Gboard's stylus tutorial and Google sign-in screens pop up over the app. Dismiss them, skipping sign-in.
   - `adb input` can't do long-press drags; use Flutter widget tests instead.
 - Flutter's `integration_test` plugin pins `androidx.test:runner` to 1.3.0. Don't declare a newer one.
+- **Release builds need `INTERNET` in `src/main/AndroidManifest.xml`.** The template only puts it in debug and profile.
+- The Android QA plugin's Python scripts need Python ≥ 3.10; `scripts/env.sh` puts Homebrew's `python3` first.
 - Xcode isn't installed, so macOS Flutter builds fail and `flutter doctor` complains. That's expected.
 
 ## Working rules (from the user)
