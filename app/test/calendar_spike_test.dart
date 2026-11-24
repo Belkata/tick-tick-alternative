@@ -118,6 +118,7 @@ void main() {
       await tester.tap(find.text(name).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull, reason: 'switching to $name');
+      expect(find.text('${DateTime.now().day}'), findsWidgets, reason: '$name view still shows today');
     }
   });
 }
