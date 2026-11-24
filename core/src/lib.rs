@@ -13,6 +13,7 @@ pub mod oplog;
 mod organize;
 mod recur;
 mod reminder;
+mod replica;
 mod store;
 mod task;
 
@@ -22,6 +23,7 @@ pub use filter::{Cond, Filter, FilterRule, SavedFilter};
 pub use organize::{List, Tag};
 pub use recur::{Completion, Repeat};
 pub use reminder::{Reminder, ReminderFire, ReminderKind};
+pub use replica::{Peer, VersionVector};
 pub use store::Store;
 pub use task::{MAX_DEPTH, NewTask, RepeatMode, Schedule, Status, Task};
 
