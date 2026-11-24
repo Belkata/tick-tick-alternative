@@ -208,6 +208,13 @@ enum TagsCmd {
     },
     /// Delete a tag and the tags under it, removing them from tasks.
     Rm { path: String },
+    /// Set a tag's colour (`#rrggbb`) and icon (an emoji); leave both out to clear them.
+    Style {
+        path: String,
+        color: Option<String>,
+        #[arg(long)]
+        icon: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -765,6 +772,9 @@ impl Ctx {
             Some(TagsCmd::Rm { path }) => {
                 s.delete_tag(&find(&path)?)?;
                 println!("Deleted {path}.");
+            }
+            Some(TagsCmd::Style { path, color, icon }) => {
+                s.set_tag_style(&find(&path)?, color.as_deref(), icon.as_deref())?
             }
         }
         Ok(())
