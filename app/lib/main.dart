@@ -1,4 +1,6 @@
-import 'package:material_ui/material_ui.dart';
+// kalender is built on flutter/material; material_ui is a separate copy that it can't see.
+// ignore: deprecated_member_use
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'src/rust/api/tasks.dart';
