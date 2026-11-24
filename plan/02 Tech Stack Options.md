@@ -101,9 +101,19 @@ Before committing, a short **spike (milestone M0 in [[10 Roadmap]])** checks:
 3. A drag-and-resize week grid in Flutter.
 4. The Glance widget calling the Rust core through UniFFI.
 
-> [!warning] Versions to confirm at M0 (per my global rule: check real versions, not assumptions)
-> - iroh 1.0.x (shipped 2026-06-15).
-> - Flutter stable and `flutter_rust_bridge` v2.
-> - Jetpack Glance 1.2.x (reported stable in Aug 2026, but sources conflict).
-> - UniFFI.
-> - Compose Multiplatform 1.12 (only if Option C is chosen).
+> [!check] Versions confirmed at M0 (2026-11-24, from crates.io, pub.dev and Google Maven)
+> | Piece | Version | Notes |
+> |---|---|---|
+> | Rust stable | 1.100.0 | |
+> | iroh | 1.5.0 | 1.x line since 2026-06-15 |
+> | flutter_rust_bridge | 2.13.0 | crate and pub package match |
+> | UniFFI | 0.32.2 | still 0.x: pin exactly |
+> | rusqlite | 0.43.0 | `bundled` feature for FTS5 |
+> | rrule | 0.14.0 | last release 2025-04; check it still builds |
+> | tokio | 1.54.1 | |
+> | Flutter stable | 3.50.1 (Dart 3.14.0) | |
+> | Jetpack Glance | 1.2.0 stable | 1.3.0 is alpha only |
+> | `tray_manager` | 0.9.1 | |
+> | `kalender` | 0.34.0 | candidate for the week grid |
+> | `home_widget` | 0.10.0 | only if the widget reads data via Flutter |
+> | `local_notifier` | 0.1.6 | last release 2024-04: likely replace with own notifications |
