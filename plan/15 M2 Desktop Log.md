@@ -122,3 +122,11 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
 - `tt sync` (the Spike 2 iroh commands) still opens the DB itself. M3 replaces it.
 - Requests are handled one at a time on the DB thread. That's fine for one user; a slow `sidebar` with many tags would hold up the others. Measure with the real TickTick import (M6).
 - Not built for Android since these changes (no SDK on this laptop). Android uses `TaskDb.open`, which takes the in-process path.
+
+**Bug found when the user first launched it: segfault on start with no daemon running.** Fixed the same day.
+- **Cause:** `connect_or_open` hit "connection refused", which became an `anyhow` error. anyhow captures a backtrace whenever `RUST_BACKTRACE` is set, and flutter_rust_bridge's `setup_default_user_utils` sets it to 1. Unwinding inside the Flutter process mixes two unwinders: `_Unwind_GetIP` resolves to the copy of libunwind bundled in `libflutter_linux_gtk.so`, and `_Unwind_Backtrace` to libgcc_s's (`coredumpctl` showed the frames). **Any** error returned to Dart would have crashed the same way, such as a due date that doesn't parse.
+- **Missed by:** the integration tests never hit an error, and the live run had the daemon up.
+- **Fix:**
+  - `init_app` sets `RUST_BACKTRACE=0` and `RUST_LIB_BACKTRACE=0` when they're unset, before flutter_rust_bridge's setup.
+  - `Client::for_db` checks the socket with a plain connect, so the normal no-daemon case builds no error at all.
+  - New integration test: an unparseable due date shows a snackbar and the app keeps running. It failed ("did not complete") before the fix; **6/6** after.
