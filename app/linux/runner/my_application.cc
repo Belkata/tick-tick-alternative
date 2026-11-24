@@ -20,6 +20,15 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
 
+  // Single instance (release builds): launching the app again, or the tray's Open, activates
+  // this process; raise its window instead of opening a second one. GTK passes the
+  // activation token the launcher forwarded, so Wayland lets the window take focus.
+  GList* windows = gtk_application_get_windows(GTK_APPLICATION(application));
+  if (windows != nullptr) {
+    gtk_window_present(GTK_WINDOW(windows->data));
+    return;
+  }
+
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
   gtk_window_set_default_size(window, 1280, 720);
@@ -123,7 +132,15 @@ MyApplication* my_application_new() {
   // the application to be recognized beyond its binary name.
   g_set_prgname(APPLICATION_ID);
 
+#ifdef NDEBUG
+  // Release: one instance per session (see my_application_activate).
+  const GApplicationFlags flags = G_APPLICATION_DEFAULT_FLAGS;
+#else
+  // Debug builds stay non-unique, so `flutter run` and `flutter test -d linux` start their
+  // own process even while a release copy of the app is open.
+  const GApplicationFlags flags = G_APPLICATION_NON_UNIQUE;
+#endif
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID, "flags",
-                                     G_APPLICATION_NON_UNIQUE, nullptr));
+                                     flags, nullptr));
 }
