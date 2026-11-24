@@ -24,7 +24,21 @@ Back to [[00 Overview]] · [[10 Roadmap]]. Results of each M0 spike as it runs.
 > - `material_ui` is a **separate copy** of Material, not a re-export. Packages still built on `flutter/material` (kalender, and most others today) can't see its `Material` ancestors or its `Theme`. Mixing them caused "No Material widget found" errors, and kalender ignored the app's teal theme.
 > - **Rule for now:** import `package:flutter/material.dart` with `// ignore: deprecated_member_use`. Revisit once kalender moves to `material_ui`.
 
-## Spike 1: Rust core + flutter_rust_bridge ✅ Android · ⏸ macOS · ⏸ Hyprland
+## Toolchain on the Arch laptop (2026-11-24)
+
+EndeavourOS, kernel 7.3.5-zen, Hyprland with waybar (tray module on) and dunst.
+
+| Tool | Version | Source |
+|---|---|---|
+| Rust | 1.100.0 | rustup's installer (`sh.rustup.rs`, `--no-modify-path`; `scripts/env.sh` adds `~/.cargo/bin`) |
+| Flutter / Dart | 3.50.1 / 3.14.0 | `git clone --depth 1 -b 3.50.1` of flutter/flutter into `~/flutter` (`env.sh` adds it to `PATH`) |
+| clang, cmake, ninja, pkgconf, gtk3 | clang from pacman; the rest were already installed | `sudo pacman -S --needed clang` |
+| Android SDK / Studio | **not installed** | not needed for Spikes 1 and 4 |
+
+- `flutter doctor` warns "unknown channel", because a tag checkout has no branch. It's harmless; ignore it.
+- `/etc/localtime` is a symlink (Europe/Sofia), so `tt` finds the zone without `$TT_TZ`.
+
+## Spike 1: Rust core + flutter_rust_bridge ✅ Android · ⏸ macOS · ✅ Hyprland
 
 **What was built:**
 - `core/` (`tt-core`): SQLite store (rusqlite, bundled), task model, lists, nested tags, and the derived Inbox view. 7 unit tests.
@@ -46,9 +60,19 @@ Back to [[00 Overview]] · [[10 Roadmap]]. Results of each M0 spike as it runs.
 - `flutter_rust_bridge_codegen integrate` puts the crate at `app/rust`. I kept it there and added it to the root Cargo workspace. [[03 Architecture]] planned `core-ffi/`; that folder now only needs to hold the UniFFI crate for the widget (Spike 3).
 - Debug builds compile the core for armv7, arm64, x86_64 and i686. Release builds should pass `--target-platform android-arm64` unless an old phone needs armv7.
 
+**Hyprland (Arch laptop, 2026-11-24): ✅**
+- `flutter build linux --release` took about 5 minutes the first time, since cargokit compiles the core once for x86_64. The bundle is **52 MB**: `libtt_bridge.so` 29 MB, `libflutter_linux_gtk.so` 17 MB and `libapp.so` 6 MB.
+- `hyprctl clients` shows `xwayland: 0`: GTK runs it as a **native Wayland** client. Impeller uses its OpenGL ES backend.
+- `flutter test integration_test/inbox_test.dart -d linux`: ✅ passed. Add and complete both work through Dart → Rust → SQLite.
+- `flutter analyze` is clean and the 6 calendar widget tests pass.
+- The app keeps its DB and key in `~/.local/share/dev.tickalt.tick_alt/` (path_provider's app support directory).
+- Harmless log noise: `Atk-CRITICAL atk_socket_embed` and a cursor-theme message from GDK.
+- ⚠️ The Wayland app id is `dev.tickalt.tick_alt` (from `APPLICATION_ID`) and the title is `tick_alt`. [[08 Desktop App]] wants the window class `tick-alt` for window rules. Set it in M2.
+
+![[spike1-hyprland.jpg|300]]
+
 **Still to do for Spike 1:**
 - macOS: needs Xcode.
-- Hyprland: needs the Arch machine. Run `flutter build linux` there and check native Wayland (no XWayland).
 
 ## Spike 2: iroh phone ↔ Mac ✅ emulator ↔ Mac · ⚠️ relay flaky on Android · ⏸ phone on mobile data
 

@@ -12,7 +12,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [x] Choose the stack ([[02 Tech Stack Options]]): Option A, Rust core + Flutter + Kotlin Glance widget.
 - [x] Choose the UI style ([[09 UI Style Options]]): Soft with Material tag chips.
 - [x] Confirm current versions: iroh, Flutter, flutter_rust_bridge, UniFFI, Glance. See the table in [[02 Tech Stack Options]].
-- [ ] Spike 1: Rust core library plus `flutter_rust_bridge` running on an Android phone, macOS and Hyprland. ✅ Android (emulator); macOS waits for Xcode; Hyprland waits for the Arch machine. See [[13 M0 Spike Log]].
+- [ ] Spike 1: Rust core library plus `flutter_rust_bridge` running on an Android phone, macOS and Hyprland. ✅ Android (emulator); ✅ Hyprland (native Wayland); macOS waits for Xcode. See [[13 M0 Spike Log]].
 - [ ] Spike 2: iroh connects phone ↔ Mac on LAN and across networks (phone on mobile data). ✅ Emulator ↔ Mac both directions (direct after hole punching); ⚠️ Android relay connects only sometimes; ⏸ real phone on mobile data. See [[13 M0 Spike Log]].
 - [x] Spike 3: Glance widget calls the Rust core through UniFFI and completes a task. ✅ Emulator, release build; see [[13 M0 Spike Log]].
 - [ ] Spike 4: tray icon and notification on Hyprland (waybar) and macOS.
@@ -29,7 +29,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [x] Op-log and HLC from day one, even before sync exists. Convergence is property-tested.
 - [x] The `tt` CLI: add, ls, done, tags, filters (plus edit, show, lists, repeat, remind, check, completed, trash).
 
-**Exit:** I can manage tasks from the terminal on Arch. ✅ on the Mac; ⏸ build and try it on the Arch machine. See [[14 M1 Core Log]].
+**Exit:** I can manage tasks from the terminal on Arch. ✅ on the Mac; ✅ on Arch the 53 tests pass, clippy is clean, and every `tt` command works; ⏸ the user tries it for real. See [[14 M1 Core Log]].
 
 ## M2: Desktop app (Mac and Arch)
 - [ ] Tray daemon with socket API and systemd / LaunchAgent setup.
