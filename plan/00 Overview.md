@@ -37,6 +37,7 @@ A personal, local-first task manager. It replaces the parts of TickTick I actual
 | 10 | [[10 Roadmap]] | Milestones and order of work |
 | 11 | [[11 Open Questions]] | Things still to decide |
 | 12 | [[12 TickTick Import]] | One-time migration of existing data |
+| 13 | [[13 M0 Spike Log]] | Toolchain, spike results and lessons |
 
 ## Guiding principles
 
