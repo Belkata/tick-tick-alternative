@@ -47,7 +47,10 @@ impl SyncPeer {
             device,
             Relays::N0,
         ))?;
-        Ok(Self { rt, node: Some(node) })
+        Ok(Self {
+            rt,
+            node: Some(node),
+        })
     }
 
     /// Wait for a home relay so the ticket works across networks. False on timeout.
