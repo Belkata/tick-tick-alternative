@@ -4155,6 +4155,7 @@ dependencies = [
  "chrono-tz",
  "clap",
  "dirs",
+ "libc",
  "serde_json",
  "tokio",
  "tt-api",

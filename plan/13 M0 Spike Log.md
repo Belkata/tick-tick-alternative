@@ -188,7 +188,7 @@ EndeavourOS, kernel 7.3.5-zen, Hyprland with waybar (tray module on) and dunst.
 
 **Still to do for Spike 4:**
 - macOS menu bar and `UNUserNotificationCenter`: needs Xcode.
-- Small CLI bug found on the way: `tt show <id> | head` panics with "failed printing to stdout: Broken pipe". Reset SIGPIPE or handle `BrokenPipe` in the CLI.
+- ~~Small CLI bug found on the way: `tt show <id> | head` panics with "failed printing to stdout: Broken pipe".~~ Fixed (M2): `tt` restores the default SIGPIPE at startup, so it exits quietly like other tools.
 
 ## Spike 5: Flutter week grid (drag and resize) ✅ with kalender 0.34.0
 

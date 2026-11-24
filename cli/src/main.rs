@@ -278,6 +278,13 @@ enum SyncCommand {
 }
 
 fn main() -> Result<()> {
+    // Rust ignores SIGPIPE, so printing into a closed pipe (`tt ls | head -1`) panics.
+    // A CLI should just stop quietly, like other Unix tools: restore the default.
+    #[cfg(unix)]
+    // SAFETY: first thing in main, before any threads; only resets a signal disposition.
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
     let cli = Cli::parse();
     let db = db_path(cli.db)?;
     if let Command::Sync(cmd) = cli.command {
