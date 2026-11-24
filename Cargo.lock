@@ -3849,7 +3849,9 @@ dependencies = [
  "anyhow",
  "flutter_rust_bridge",
  "thiserror 2.0.21",
+ "tokio",
  "tt-core",
+ "tt-sync",
  "uniffi",
 ]
 

@@ -11,6 +11,8 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 flutter_rust_bridge = "=2.13.0"
 tt-core = { path = "../../core" }
+tt-sync = { path = "../../sync" }
+tokio = { version = "1", features = ["rt-multi-thread"] }
 anyhow = "1.0.105"
 uniffi = "=0.32.2"
 thiserror = "2.0.21"
