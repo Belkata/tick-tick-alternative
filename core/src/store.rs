@@ -92,6 +92,15 @@ impl Store {
         self.device
     }
 
+    /// SQLite's `data_version`: it changes when *another* connection commits to this
+    /// database, never for this one's own writes. The daemon polls it to notice writes
+    /// from processes that opened the file directly (e.g. `tt` with no daemon running).
+    pub fn data_version(&self) -> Result<i64> {
+        Ok(self
+            .conn
+            .query_row("PRAGMA data_version", [], |r| r.get(0))?)
+    }
+
     /// Run `f` in an IMMEDIATE transaction with a clock for issuing ops.
     pub(crate) fn write<T>(&self, f: impl FnOnce(&mut Writer) -> Result<T>) -> Result<T> {
         self.conn.execute_batch("BEGIN IMMEDIATE")?;
@@ -464,5 +473,21 @@ mod tests {
         b.apply_remote(&[ahead]).unwrap();
         b.set_title(&t.id, "later on B").unwrap();
         assert_eq!(b.get_task(&t.id).unwrap().unwrap().title, "later on B");
+    }
+
+    #[test]
+    fn data_version_moves_only_for_other_connections() {
+        let dir = std::env::temp_dir().join(format!("tt-dv-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("tt.db");
+        let a = Store::open(&path).unwrap();
+        let b = Store::open(&path).unwrap();
+        let v0 = a.data_version().unwrap();
+        a.add_task("mine").unwrap();
+        assert_eq!(a.data_version().unwrap(), v0, "own writes don't count");
+        b.add_task("theirs").unwrap();
+        assert_ne!(a.data_version().unwrap(), v0, "another connection's commit does");
+        drop((a, b));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
