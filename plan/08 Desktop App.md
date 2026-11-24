@@ -22,7 +22,7 @@ Back to [[00 Overview]].
 - A full command palette is out of scope for v1.
 - **Hyprland specifics:**
   - Runs natively on Wayland through GTK.
-  - The window class is `tick-alt`, for window rules such as floating the quick-add window.
+  - The window class (Wayland app id) is `dev.tickalt.tick_alt`, for window rules such as floating the quick-add window: `class:^(dev\.tickalt\.tick_alt)$`. GTK needs a reverse-DNS id, it matches the `.desktop` file name, and it names the app's data directory, so it stays rather than becoming `tick-alt` (M2, see [[15 M2 Desktop Log]]). The title is `Tick Alt`.
 
 ## Tray daemon (`tt-daemon`)
 - Owns the DB, iroh endpoint, sync loop, Google polling and reminder scheduling.
