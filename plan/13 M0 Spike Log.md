@@ -53,8 +53,45 @@ Back to [[00 Overview]] · [[10 Roadmap]]. Results of each M0 spike as it runs.
 ## Spike 2: iroh phone ↔ Mac
 Not started. Needs a real phone on mobile data for the "across networks" half. LAN can be tried emulator ↔ Mac first.
 
-## Spike 3: Glance widget → Rust core via UniFFI
-Not started.
+## Spike 3: Glance widget → Rust core via UniFFI ✅ (emulator, release build)
+
+**What was built:**
+- `app/rust/src/kotlin.rs`: a UniFFI API (`WidgetDb`: open, inbox, add, complete) in the **same library** as the Dart API. The APK carries one `libtt_bridge.so`, so the core and SQLite are bundled once. The Kotlin bindings come from `scripts/gen-kotlin-bindings.sh`, using a `uniffi-bindgen` pinned to the library's UniFFI version (0.32.2).
+- `TaskListWidget` (Glance 1.2.0): a 4×2 Inbox widget.
+  - The title and **+** open the app.
+  - Ticking a checkbox runs `CompleteTaskAction`, which completes the task in the Rust core and redraws the widget.
+- The widget and the app each open their own connection to `filesDir/tt.db`, the same file Flutter's `getApplicationSupportDirectory()` uses. SQLite's WAL mode handles both writers.
+- App → widget: a `tick_alt/widget` method channel. Refresh runs after every add or complete, and a **pin** button asks the launcher to place the widget.
+- Widget → app: the Inbox reloads when the app comes back to the foreground.
+
+**Automated checks:** `./gradlew app:connectedDebugAndroidTest` on the emulator ran 2 Kotlin tests, both passing:
+- add, list and complete through UniFFI;
+- two connections to one file see each other's writes.
+
+**Learned the hard way:**
+1. **Applying the Compose compiler is required, and is easy to get silently wrong.** The Flutter template sets `android.builtInKotlin=false`, so `app/build.gradle.kts` must apply `org.jetbrains.kotlin.android` and then `org.jetbrains.kotlin.plugin.compose`, both before the Flutter plugin.
+   - My first edit didn't apply. It still compiled once `buildFeatures.compose` was removed, but failed in confusing ways: a Kotlin "couldn't inline" crash, then `NoSuchMethodError: provideContent(...Function0...)` at runtime.
+   - Check with `./gradlew :app:dependencies --configuration kotlinCompilerPluginClasspathRelease`, which must list `kotlin-compose-compiler-plugin-embeddable`.
+2. **R8 full mode (the AGP 9 default) breaks WorkManager in release builds.** Glance runs on it. Full mode no longer keeps default constructors, so the release build crashed on start (Room's `WorkDatabase_Impl`), then stuck on "loading" (`OverwritingInputMerger`).
+   - The keep rules are in `app/proguard-rules.pro`.
+   - Debug builds aren't shrunk, so **always test the widget with a release build**.
+3. Flutter's `integration_test` plugin pins `androidx.test:runner` to 1.3.0 on the debug classpath, so don't declare a newer runner.
+4. JNA needs keep rules too (`com.sun.jna.**`, `dev.tickalt.core.**`). Glance's `ActionCallback` classes need their no-arg constructor kept as well, or ticking a box silently does nothing (`NoSuchMethodException ... CompleteTaskAction.<init>`).
+5. **Glance calls `provideGlance` once per session.** `update()` only recomposes, so a list loaded before `provideContent` never changes. The widget keeps a `version` in its Glance state; `refreshAll()` bumps it, and `produceState(version)` reloads from the core.
+6. The emulator's Pixel launcher **removes the widget on every `adb install -r`**, so re-pin it after reinstalling. The emulator's Gboard and Google sign-in screens also pop up over the app now and then.
+
+**Home-screen result (release APK, Android 16 emulator):**
+- **Pin:** the in-app button opens the launcher's own "Add to home screen" sheet, and the widget appears.
+- **Widget → core → app:** ticking "Renew passport" on the widget completed it in the Rust core. Both placed widgets went from 3 to 2 at once, and the app showed the same list when brought back.
+- **App → core → widget:** adding "Water the plants" in the app showed up on both widgets within a second.
+
+![[spike3-widget.jpg|260]]
+
+**Still to do (M4):**
+- A config screen per widget, to choose a list or filter.
+- An in-widget quick-add sheet.
+- A midnight and timezone refresh.
+- Showing due dates on rows.
 
 ## Spike 4: Tray and notifications (Hyprland/waybar, macOS)
 Not started. Needs the Arch machine. The macOS half needs Xcode.
