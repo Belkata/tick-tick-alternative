@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Tick Alt
+GenericName=Task Manager
+Comment=Tasks, tags and filters, synced peer to peer
+Exec=tick-alt
+Icon=dev.tickalt.tick_alt
+Terminal=false
+Categories=Office;ProjectManagement;
+Keywords=tasks;todo;ticktick;inbox;reminders;
+StartupNotify=true
+StartupWMClass=dev.tickalt.tick_alt

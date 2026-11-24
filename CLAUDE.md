@@ -102,6 +102,7 @@ daemon/               tt-daemon: owns the desktop DB, serves the socket; tray (k
 sync/                 tt-sync: Spike 2 iroh node (key file, ticket, pull open tasks). M3 replaces the protocol
 cli/                  `tt` CLI (`tt --help`). Short ids = LAST 8 hex chars of the UUIDv7. $TT_DB, $TT_TZ
 app/                  Flutter app (android, linux, macos). lib/desk/ = M2 shell (theme, controller, sidebar, task_list, detail, shell)
+  linux/packaging/    dev.tickalt.tick_alt.desktop + .svg icon (named after the Wayland app id)
   rust/               tt_bridge crate: Dart API (src/api/, flutter_rust_bridge) + Kotlin API (src/kotlin.rs, UniFFI)
   lib/                main.dart (Inbox), calendar/spike_calendar.dart, widget_bridge.dart
   android/app/src/main/kotlin/dev/tickalt/
@@ -109,7 +110,7 @@ app/                  Flutter app (android, linux, macos). lib/desk/ = M2 shell 
     tick_alt/widget/           Glance widget, TtCore (DB path), CompleteTaskAction
   test/                       calendar widget tests;  integration_test/  on-device Inbox test
 tools/uniffi-bindgen/ uniffi-bindgen pinned to the library's UniFFI version
-scripts/              env.sh (toolchain env), gen-kotlin-bindings.sh
+scripts/              env.sh (toolchain env), gen-kotlin-bindings.sh, install-user-service.sh (systemd unit), install-desktop-entry.sh (launcher entry + icon)
 plan/                 Obsidian plan notes + attachments/
 ```
 

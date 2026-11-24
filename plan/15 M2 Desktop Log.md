@@ -161,3 +161,9 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
 - Installed and enabled on the Arch laptop at the user's request (23:03). It serves `~/.local/share/tick-alt/tt.db` on `/run/user/1000/tick-alt.sock`, and its tray is registered with waybar.
 - Not checked whether Hyprland actually *focuses* the raised window with a real tray click (`misc:focus_on_activate` decides). D-Bus `Activate` calls carry no token.
 - LaunchAgent (macOS): not written; it needs the Mac.
+
+## Desktop entry (2026-11-24, before slice 4, at the user's request)
+- `app/linux/packaging/dev.tickalt.tick_alt.desktop` (`Exec=tick-alt`, for packages) and `dev.tickalt.tick_alt.svg`, the same teal check as the tray. The file name matches the Wayland app id, so launchers and Hyprland link the window to the entry. `StartupWMClass` is set too. `desktop-file-validate` passes.
+- `scripts/install-desktop-entry.sh` installs a copy pointing at the release bundle, plus the icon (SVG and a 256 px PNG) under `~/.local/share/`, and refreshes the caches. `--remove` undoes it.
+- Installed on the Arch laptop. rofi (`SUPER+D`, drun) lists "Tick Alt", and `gtk-launch dev.tickalt.tick_alt` opens the app.
+- The PKGBUILD (slice 5) installs these to `/usr/share/applications` and `/usr/share/icons/hicolor`.
