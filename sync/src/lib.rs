@@ -24,6 +24,16 @@ const TICKET_PREFIX: &str = "tt1";
 const MAX_MSG: usize = 1 << 20;
 /// How long the client waits for hole punching to upgrade a relay path to a direct one.
 const DIRECT_WAIT: Duration = Duration::from_secs(4);
+/// The UDP port a node prefers (`$TT_SYNC_PORT` overrides; 0 means random).
+pub const DEFAULT_SYNC_PORT: u16 = 41824;
+
+fn sync_port() -> u16 {
+    std::env::var("TT_SYNC_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(DEFAULT_SYNC_PORT)
+}
+
 /// How long `sync_with` waits for a peer to answer before giving up on it.
 const SYNC_CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 
@@ -115,15 +125,29 @@ impl SyncNode {
         relays: Relays,
     ) -> Result<Self> {
         let key = load_or_create_key(key_path)?;
-        let builder = match relays {
+        let builder = || match relays {
             Relays::N0 => Endpoint::builder(presets::N0),
             Relays::Off => Endpoint::builder(presets::Minimal).relay_mode(RelayMode::Disabled),
         };
-        let endpoint = builder
-            .secret_key(key)
-            .bind()
-            .await
-            .context("binding iroh endpoint")?;
+        // A fixed UDP port lets paired devices on the LAN reach this one again after a
+        // restart even without relays (they dial the address they stored). If it's taken
+        // (another node runs here), fall back to a random port; relays still find us.
+        let port = sync_port();
+        let fixed = match port {
+            0 => None,
+            p => match builder().bind_addr(format!("0.0.0.0:{p}")) {
+                Ok(b) => b.secret_key(key.clone()).bind().await.ok(),
+                Err(_) => None,
+            },
+        };
+        let endpoint = match fixed {
+            Some(e) => e,
+            None => builder()
+                .secret_key(key)
+                .bind()
+                .await
+                .context("binding iroh endpoint")?,
+        };
 
         let served_log = Arc::new(Mutex::new(Vec::new()));
         let (served_tx, _) = broadcast::channel(32);
