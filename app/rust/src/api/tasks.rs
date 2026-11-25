@@ -298,6 +298,33 @@ impl TaskDb {
         self.api.tasks(&view, now_ms(), local_tz())
     }
 
+    /// How a view is sorted (its saved sort or the default); empty for Completed and Trash.
+    pub fn view_sort(&self, view: TaskView) -> anyhow::Result<Vec<String>> {
+        self.api.view_sort(&view)
+    }
+
+    /// Save how a view is sorted. Lists, tags and filters sync it; the Inbox's stays here.
+    pub fn set_view_sort(&self, view: TaskView, sort: Vec<String>) -> anyhow::Result<()> {
+        self.write(Request::SetViewSort { view, sort }).map(drop)
+    }
+
+    /// Manual order: put a task right before `before` in the view, or last with `None`.
+    pub fn place_task(
+        &self,
+        view: TaskView,
+        id: String,
+        before: Option<String>,
+    ) -> anyhow::Result<()> {
+        self.write(Request::PlaceTask {
+            view,
+            id,
+            before,
+            now_ms: now_ms(),
+            tz: tz_name(),
+        })
+        .map(drop)
+    }
+
     pub fn task(&self, id: String) -> anyhow::Result<Option<TaskDetail>> {
         self.api.task_detail(id, now_ms(), local_tz())
     }

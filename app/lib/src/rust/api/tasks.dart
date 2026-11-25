@@ -107,6 +107,13 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Arrange a tag among its siblings: right before `before`, or last with `None`.
   Future<void> placeTag({required String id, String? before});
 
+  /// Manual order: put a task right before `before` in the view, or last with `None`.
+  Future<void> placeTask({
+    required TaskView view,
+    required String id,
+    String? before,
+  });
+
   Future<void> removeReminder({required String id});
 
   Future<void> renameList({required String id, required String name});
@@ -154,6 +161,12 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   Future<void> setTitle({required String id, required String title});
 
+  /// Save how a view is sorted. Lists, tags and filters sync it; the Inbox's stays here.
+  Future<void> setViewSort({
+    required TaskView view,
+    required List<String> sort,
+  });
+
   Future<Sidebar> sidebar();
 
   /// Android: run the sync node in this process (key at `key_path`, shown to peers as
@@ -200,6 +213,9 @@ abstract class TaskDb implements RustOpaqueInterface {
   Future<void> untag({required String id, required String tagId});
 
   Future<void> updateFilter({required String id, required String json});
+
+  /// How a view is sorted (its saved sort or the default); empty for Completed and Trash.
+  Future<List<String>> viewSort({required TaskView view});
 }
 
 class CalendarItem {
