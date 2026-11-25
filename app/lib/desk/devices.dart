@@ -107,7 +107,7 @@ class _DevicesPageState extends State<DevicesPage> {
             children: [
               const Text(
                 'On the other device, open Devices → Join and scan this code or paste '
-                'the ticket, or run "tt sync join <ticket>". It works once, for 5 minutes.',
+                'the ticket, or run "utre sync join <ticket>". It works once, for 5 minutes.',
               ),
               const SizedBox(height: 12),
               Center(
@@ -249,7 +249,7 @@ class _DevicesPageState extends State<DevicesPage> {
                 (Platform.isAndroid
                     ? 'Starting sync…'
                     : 'Sync runs in utre-daemon, which isn\'t running for this database.\n'
-                          'Start it with: systemctl --user start tick-alt'),
+                          'Start it with: systemctl --user start utre'),
             style: manrope(13.5, FontWeight.w500, color: s.mute),
           ),
         ),

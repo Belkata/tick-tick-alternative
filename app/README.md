@@ -1,6 +1,6 @@
-# tick_alt
+# utre
 
-Tick Alt: local-first tasks
+Utre: local-first tasks
 
 ## Getting Started
 

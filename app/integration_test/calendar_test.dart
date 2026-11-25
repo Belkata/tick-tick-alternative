@@ -7,9 +7,9 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:tick_alt/main.dart';
-import 'package:tick_alt/src/rust/api/tasks.dart';
-import 'package:tick_alt/src/rust/frb_generated.dart';
+import 'package:utre/main.dart';
+import 'package:utre/src/rust/api/tasks.dart';
+import 'package:utre/src/rust/frb_generated.dart';
 
 /// The M5 calendar (plan/18) through the real core: blocks, dragging in from the
 /// Unscheduled panel, dropping back, selection and the view switch.
@@ -41,13 +41,13 @@ void main() {
     final support = await getApplicationSupportDirectory();
     final prefs = File('${support.path}/calendar.json');
     if (prefs.existsSync()) prefs.deleteSync();
-    final dir = await Directory.systemTemp.createTemp('tt-cal');
-    final db = await TaskDb.open(path: '${dir.path}/tt.db');
-    beforeLaunch?.call('${dir.path}/tt.db');
+    final dir = await Directory.systemTemp.createTemp('utre-cal');
+    final db = await TaskDb.open(path: '${dir.path}/utre.db');
+    beforeLaunch?.call('${dir.path}/utre.db');
     final report = await db.add(title: 'Write report');
     await db.setStart(id: report.id, text: 'today 10:00');
     await db.add(title: 'Plan trip');
-    await tester.pumpWidget(TickAltApp(db: db));
+    await tester.pumpWidget(UtreApp(db: db));
     await settle(tester);
     if (size.width < 760) {
       await tester.tap(find.byKey(const Key('open-drawer')));

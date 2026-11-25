@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tick_alt/desk/tag_order.dart';
-import 'package:tick_alt/src/rust/api/tasks.dart';
+import 'package:utre/desk/tag_order.dart';
+import 'package:utre/src/rust/api/tasks.dart';
 
 NavItem tag(String id, {String? parent, int depth = 0}) =>
     NavItem(id: id, name: id, count: 0, depth: depth, parentId: parent);

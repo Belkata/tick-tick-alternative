@@ -8,7 +8,7 @@ class MainFlutterWindow: NSWindow {
     // 1280×720 and centred, as on Linux; later launches restore the last size and position.
     self.setContentSize(NSSize(width: 1280, height: 720))
     self.center()
-    self.setFrameAutosaveName("TickAltMainWindow")
+    self.setFrameAutosaveName("UtreMainWindow")
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 

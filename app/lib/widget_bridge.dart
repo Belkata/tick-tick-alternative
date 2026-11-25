@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 /// alarms, and the device facts the core needs.
 /// Does nothing on other platforms or in tests.
 class WidgetBridge {
-  static const _channel = MethodChannel('tick_alt/widget');
+  static const _channel = MethodChannel('utre/widget');
 
   static bool get supported => !_isTest && Platform.isAndroid;
 
