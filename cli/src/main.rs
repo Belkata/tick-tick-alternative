@@ -213,6 +213,12 @@ enum TagsCmd {
         path: String,
         parent: Option<String>,
     },
+    /// Arrange a tag among its siblings: before another one, or last without one.
+    Order {
+        path: String,
+        #[arg(long)]
+        before: Option<String>,
+    },
     /// Delete a tag and the tags under it, removing them from tasks.
     Rm { path: String },
     /// Set a tag's colour (`#rrggbb`) and icon (an emoji); leave both out to clear them.
@@ -864,6 +870,10 @@ impl Ctx {
             Some(TagsCmd::Mv { path, parent }) => {
                 let parent = parent.map(|p| find(&p)).transpose()?;
                 s.move_tag(&find(&path)?, parent.as_deref())?
+            }
+            Some(TagsCmd::Order { path, before }) => {
+                let before = before.map(|b| find(&b)).transpose()?;
+                s.place_tag(&find(&path)?, before.as_deref())?
             }
             Some(TagsCmd::Rm { path }) => {
                 s.delete_tag(&find(&path)?)?;

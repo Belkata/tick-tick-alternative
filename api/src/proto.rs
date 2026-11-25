@@ -231,6 +231,7 @@ api! {
     write EnsureTagPath ensure_tag_path(path: String) -> String => |s| s.ensure_tag_path(&path);
     write RenameTag rename_tag(id: String, name: String) -> () => |s| s.rename_tag(&id, &name);
     write MoveTag move_tag(id: String, parent_id: Option<String>) -> () => |s| s.move_tag(&id, parent_id.as_deref());
+    write PlaceTag place_tag(id: String, before: Option<String>) -> () => |s| s.place_tag(&id, before.as_deref());
     write DeleteTag delete_tag(id: String) -> () => |s| s.delete_tag(&id);
     write SetTagStyle set_tag_style(id: String, color: Option<String>, icon: Option<String>) -> ()
         => |s| s.set_tag_style(&id, color.as_deref(), icon.as_deref());

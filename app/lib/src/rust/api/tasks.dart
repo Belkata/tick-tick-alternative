@@ -24,7 +24,8 @@ void setTimeZone({required String name}) =>
 abstract class TaskDb implements RustOpaqueInterface {
   Future<TaskItem> add({required String title});
 
-  /// Quick add: a plain title, in the current list or tag; everything else lands in Inbox.
+  /// Quick add: a plain title, in the current list or tag. In a filter the task
+  /// gets what the filter asks for, so it stays in view. Everything else lands in Inbox.
   Future<String> addIn({required TaskView view, required String title});
 
   /// A reminder at a date and time typed like `tomorrow 09:00`.
@@ -99,6 +100,9 @@ abstract class TaskDb implements RustOpaqueInterface {
     PlatformInt64? endMs,
     required bool allDay,
   });
+
+  /// Arrange a tag among its siblings: right before `before`, or last with `None`.
+  Future<void> placeTag({required String id, String? before});
 
   Future<void> removeReminder({required String id});
 

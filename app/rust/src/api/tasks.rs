@@ -562,6 +562,11 @@ impl TaskDb {
         self.write(Request::RenameTag { id, name }).map(drop)
     }
 
+    /// Arrange a tag among its siblings: right before `before`, or last with `None`.
+    pub fn place_tag(&self, id: String, before: Option<String>) -> anyhow::Result<()> {
+        self.write(Request::PlaceTag { id, before }).map(drop)
+    }
+
     /// Delete a tag and the tags under it; tasks lose them.
     pub fn delete_tag(&self, id: String) -> anyhow::Result<()> {
         self.write(Request::DeleteTag { id }).map(drop)
