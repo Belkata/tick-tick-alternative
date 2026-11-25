@@ -8,6 +8,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Release signing (never committed): app/android/key.properties, see plan/07.
+val releaseKey = java.util.Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 android {
     namespace = "dev.tickalt.tick_alt"
     compileSdk = flutter.compileSdkVersion
@@ -34,11 +40,23 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (!releaseKey.isEmpty) {
+            create("release") {
+                storeFile = file(releaseKey.getProperty("storeFile"))
+                storePassword = releaseKey.getProperty("storePassword")
+                keyAlias = releaseKey.getProperty("keyAlias")
+                keyPassword = releaseKey.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // The release key when app/android/key.properties names one (plan/07 "Release
+            // signing"; CI writes it from secrets), else the debug key so local builds work.
+            signingConfig = if (releaseKey.isEmpty) signingConfigs.getByName("debug")
+                else signingConfigs.getByName("release")
             // Keep JNA and the UniFFI bindings, which R8 can't see being used through reflection.
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
