@@ -15,6 +15,7 @@ import 'package:kalender/src/models/kalender_events/draggable_event.dart'
 // kalender is built on flutter/material; material_ui is a separate copy that it can't see.
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 
 import '../desk/controller.dart';
 import '../desk/detail.dart';
@@ -154,6 +155,15 @@ class _CalendarPageState extends State<CalendarPage> {
 
   /// The block last tapped, so one occurrence of a repeat is outlined rather than all.
   String? _selectedBlock;
+
+  /// The last loaded blocks (the phone's week strip marks days that have some).
+  List<CalendarItem> _items = const [];
+
+  /// Phone layout: the Unscheduled drawer, how much of it peeks, and the room it has.
+  final _sheet = DraggableScrollableController();
+  static const _peek = 64.0;
+  double? _sheetHeight;
+  bool _narrow = false;
   int _generation = 0;
 
   DeskController get c => widget.c;
@@ -182,6 +192,7 @@ class _CalendarPageState extends State<CalendarPage> {
     c.removeListener(_onShell);
     _calendar.dispose();
     _events.dispose();
+    _sheet.dispose();
     _titleFocus.dispose();
     super.dispose();
   }
@@ -213,7 +224,10 @@ class _CalendarPageState extends State<CalendarPage> {
       final rows = await db.unscheduled(filterId: source);
       if (gen != _generation || !mounted) return;
       _events.replaceEvents([for (final i in items) TaskEvent(i)]);
-      setState(() => _unscheduled = rows);
+      setState(() {
+        _items = items;
+        _unscheduled = rows;
+      });
     } catch (e) {
       if (gen != _generation || !mounted) return;
       _toast('$e');
@@ -291,6 +305,14 @@ class _CalendarPageState extends State<CalendarPage> {
 
   void _tapped(KalenderEvent e) {
     if (e is! TaskEvent) return;
+    // Phone: the first tap selects (resize handles), a second opens the detail.
+    final outlined =
+        c.selectedId == e.item.taskId &&
+        (_selectedBlock == e.id || (_selectedBlock == null && e.item.movable));
+    if (_narrow && outlined) {
+      _openDetail();
+      return;
+    }
     _selectedBlock = e.id;
     if (e.item.movable) {
       _calendar.selectEvent(e);
@@ -298,6 +320,38 @@ class _CalendarPageState extends State<CalendarPage> {
       _calendar.deselectEvent();
     }
     c.select(e.item.taskId);
+  }
+
+  /// Phone: the selected task's detail as a page on top.
+  void _openDetail() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => Scaffold(
+          appBar: AppBar(backgroundColor: context.soft.panel),
+          body: ListenableBuilder(
+            listenable: c,
+            builder: (_, _) => DetailPane(c: c, titleFocus: _titleFocus),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Quick add (plain title, plan/01): the task lands in Inbox, so it shows up in the
+  /// default Unscheduled list, ready to drag onto the day.
+  Future<void> _quickAdd() async {
+    final title = await showDialog<String>(
+      context: context,
+      builder: (_) => const _QuickAddDialog(),
+    );
+    final t = title?.trim() ?? '';
+    if (t.isEmpty) return;
+    await c.run(
+      () => db.addIn(
+        view: const TaskView(kind: ViewKind.inbox),
+        title: t,
+      ),
+    );
   }
 
   void _clearSelection() {
@@ -314,6 +368,8 @@ class _CalendarPageState extends State<CalendarPage> {
     return LayoutBuilder(
       builder: (context, box) {
         final wide = box.maxWidth >= 760;
+        _narrow = !wide;
+        if (!wide) return _phone(s);
         final side = c.selectedId != null && c.detail != null
             ? _detail(s)
             : _panel(s);
@@ -337,6 +393,231 @@ class _CalendarPageState extends State<CalendarPage> {
               ],
             ],
           ),
+        );
+      },
+    );
+  }
+
+  /// Phone (plan/18): a bar with the day, a week strip in Day view, the grid, the
+  /// Unscheduled drawer at the bottom and a + for quick add.
+  Widget _phone(SoftColors s) {
+    final day = _calendar.viewConfiguration.name == 'Day';
+    return ColoredBox(
+      color: s.bg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _phoneBar(s),
+          if (day) _weekStrip(s),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, box) {
+                _sheetHeight = box.maxHeight;
+                return Stack(
+                  children: [
+                    Positioned.fill(bottom: _peek - 8, child: _kalender(s)),
+                    Positioned(
+                      right: 16,
+                      bottom: _peek + 16,
+                      child: FloatingActionButton(
+                        key: const Key('cal-fab'),
+                        heroTag: 'cal-fab',
+                        backgroundColor: s.accent,
+                        foregroundColor: Theme.of(context)
+                            .colorScheme
+                            .onPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        onPressed: _quickAdd,
+                        child: const Icon(Icons.add, size: 26),
+                      ),
+                    ),
+                    _drawer(s, box.maxHeight),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _phoneBar(SoftColors s) {
+    final current = _calendar.viewConfiguration.name;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 12, 6),
+      child: Row(
+        children: [
+          IconButton(
+            key: const Key('open-drawer'),
+            icon: Icon(Icons.menu, color: s.fg),
+            onPressed: () => Scaffold.maybeOf(context)?.openDrawer(),
+          ),
+          Expanded(
+            child: ValueListenableBuilder(
+              valueListenable: _calendar.visibleDateTimeRange,
+              builder: (context, range, _) {
+                if (current == 'Day') {
+                  final d = range.start.toLocal();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _weekdayName(d.weekday),
+                        style: manrope(19, FontWeight.w800, color: s.fg),
+                      ),
+                      Text(
+                        '${d.day} ${_monthName(d.month)}',
+                        style: manrope(12, FontWeight.w600, color: s.mute),
+                      ),
+                    ],
+                  );
+                }
+                final mid = range.start.add(
+                  range.end.difference(range.start) ~/ 2,
+                );
+                return Text(
+                  '${_monthName(mid.month)} ${mid.year}',
+                  overflow: TextOverflow.ellipsis,
+                  style: manrope(19, FontWeight.w800, color: s.fg),
+                );
+              },
+            ),
+          ),
+          _pill(
+            s,
+            'Today',
+            () => _calendar.animateToDate(DateTime.now()),
+            key: const Key('cal-today'),
+          ),
+          const SizedBox(width: 6),
+          PopupMenuButton<String>(
+            key: const Key('view-picker'),
+            color: s.panel,
+            onSelected: _setView,
+            itemBuilder: (context) => [
+              for (final v in _views)
+                PopupMenuItem(
+                  key: Key('view-$v'),
+                  value: v,
+                  child: Text(
+                    v,
+                    style: manrope(
+                      13,
+                      v == current ? FontWeight.w800 : FontWeight.w600,
+                      color: s.fg,
+                    ),
+                  ),
+                ),
+            ],
+            child: _pill(s, '$current ▾', null),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pill(SoftColors s, String label, VoidCallback? onTap, {Key? key}) {
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+      decoration: BoxDecoration(
+        color: s.panel,
+        border: Border.all(color: s.line),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(label, style: manrope(12, FontWeight.w700, color: s.fg)),
+    );
+    if (onTap == null) return pill;
+    return InkWell(
+      key: key,
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: pill,
+    );
+  }
+
+  /// Day view on the phone: the week around the shown day. Tap a day to go there; a dot
+  /// marks days with blocks. Swiping the grid changes the day too.
+  Widget _weekStrip(SoftColors s) {
+    return ValueListenableBuilder(
+      valueListenable: _calendar.visibleDateTimeRange,
+      builder: (context, range, _) {
+        final shown = range.start.toLocal();
+        final shownDay = DateTime(shown.year, shown.month, shown.day);
+        final monday = DateTime(
+          shownDay.year,
+          shownDay.month,
+          shownDay.day - (shownDay.weekday - 1),
+        );
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final busy = <DateTime>{};
+        for (final i in _items) {
+          final t = DateTime.fromMillisecondsSinceEpoch(i.startAt);
+          busy.add(DateTime(t.year, t.month, t.day));
+        }
+        const letters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+        final onAccent = Theme.of(context).colorScheme.onPrimary;
+        Widget cell(int i) {
+          final d = DateTime(monday.year, monday.month, monday.day + i);
+          final on = d == shownDay;
+          final isToday = d == today;
+          return Expanded(
+            child: InkWell(
+              key: Key('strip-${d.day}'),
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _calendar.animateToDate(d),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 1),
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                decoration: on
+                    ? BoxDecoration(
+                        color: s.accent,
+                        borderRadius: BorderRadius.circular(12),
+                      )
+                    : null,
+                child: Column(
+                  children: [
+                    Text(
+                      letters[i],
+                      style: manrope(
+                        11,
+                        FontWeight.w600,
+                        color: on ? onAccent : (isToday ? s.today : s.mute),
+                      ),
+                    ),
+                    Text(
+                      '${d.day}',
+                      style: manrope(
+                        15,
+                        FontWeight.w800,
+                        color: on ? onAccent : (isToday ? s.today : s.fg),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Container(
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: busy.contains(d)
+                            ? (on ? onAccent : s.mute)
+                            : Colors.transparent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+          child: Row(children: [for (var i = 0; i < 7; i++) cell(i)]),
         );
       },
     );
@@ -551,6 +832,9 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Widget _dayHeader(BuildContext context, DateTime date) {
     final s = context.soft;
+    if (_narrow && _calendar.viewConfiguration.name == 'Day') {
+      return const SizedBox.shrink();
+    }
     final now = DateTime.now();
     final today =
         date.year == now.year && date.month == now.month && date.day == now.day;
@@ -767,6 +1051,7 @@ class _CalendarPageState extends State<CalendarPage> {
         );
       },
     );
+    if (_narrow) return tile;
     return Tooltip(
       message: i.allDay ? i.title : '${i.title}\n$time',
       waitDuration: const Duration(milliseconds: 700),
@@ -813,11 +1098,8 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  Widget _panel(SoftColors s) {
-    final filters = c.sidebar?.filters ?? const <NavItem>[];
-    final source = filters.any((f) => f.id == _prefs.unscheduledFilter)
-        ? _prefs.unscheduledFilter
-        : null;
+  /// Accepts a block dragged off the grid and takes it off the calendar.
+  Widget _unscheduleTarget(Widget Function(bool hover) child) {
     return DragTarget<Reschedule>(
       onWillAcceptWithDetails: (d) {
         final e = d.data.event;
@@ -831,100 +1113,107 @@ class _CalendarPageState extends State<CalendarPage> {
         setState(() => _dropHover = false);
         _unschedule(d.data.event as TaskEvent);
       },
-      builder: (context, _, _) => AnimatedContainer(
+      builder: (context, _, _) => child(_dropHover),
+    );
+  }
+
+  Widget _panelTitle(SoftColors s) => Row(
+    children: [
+      Text('Unscheduled', style: manrope(15, FontWeight.w800, color: s.fg)),
+      const SizedBox(width: 8),
+      Text(
+        '${_unscheduled.length}',
+        style: manrope(13, FontWeight.w600, color: s.mute),
+      ),
+    ],
+  );
+
+  /// Which tasks the panel lists: no date, or a saved filter. Remembered per device.
+  Widget _sourcePicker(SoftColors s, {bool compact = false}) {
+    final filters = c.sidebar?.filters ?? const <NavItem>[];
+    final source = filters.any((f) => f.id == _prefs.unscheduledFilter)
+        ? _prefs.unscheduledFilter
+        : null;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 10),
+      decoration: BoxDecoration(
+        color: s.panel,
+        border: Border.all(color: s.line),
+        borderRadius: BorderRadius.circular(compact ? 999 : 10),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          key: const Key('cal-unscheduled-source'),
+          value: source,
+          isExpanded: !compact,
+          isDense: true,
+          padding: EdgeInsets.symmetric(vertical: compact ? 5 : 8),
+          borderRadius: BorderRadius.circular(10),
+          dropdownColor: s.panel,
+          style: manrope(compact ? 12 : 13, FontWeight.w600, color: s.fg),
+          icon: Icon(Icons.expand_more, size: 18, color: s.mute),
+          selectedItemBuilder: (context) => [
+            for (final label in ['No date', ...filters.map((f) => f.name)])
+              Row(
+                mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
+                children: [
+                  if (!compact)
+                    Text(
+                      'From ',
+                      style: manrope(12, FontWeight.w600, color: s.mute),
+                    ),
+                  Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
+                ],
+              ),
+          ],
+          items: [
+            const DropdownMenuItem(value: null, child: Text('No date')),
+            for (final f in filters)
+              DropdownMenuItem(value: f.id, child: Text(f.name)),
+          ],
+          onChanged: (v) {
+            setState(() => _prefs.unscheduledFilter = v);
+            _prefs.save();
+            _reload();
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _empty(SoftColors s) => Padding(
+    padding: const EdgeInsets.all(24),
+    child: Center(
+      child: Text(
+        'Nothing here',
+        style: manrope(12.5, FontWeight.w500, color: s.mute),
+      ),
+    ),
+  );
+
+  /// Desktop: the Unscheduled panel on the right.
+  Widget _panel(SoftColors s) {
+    return _unscheduleTarget(
+      (hover) => AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
-          color: _dropHover ? s.accent.withValues(alpha: 0.08) : s.bg,
-          border: _dropHover ? Border.all(color: s.accent, width: 2) : null,
+          color: hover ? s.accent.withValues(alpha: 0.08) : s.bg,
+          border: hover ? Border.all(color: s.accent, width: 2) : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 16, 14, 10),
-              child: Row(
-                children: [
-                  Text(
-                    'Unscheduled',
-                    style: manrope(15, FontWeight.w800, color: s.fg),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${_unscheduled.length}',
-                    style: manrope(13, FontWeight.w600, color: s.mute),
-                  ),
-                ],
-              ),
+              child: _panelTitle(s),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: s.panel,
-                  border: Border.all(color: s.line),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String?>(
-                    key: const Key('cal-unscheduled-source'),
-                    value: source,
-                    isExpanded: true,
-                    isDense: true,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    borderRadius: BorderRadius.circular(10),
-                    dropdownColor: s.panel,
-                    style: manrope(13, FontWeight.w600, color: s.fg),
-                    icon: Icon(Icons.expand_more, size: 18, color: s.mute),
-                    selectedItemBuilder: (context) => [
-                      for (final label in [
-                        'No date',
-                        ...filters.map((f) => f.name),
-                      ])
-                        Row(
-                          children: [
-                            Text(
-                              'From ',
-                              style: manrope(
-                                12,
-                                FontWeight.w600,
-                                color: s.mute,
-                              ),
-                            ),
-                            Flexible(
-                              child: Text(
-                                label,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                    items: [
-                      const DropdownMenuItem(
-                        value: null,
-                        child: Text('No date'),
-                      ),
-                      for (final f in filters)
-                        DropdownMenuItem(value: f.id, child: Text(f.name)),
-                    ],
-                    onChanged: (v) {
-                      setState(() => _prefs.unscheduledFilter = v);
-                      _prefs.save();
-                      _reload();
-                    },
-                  ),
-                ),
-              ),
+              child: _sourcePicker(s),
             ),
             Expanded(
               child: _unscheduled.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Nothing here',
-                        style: manrope(12.5, FontWeight.w500, color: s.mute),
-                      ),
-                    )
+                  ? _empty(s)
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                       itemCount: _unscheduled.length,
@@ -949,11 +1238,119 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  Widget _card(SoftColors s, TaskRow row, {bool lifted = false}) {
+  /// Phone: the Unscheduled panel as a bottom drawer that peeks [_peek] px. Pull it up
+  /// to see the tasks; long-press one and drag it onto the day (the drawer gets out of
+  /// the way); drop a block on the drawer to unschedule it.
+  Widget _drawer(SoftColors s, double height) {
+    final peek = (_peek / height).clamp(0.05, 0.5);
+    return DraggableScrollableSheet(
+      key: const Key('cal-drawer'),
+      controller: _sheet,
+      initialChildSize: peek,
+      minChildSize: peek,
+      maxChildSize: 0.62,
+      snap: true,
+      builder: (context, scroll) => _unscheduleTarget(
+        (hover) => Container(
+          decoration: BoxDecoration(
+            color: hover ? Color.lerp(s.panel, s.accent, 0.12) : s.panel,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            border: hover ? Border.all(color: s.accent, width: 2) : null,
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x24141E3C),
+                blurRadius: 24,
+                offset: Offset(0, -6),
+              ),
+            ],
+          ),
+          // A mouse drags the sheet too (narrow desktop windows), not only touch.
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context)
+                .copyWith(dragDevices: PointerDeviceKind.values.toSet()),
+            child: CustomScrollView(
+              controller: scroll,
+              slivers: [
+                SliverToBoxAdapter(
+                  child: GestureDetector(
+                    key: const Key('cal-drawer-handle'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _toggleDrawer,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: s.line,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(child: _panelTitle(s)),
+                              _sourcePicker(s, compact: true),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (_unscheduled.isEmpty)
+                  SliverToBoxAdapter(child: _empty(s))
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                    sliver: SliverList.separated(
+                      itemCount: _unscheduled.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 6),
+                      itemBuilder: (context, i) =>
+                          _card(s, _unscheduled[i], flat: true),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Tapping the drawer's header opens it half way, or closes it to the peek.
+  void _toggleDrawer() {
+    if (!_sheet.isAttached) return;
+    final min = (_peek / (_sheetHeight ?? 700)).clamp(0.05, 0.5);
+    _sheet.animateTo(
+      _sheet.size > min + 0.02 ? min : 0.5,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _collapseDrawer() {
+    if (!_sheet.isAttached) return;
+    final min = (_peek / (_sheetHeight ?? 700)).clamp(0.05, 0.5);
+    _sheet.animateTo(
+      min,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Widget _card(
+    SoftColors s,
+    TaskRow row, {
+    bool lifted = false,
+    bool flat = false,
+  }) {
     final card = Container(
       padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
       decoration: BoxDecoration(
-        color: s.panel,
+        color: flat && !lifted ? s.bg : s.panel,
         borderRadius: BorderRadius.circular(12),
         border: lifted ? Border.all(color: s.accent) : null,
         boxShadow: lifted
@@ -964,7 +1361,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   offset: Offset(0, 8),
                 ),
               ]
-            : s.cardShadow
+            : s.cardShadow && !flat
             ? const [
                 BoxShadow(
                   color: Color(0x0F141E3C),
@@ -1034,6 +1431,7 @@ class _CalendarPageState extends State<CalendarPage> {
         ? LongPressDraggable<Reschedule>(
             data: Reschedule(event: TaskEvent.draft(row, DateTime.now())),
             dragAnchorStrategy: pointerDragAnchorStrategy,
+            onDragStarted: _collapseDrawer,
             feedback: feedback,
             childWhenDragging: placeholder,
             child: card,
@@ -1043,14 +1441,64 @@ class _CalendarPageState extends State<CalendarPage> {
             // kalender reads the drop time from the feedback's top-left corner, so pin
             // that corner to the pointer.
             dragAnchorStrategy: pointerDragAnchorStrategy,
+            onDragStarted: _collapseDrawer,
             feedback: feedback,
             childWhenDragging: placeholder,
             child: card,
           );
     return GestureDetector(
       key: Key('unscheduled-${row.id}'),
-      onTap: () => c.select(row.id),
+      onTap: () {
+        c.select(row.id);
+        if (_narrow) _openDetail();
+      },
       child: draggable,
+    );
+  }
+}
+
+/// Quick add's title field. It owns its controller, so the controller outlives the
+/// dialog's closing animation.
+class _QuickAddDialog extends StatefulWidget {
+  const _QuickAddDialog();
+
+  @override
+  State<_QuickAddDialog> createState() => _QuickAddDialogState();
+}
+
+class _QuickAddDialogState extends State<_QuickAddDialog> {
+  final _field = TextEditingController();
+
+  @override
+  void dispose() {
+    _field.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    return AlertDialog(
+      backgroundColor: s.panel,
+      title: Text('New task', style: manrope(16, FontWeight.w800, color: s.fg)),
+      content: TextField(
+        key: const Key('cal-quick-add'),
+        controller: _field,
+        autofocus: true,
+        decoration: const InputDecoration(hintText: 'Title'),
+        onSubmitted: (v) => Navigator.of(context).pop(v),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: const Key('cal-quick-add-ok'),
+          onPressed: () => Navigator.of(context).pop(_field.text),
+          child: const Text('Add'),
+        ),
+      ],
     );
   }
 }
@@ -1122,6 +1570,16 @@ class _Segmented extends StatelessWidget {
 
 String _hm(DateTime t) =>
     '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+String _weekdayName(int d) => const [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+][d - 1];
 
 String _monthName(int m) => const [
   'January',
