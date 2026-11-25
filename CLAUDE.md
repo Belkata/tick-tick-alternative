@@ -1,4 +1,4 @@
-# Tick Alt: project guide and handoff
+# Utre: project guide and handoff
 
 A personal, local-first TickTick replacement. The pieces:
 - An Android app with a home-screen widget.
@@ -24,6 +24,11 @@ A personal, local-first TickTick replacement. The pieces:
 | `plan/15 M2 Desktop Log.md` | **M2 plan, slices and the bridge contract.** The socket API must copy the bridge API |
 
 The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manrope headings) **with Material outlined tag chips**. The mockups are in `plan/ui-styles/styles.html`.
+
+> **Renamed to Utre (2026-11-26).** The handoff below was written as "Tick Alt" and is kept as written:
+> read `tt` as `utre`, `tick-alt` as `utre`, `dev.tickalt.*` as `dev.utre.*`. The old-to-new table is in
+> `plan/00 Overview.md`. The sync ALPN (`tickalt/sync/1`) and the `tt1`/`tt2` ticket prefixes keep their old
+> spelling on purpose (wire protocol).
 
 ## Where things stand (handoff, 2026-11-25 evening: the Arch laptop)
 
@@ -85,25 +90,25 @@ Per-machine state doesn't travel: Claude's memory, the repo-local git identity, 
 ## Repo layout
 
 ```
-core/                 tt-core: domain + SQLite. Every write is an op (oplog.rs, hlc.rs) applied with per-field LWW.
+core/                 utre-core: domain + SQLite. Every write is an op (oplog.rs, hlc.rs) applied with per-field LWW.
                       store (migrations/ v1–v5), task, organize, checklist, reminder, recur, filter, dates,
                       replica (version vectors, peers, trust, compaction). tests/: convergence + network_sim (proptest)
-api/                  tt-api: views (sidebar/rows/detail), request protocol (proto.rs table → Request + handle + Api),
+api/                  utre-api: views (sidebar/rows/detail), request protocol (proto.rs table → Request + handle + Api),
                       socket server (feature server; SyncControl hook) and client (reconnect/fallback)
-sync/                 tt-sync: iroh node. replicate.rs = sync protocol 2 (tt2 pairing, trust, op streaming);
+sync/                 utre-sync: iroh node. replicate.rs = sync protocol 2 (tt2 pairing, trust, op streaming);
                       service.rs = SyncService (rounds, status, auto-sync) shared by daemon and phone
-daemon/               tt-daemon: owns the desktop DB, serves the socket, runs SyncService, reminders. Tray: tray_sni.rs (Linux, ksni),
-                      tray_mac.rs (menu bar, tray-icon), tray_none.rs. tick-alt.service (systemd), dev.tickalt.daemon.plist (LaunchAgent)
-cli/                  `tt` CLI (`tt --help`, `tt sync …`). Short ids = LAST 8 hex chars of the UUIDv7. $TT_DB, $TT_TZ, $TT_SOCKET
+daemon/               utre-daemon: owns the desktop DB, serves the socket, runs SyncService, reminders. Tray: tray_sni.rs (Linux, ksni),
+                      tray_mac.rs (menu bar, tray-icon), tray_none.rs. utre.service (systemd), dev.utre.daemon.plist (LaunchAgent)
+cli/                  `utre` CLI (`utre --help`, `utre sync …`). Short ids = LAST 8 hex chars of the UUIDv7. $UTRE_DB, $UTRE_TZ, $UTRE_SOCKET
 app/                  Flutter app (android, linux, macos)
   lib/main.dart       startup: desktop → TaskDb.connectOrOpen (daemon); Android → TaskDb.open + startPhoneSync
   lib/desk/           the shell: theme, controller, sidebar, task_list, detail, filter_builder(+filter_rule), style_dialog, devices
   lib/widget_bridge.dart   Android channel: widget refresh, reminders, zone, device name, share target
-  rust/               tt_bridge: Dart API (src/api/, frb), Kotlin API (src/kotlin.rs, UniFFI), phone.rs (in-process sync), changes.rs
-  linux/packaging/    dev.tickalt.tick_alt.desktop + .svg icon (named after the Wayland app id)
-  android/app/src/main/kotlin/dev/tickalt/
-    core/tt_bridge.kt          GENERATED UniFFI bindings (scripts/gen-kotlin-bindings.sh)
-    tick_alt/                  MainActivity (channels, share target), widget/ (Glance), reminders/ (alarms, Done/Snooze),
+  rust/               utre_bridge: Dart API (src/api/, frb), Kotlin API (src/kotlin.rs, UniFFI), phone.rs (in-process sync), changes.rs
+  linux/packaging/    dev.utre.utre.desktop + .svg icon (named after the Wayland app id)
+  android/app/src/main/kotlin/dev/utre/
+    core/utre_bridge.kt          GENERATED UniFFI bindings (scripts/gen-kotlin-bindings.sh)
+    utre/                  MainActivity (channels, share target), widget/ (Glance), reminders/ (alarms, Done/Snooze),
                                sync/SyncWorker (WorkManager)
   test/               calendar + filter-rule tests;  integration_test/  shell tests (run with -d linux)
 packaging/arch/       PKGBUILD (+ .SRCINFO)
@@ -115,7 +120,7 @@ dist/                 built APKs and DMGs for the user (git-ignored)
 plan/                 Obsidian plan notes + attachments/
 ```
 
-There is one native library, `libtt_bridge.so`, used by Flutter, the widget and the background job. On Android they all open `Context.filesDir/tt.db` (WAL handles the writers) and share one process-wide sync node. On desktop everything goes through `tt-daemon` when it runs.
+There is one native library, `libutre_bridge.so`, used by Flutter, the widget and the background job. On Android they all open `Context.filesDir/utre.db` (WAL handles the writers) and share one process-wide sync node. On desktop everything goes through `utre-daemon` when it runs.
 
 ## Build and test
 
@@ -131,14 +136,14 @@ Always start with `source scripts/env.sh`. It sets up rustup, which is keg-only 
 | On-device Flutter test | `cd app && flutter test integration_test/inbox_test.dart -d emulator-5554` |
 | On-device Kotlin tests | `cd app/android && ./gradlew app:connectedDebugAndroidTest -Ptarget-platform=android-arm64` |
 | Release APK (what to try on a device) | `cd app && flutter build apk --release --target-platform android-arm64` |
-| macOS app + DMG (daemon bundled) | `scripts/build-macos.sh` (`--no-dmg` for the .app only) → `dist/tick-alt-<version>-macos.dmg` |
-| macOS LaunchAgent | `scripts/install-launch-agent.sh ["/Applications/Tick Alt.app"]` (`--remove` to undo) |
+| macOS app + DMG (daemon bundled) | `scripts/build-macos.sh` (`--no-dmg` for the .app only) → `dist/utre-<version>-macos.dmg` |
+| macOS LaunchAgent | `scripts/install-launch-agent.sh ["/Applications/Utre.app"]` (`--remove` to undo) |
 | Publish a test APK | bump `version:` in `app/pubspec.yaml`, build the release APK, then `gh release create vX.Y.Z <apk> --prerelease` (see v0.1.0) |
-| Update this laptop (daemon, `tt`, app) | `scripts/update-desktop.sh`: rebuilds only what changed (daemon and `tt` with `--profile fast`, the app as a Flutter release build), backs up the DB, restarts the daemon and relaunches the app. `--all` rebuilds everything, `--no-restart` only builds |
+| Update this laptop (daemon, `utre`, app) | `scripts/update-desktop.sh`: rebuilds only what changed (daemon and `utre` with `--profile fast`, the app as a Flutter release build), backs up the DB, restarts the daemon and relaunches the app. `--all` rebuilds everything, `--no-restart` only builds |
 
 The first Gradle build takes about 6 minutes, because cargokit compiles Rust for each Android ABI. Long builds are best run in the background.
 
-**Build speed (Arch laptop).** `[profile.dev]` keeps line tables only, and `[profile.fast]` (release with `opt-level = 2` and incremental) is the daily driver for `tt-daemon` and `tt`; `release` is untouched (Flutter's release builds and the APK use it). mold and sccache are set in `~/.cargo/config.toml`, which is **not** in the repo: CI and the Mac don't have them, and a repo-wide linker setting would break CI's host builds. After a fresh `pacman -S mold sccache`, the first build is cold. Check the cache with `sccache --show-stats`. For quick loops use `cargo test -p <crate>` or `cargo check -p <crate>`, and `flutter run -d linux` against a test daemon for UI work; run the whole workspace only before committing.
+**Build speed (Arch laptop).** `[profile.dev]` keeps line tables only, and `[profile.fast]` (release with `opt-level = 2` and incremental) is the daily driver for `utre-daemon` and `utre`; `release` is untouched (Flutter's release builds and the APK use it). mold and sccache are set in `~/.cargo/config.toml`, which is **not** in the repo: CI and the Mac don't have them, and a repo-wide linker setting would break CI's host builds. After a fresh `pacman -S mold sccache`, the first build is cold. Check the cache with `sccache --show-stats`. For quick loops use `cargo test -p <crate>` or `cargo check -p <crate>`, and `flutter run -d linux` against a test daemon for UI work; run the whole workspace only before committing.
 
 ## Gotchas (each one cost time; details in `plan/13 M0 Spike Log.md`)
 
@@ -163,16 +168,16 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 - **Release builds need `INTERNET` in `src/main/AndroidManifest.xml`.** The template only puts it in debug and profile.
 - The Android QA plugin's Python scripts need Python ≥ 3.10; `scripts/env.sh` puts Homebrew's `python3` first.
 - **macOS daemon:** AppKit owns the main thread (`tray_mac::run_app`), so tokio runs on a second thread and the menu-bar icon is updated through GCD's main queue. Don't put `#[tokio::main]` back on macOS.
-- **macOS notifications need the bundled daemon** (`Tick Alt Daemon.app` from `scripts/build-macos.sh`); bare `target/release/tt-daemon` only logs reminders. Use mac-usernotifications' **async** API: the blocking calls (and notify-rust's wrapper) fail with `MainThreadNotRunning` whenever the run loop is busy.
-- **Unix socket paths max out at 104 bytes on macOS.** Keep test `$TT_SOCKET`s short (the scratchpad path is too long).
+- **macOS notifications need the bundled daemon** (`Utre Daemon.app` from `scripts/build-macos.sh`); bare `target/release/utre-daemon` only logs reminders. Use mac-usernotifications' **async** API: the blocking calls (and notify-rust's wrapper) fail with `MainThreadNotRunning` whenever the run loop is busy.
+- **Unix socket paths max out at 104 bytes on macOS.** Keep test `$UTRE_SOCKET`s short (the scratchpad path is too long).
 - After editing a podspec, run `pod install` in `app/macos`; `flutter build macos` doesn't notice. CocoaPods needs a UTF-8 locale (`scripts/env.sh` sets it).
 - The macOS app has **no App Sandbox**: in it the app couldn't reach the daemon's socket or the shared DB.
-- **New core calls go in the `api!` table in `api/src/proto.rs`.** That makes them reachable over the socket and as an `Api` method. Bridge view types are flutter_rust_bridge mirrors of `tt-api` types: change both together, then regenerate.
+- **New core calls go in the `api!` table in `api/src/proto.rs`.** That makes them reachable over the socket and as an `Api` method. Bridge view types are flutter_rust_bridge mirrors of `utre-api` types: change both together, then regenerate.
 - **Never let a Rust backtrace be captured in the app process.** It segfaults: libflutter_linux_gtk.so bundles libunwind and clashes with libgcc_s. `init_app` sets `RUST_BACKTRACE=0` for that reason, so don't remove it, and don't run the app with `RUST_BACKTRACE=1`.
-- **The release app is single instance** (GApplication). Launching it again only raises the open copy, so a test launch of a release build while the user's copy is open doesn't start anything. Debug builds aren't unique. Test the daemon under systemd with a temporary unit (`systemd-run --user --unit=tick-alt-test -p Restart=on-failure …`) rather than installing one.
-- Hyprland 0.57 takes Lua in `hyprctl dispatch`. Useful for QA: `hl.dsp.send_shortcut({ mods = "", key = "Down", window = "class:dev.tickalt.tick_alt" })` and `hl.dsp.window.close({ window = "class:dev.tickalt.tick_alt" })`.
+- **The release app is single instance** (GApplication). Launching it again only raises the open copy, so a test launch of a release build while the user's copy is open doesn't start anything. Debug builds aren't unique. Test the daemon under systemd with a temporary unit (`systemd-run --user --unit=utre-test -p Restart=on-failure …`) rather than installing one.
+- Hyprland 0.57 takes Lua in `hyprctl dispatch`. Useful for QA: `hl.dsp.send_shortcut({ mods = "", key = "Down", window = "class:dev.utre.utre" })` and `hl.dsp.window.close({ window = "class:dev.utre.utre" })`.
 - **After compaction a version vector means "has every winner up to here", not "holds every op".** Don't build logic on the latter (see plan/16 slice 3).
-- Filter definitions cross the bridge as JSON strings (`app/lib/desk/filter_rule.dart` mirrors `tt_core::FilterRule`'s JSON). Keep the two in step when the core gains a field or operator.
+- Filter definitions cross the bridge as JSON strings (`app/lib/desk/filter_rule.dart` mirrors `utre_core::FilterRule`'s JSON). Keep the two in step when the core gains a field or operator.
 - **Android SDK tooling:** `sdkmanager` is deprecated; use `android --no-metrics --sdk=$HOME/Android/Sdk sdk install <pkg/with/slashes>`. Flutter's accessibility tree on Android is coarse (one merged node), so drive the emulator by coordinates from `adb exec-out screencap` (1080×2400).
 - The integration-test binding doesn't paint into the desktop window, so screenshots of test runs show "Test starting…". Check visuals in the real app.
 - flutter_rust_bridge scans every type under `app/rust/src/api/`, private ones too. Keep helpers outside it (see `src/changes.rs`).
@@ -192,7 +197,7 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 ## Multi-agent workflow (decided 2026-11-26)
 
 Local for the inner loop, GitHub Actions as the merge gate.
-- **One worktree per agent**: `scripts/agent-worktree.sh new <name>` makes `../tick-alt-wt/<name>` on branch `agent/<name>`, with an `agent.env` to source. It gives the agent its own `$TT_DB`, `$TT_SOCKET` and `target/`. **Agents never touch the running daemon, its DB (`~/.local/share/tick-alt`) or the installed app.** `scripts/agent-worktree.sh rm <name>` removes it.
+- **One worktree per agent**: `scripts/agent-worktree.sh new <name>` makes `../utre-wt/<name>` on branch `agent/<name>`, with an `agent.env` to source. It gives the agent its own `$UTRE_DB`, `$UTRE_SOCKET` and `target/`. **Agents never touch the running daemon, its DB (`~/.local/share/utre`) or the installed app.** `scripts/agent-worktree.sh rm <name>` removes it.
 - **Agents open PRs; CI must be green before merge.** `.github/workflows/ci.yml` runs clippy, `cargo test --workspace`, `flutter analyze` and `flutter test`. Only `main` writes the CI caches; PRs restore them. Agents run `cargo test -p <crate>`/`flutter analyze` locally before pushing, not the whole workspace.
 - **Only the integrating session (the one the user talks to) does the release step**: version bump in `app/pubspec.yaml`, tag, APK, rebuilding and restarting the Arch daemon and app. Agents don't, so the "After every feature request" rule above applies to the integrator after merging.
 - **Agents don't edit** `plan/` logs (they put notes in the PR description and the integrator updates the plan), `app/rust/src/frb_generated.rs`, or `version:`. A change to the `api!` table or the bridge types goes to one agent at a time, since it needs regenerated bindings.

@@ -1,5 +1,5 @@
 ---
-tags: [project/tick-alt, plan, data]
+tags: [project/utre, plan, data]
 ---
 
 # 04 Data Model

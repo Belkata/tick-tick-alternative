@@ -1,5 +1,5 @@
 ---
-tags: [project/tick-alt, plan, android]
+tags: [project/utre, plan, android]
 ---
 
 # 07 Android App & Widget
@@ -30,7 +30,7 @@ Back to [[00 Overview]].
   - Trash retention.
   - Theme.
 
-**Quick add:** a floating button opens a one-line title field, and the task saves to Inbox. There's no parsing (see [[01 Requirements & Scope]]). A share-sheet target ("share text to Tick Alt") also creates an Inbox task.
+**Quick add:** a floating button opens a one-line title field, and the task saves to Inbox. There's no parsing (see [[01 Requirements & Scope]]). A share-sheet target ("share text to Utre") also creates an Inbox task.
 
 ## Home-screen widget (Kotlin, Jetpack Glance)
 
@@ -75,15 +75,15 @@ A phone only accepts an update signed with the same key as the installed app, so
 - `app/android/app/build.gradle.kts` signs release builds with the key named in `app/android/key.properties` when that file exists, and with the debug key otherwise. The file and any `*.jks` are git-ignored: **never commit them**, the repo is public.
 - Making the key (the user does this once and keeps the `.jks` and passwords safe, e.g. in a password manager):
   ```bash
-  keytool -genkeypair -v -keystore ~/tick-alt-release.jks -alias tick-alt \
+  keytool -genkeypair -v -keystore ~/utre-release.jks -alias utre \
     -keyalg RSA -keysize 4096 -validity 36500
   ```
 - Local release builds: create `app/android/key.properties`:
   ```properties
-  storeFile=/home/<you>/tick-alt-release.jks
+  storeFile=/home/<you>/utre-release.jks
   storePassword=…
-  keyAlias=tick-alt
+  keyAlias=utre
   keyPassword=…
   ```
-- CI (`.github/workflows/android-release.yml`, on `v*` tags): set the repository secrets `ANDROID_KEYSTORE_BASE64` (`base64 -w0 ~/tick-alt-release.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. Without them the workflow fails instead of publishing an APK signed with a throwaway key.
+- CI (`.github/workflows/android-release.yml`, on `v*` tags): set the repository secrets `ANDROID_KEYSTORE_BASE64` (`base64 -w0 ~/utre-release.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. Without them the workflow fails instead of publishing an APK signed with a throwaway key.
 - Switching an installed phone from a debug-signed APK to the release key needs one uninstall (local data is lost; sync brings it back from a paired device).
