@@ -1,4 +1,4 @@
-package dev.tickalt.tick_alt.sync
+package dev.utre.utre.sync
 
 import android.content.Context
 import android.os.Build
@@ -14,11 +14,11 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import dev.tickalt.core.backgroundSync
-import dev.tickalt.tick_alt.R
-import dev.tickalt.tick_alt.reminders.Reminders
-import dev.tickalt.tick_alt.widget.TaskListWidget
-import dev.tickalt.tick_alt.widget.TtCore
+import dev.utre.core.backgroundSync
+import dev.utre.utre.R
+import dev.utre.utre.reminders.Reminders
+import dev.utre.utre.widget.TaskListWidget
+import dev.utre.utre.widget.UtreCore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
@@ -43,10 +43,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val ctx = applicationContext
         try {
-            val summary = backgroundSync(TtCore.dbPath(ctx), keyPath(ctx), deviceName())
-            android.util.Log.i("TickAlt", "background sync: $summary")
+            val summary = backgroundSync(UtreCore.dbPath(ctx), keyPath(ctx), deviceName())
+            android.util.Log.i("Utre", "background sync: $summary")
         } catch (e: Exception) {
-            android.util.Log.w("TickAlt", "background sync: ${e.message}")
+            android.util.Log.w("Utre", "background sync: ${e.message}")
         }
         TaskListWidget.refreshAll(ctx)
         Reminders.schedule(ctx)
@@ -54,7 +54,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     }
 
     companion object {
-        private const val NAME = "tick-alt-sync"
+        private const val NAME = "utre-sync"
 
         fun enqueue(context: Context) {
             val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
@@ -77,8 +77,8 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 .enqueueUniqueWork("$NAME-soon", ExistingWorkPolicy.REPLACE, request)
         }
 
-        /** The node key lives next to the database, as on desktop (tt.db -> tt.key). */
-        fun keyPath(context: Context): String = TtCore.dbPath(context).removeSuffix(".db") + ".key"
+        /** The node key lives next to the database, as on desktop (utre.db -> utre.key). */
+        fun keyPath(context: Context): String = UtreCore.dbPath(context).removeSuffix(".db") + ".key"
 
         /** What paired devices call this phone. */
         fun deviceName(): String =

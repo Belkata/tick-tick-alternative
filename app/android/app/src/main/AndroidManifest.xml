@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
-        android:label="Tick Alt"
+        android:label="Utre"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -32,7 +32,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             <!-- Share target: text or a link shared from any app becomes an Inbox task. -->
-            <intent-filter android:label="Add to Tick Alt">
+            <intent-filter android:label="Add to Utre">
                 <action android:name="android.intent.action.SEND"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="text/plain"/>
@@ -42,7 +42,7 @@
         <receiver
             android:name=".widget.TaskListWidgetReceiver"
             android:exported="true"
-            android:label="Tick Alt Inbox">
+            android:label="Utre Inbox">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

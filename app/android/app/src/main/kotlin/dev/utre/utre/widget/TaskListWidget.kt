@@ -1,4 +1,4 @@
-package dev.tickalt.tick_alt.widget
+package dev.utre.utre.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
@@ -40,9 +40,9 @@ import androidx.glance.layout.size
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import dev.tickalt.tick_alt.sync.SyncWorker
-import dev.tickalt.core.WidgetTask
-import dev.tickalt.tick_alt.MainActivity
+import dev.utre.utre.sync.SyncWorker
+import dev.utre.core.WidgetTask
+import dev.utre.utre.MainActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -68,12 +68,12 @@ class TaskListWidget : GlanceAppWidget() {
     }
 
     private suspend fun loadInbox(context: Context): Result<List<WidgetTask>> =
-        withContext(Dispatchers.IO) { runCatching { TtCore.db(context).inbox() } }
+        withContext(Dispatchers.IO) { runCatching { UtreCore.db(context).inbox() } }
 
     companion object {
         private val versionKey = longPreferencesKey("version")
 
-        /** Reload and redraw every placed Tick Alt widget, e.g. after tasks changed. */
+        /** Reload and redraw every placed Utre widget, e.g. after tasks changed. */
         suspend fun refreshAll(context: Context) {
             val ids = GlanceAppWidgetManager(context).getGlanceIds(TaskListWidget::class.java)
             for (id in ids) {
@@ -166,7 +166,7 @@ private fun Message(text: String) {
 class CompleteTaskAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val id = parameters[taskId] ?: return
-        withContext(Dispatchers.IO) { TtCore.db(context).complete(id) }
+        withContext(Dispatchers.IO) { UtreCore.db(context).complete(id) }
         // Redraw every placed widget, not just this one, so copies never disagree.
         TaskListWidget.refreshAll(context)
         // Send the change out soon rather than at the next 15-minute sync.

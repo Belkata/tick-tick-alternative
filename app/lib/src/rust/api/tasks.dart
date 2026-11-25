@@ -10,8 +10,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These functions are ignored because they are not marked as `pub`: `local_phone`, `now_ms`, `tz_name`, `watch`, `write`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
-/// The desktop database: the same file `tt` and `utre-daemon` use (`$TT_DB`, else
-/// `~/.local/share/tick-alt/tt.db` on Linux, `~/Library/Application Support/tick-alt/tt.db`
+/// The desktop database: the same file `utre` and `utre-daemon` use (`$UTRE_DB`, else
+/// `~/.local/share/utre/utre.db` on Linux, `~/Library/Application Support/utre/utre.db`
 /// on macOS).
 String desktopDbPath() => RustLib.instance.api.crateApiTasksDesktopDbPath();
 
@@ -46,7 +46,7 @@ abstract class TaskDb implements RustOpaqueInterface {
   });
 
   /// Ticks with a new version number after every change: this handle's writes, and on
-  /// desktop also every change the daemon reports (other windows, `tt`, outside writes).
+  /// desktop also every change the daemon reports (other windows, `utre`, outside writes).
   Stream<int> changes();
 
   Future<void> checklistAdd({required String taskId, required String title});

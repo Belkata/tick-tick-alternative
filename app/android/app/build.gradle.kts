@@ -17,7 +17,7 @@ val releaseKey = Properties().apply {
 }
 
 android {
-    namespace = "dev.tickalt.tick_alt"
+    namespace = "dev.utre.utre"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -28,7 +28,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "dev.tickalt.tick_alt"
+        applicationId = "dev.utre.utre"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

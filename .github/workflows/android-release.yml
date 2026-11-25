@@ -75,6 +75,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${GITHUB_REF_NAME}"
-          cp app/build/app/outputs/flutter-apk/app-release.apk "tick-alt-${tag}.apk"
-          gh release create "$tag" "tick-alt-${tag}.apk" --prerelease --generate-notes \
-            || gh release upload "$tag" "tick-alt-${tag}.apk" --clobber
+          cp app/build/app/outputs/flutter-apk/app-release.apk "utre-${tag}.apk"
+          gh release create "$tag" "utre-${tag}.apk" --prerelease --generate-notes \
+            || gh release upload "$tag" "utre-${tag}.apk" --clobber

@@ -1,7 +1,7 @@
 # JNA looks up its own classes and the UniFFI interfaces by reflection.
 -keep class com.sun.jna.** { *; }
 -keep class * implements com.sun.jna.** { *; }
--keep class dev.tickalt.core.** { *; }
+-keep class dev.utre.core.** { *; }
 -dontwarn java.awt.**
 
 # Glance runs on WorkManager, which creates several classes by reflection. R8 full mode
