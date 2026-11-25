@@ -160,6 +160,7 @@ impl SyncNode {
         let replicator = replicate::Replicator::new(
             replicate::FileReplica::new(handler.db_path.clone()),
             device.clone(),
+            endpoint.id().to_string(),
         );
         let router = Router::builder(endpoint)
             .accept(ALPN, handler)
@@ -711,5 +712,52 @@ mod tests {
             store(&dir, "a").state_dump().unwrap(),
             store(&dir, "b").state_dump().unwrap()
         );
+    }
+
+    #[tokio::test]
+    async fn trust_and_forgetting_spread_through_a_shared_peer() {
+        let dir = temp_dir("trust");
+        let (a, b, c) = (
+            node(&dir, "a").await,
+            node(&dir, "b").await,
+            node(&dir, "c").await,
+        );
+        store(&dir, "c").add_task("from c").unwrap();
+
+        // B and C each pair with A only. C joins second, so A already trusts B and tells C.
+        b.join(&a.pairing_ticket_at(&loopback(&a)).unwrap())
+            .await
+            .unwrap();
+        let report = c
+            .join(&a.pairing_ticket_at(&loopback(&a)).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(report.learned, ["b"]);
+        assert!(store(&dir, "c").is_trusted(&b.id()).unwrap());
+
+        // B syncs with A and learns about C.
+        pin_loopback(&dir, "b", &a);
+        let peer_a = store(&dir, "b").peer(&a.id()).unwrap().unwrap();
+        let r = b.sync_with(&peer_a).await.unwrap();
+        assert_eq!(r.learned, ["c"]);
+
+        // So B and C sync directly, though they never paired with each other.
+        pin_loopback(&dir, "b", &c);
+        let peer_c = store(&dir, "b").peer(&c.id()).unwrap().unwrap();
+        b.sync_with(&peer_c).await.unwrap();
+        assert_eq!(
+            store(&dir, "b").state_dump().unwrap(),
+            store(&dir, "c").state_dump().unwrap()
+        );
+
+        // A forgets C; at B's next sync with A, B forgets C too, and C is refused.
+        assert!(store(&dir, "a").remove_peer(&c.id()).unwrap());
+        let r = b.sync_with(&peer_a).await.unwrap();
+        assert_eq!(r.dropped, ["c"]);
+        assert!(!store(&dir, "b").is_trusted(&c.id()).unwrap());
+        pin_loopback(&dir, "c", &b);
+        let peer_b = store(&dir, "c").peer(&b.id()).unwrap().unwrap();
+        let err = c.sync_with(&peer_b).await.unwrap_err();
+        assert!(format!("{err:#}").contains("isn't paired"), "{err:#}");
     }
 }

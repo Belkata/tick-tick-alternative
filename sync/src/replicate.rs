@@ -24,11 +24,12 @@ use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::sync::broadcast;
 use tt_core::hlc::Hlc;
 use tt_core::oplog::Op;
-use tt_core::{Peer, Store, VersionVector};
+use tt_core::{Peer, Store, TrustList, VersionVector};
 
 /// Application protocol id for real sync. Bump it when the frames change incompatibly.
 pub const SYNC_ALPN: &[u8] = b"tickalt/sync/1";
-const PROTO: u32 = 1;
+/// 2: sessions end with a `Trust` frame (trust sharing, plan/05 pairing step 4).
+const PROTO: u32 = 2;
 const PAIR_PREFIX: &str = "tt2";
 /// Ops per frame.
 const BATCH: usize = 500;
@@ -67,6 +68,10 @@ enum Frame {
     Ack {
         applied: usize,
     },
+    /// Who the sender trusts and who it forgot; merged by the receiver.
+    Trust {
+        list: TrustList,
+    },
 }
 
 /// What one sync with one peer did.
@@ -80,14 +85,29 @@ pub struct SyncReport {
     pub received: usize,
     /// Received ops that changed a field here (the rest were already known or superseded).
     pub applied: usize,
+    /// Devices this one now trusts because the peer did (names).
+    pub learned: Vec<String>,
+    /// Devices dropped because the peer had forgotten them (names).
+    pub dropped: Vec<String>,
 }
 
 /// Something that happened, for the daemon's tray and logs.
 #[derive(Debug, Clone)]
 pub enum SyncEvent {
     Synced(SyncReport),
-    Paired { peer_id: String, name: String },
-    Refused { peer_id: String, reason: String },
+    Paired {
+        peer_id: String,
+        name: String,
+    },
+    Refused {
+        peer_id: String,
+        reason: String,
+    },
+    /// A peer's trust list added or removed devices here (names).
+    TrustChanged {
+        added: Vec<String>,
+        removed: Vec<String>,
+    },
 }
 
 /// The database, opened per call on the blocking pool (SQLite's WAL lets this run beside
@@ -134,6 +154,8 @@ struct Offer {
 pub struct Replicator {
     pub(crate) replica: FileReplica,
     pub(crate) name: String,
+    /// This node's endpoint id (never added or removed through a peer's trust list).
+    self_id: String,
     offer: Arc<Mutex<Option<Offer>>>,
     events: broadcast::Sender<SyncEvent>,
 }
@@ -147,11 +169,12 @@ impl std::fmt::Debug for Replicator {
 }
 
 impl Replicator {
-    pub fn new(replica: FileReplica, name: String) -> Self {
+    pub fn new(replica: FileReplica, name: String, self_id: String) -> Self {
         let (events, _) = broadcast::channel(32);
         Self {
             replica,
             name,
+            self_id,
             offer: Arc::default(),
             events,
         }
@@ -394,6 +417,25 @@ impl Replicator {
             other => bail!("expected ack, got {other:?}"),
         }
 
+        // Trust sharing: each side tells the other who it trusts and who it forgot.
+        let mine = self.replica.with(|s| s.trust_list()).await?;
+        write_frame(send, &Frame::Trust { list: mine }).await?;
+        let theirs = match read_frame(recv).await? {
+            Frame::Trust { list } => list,
+            other => bail!("expected trust, got {other:?}"),
+        };
+        let (me, from) = (self.self_id.clone(), peer_id.to_string());
+        let change = self
+            .replica
+            .with(move |s| s.merge_trust(&theirs, &me, &from))
+            .await?;
+        if !change.added.is_empty() || !change.removed.is_empty() {
+            let _ = self.events.send(SyncEvent::TrustChanged {
+                added: change.added.clone(),
+                removed: change.removed.clone(),
+            });
+        }
+
         let (id, n) = (peer_id.to_string(), peer_name.clone());
         self.replica
             .with(move |s| s.peer_seen(&id, &n, peer_addr.as_deref(), now_ms()))
@@ -404,6 +446,8 @@ impl Replicator {
             sent,
             received,
             applied,
+            learned: change.added,
+            dropped: change.removed,
         };
         let _ = self.events.send(SyncEvent::Synced(report.clone()));
         Ok(report)
