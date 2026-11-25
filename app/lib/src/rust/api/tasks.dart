@@ -7,13 +7,18 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `now_ms`, `tz_name`, `watch`, `write`
+// These functions are ignored because they are not marked as `pub`: `local_phone`, `now_ms`, `tz_name`, `watch`, `write`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
 /// The desktop database: the same file `tt` and `tt-daemon` use (`$TT_DB`, else
 /// `~/.local/share/tick-alt/tt.db` on Linux, `~/Library/Application Support/tick-alt/tt.db`
 /// on macOS).
 String desktopDbPath() => RustLib.instance.api.crateApiTasksDesktopDbPath();
+
+/// Android: tell the core the device's IANA zone (e.g. `Europe/Sofia`). There's no
+/// /etc/localtime there, so "today" would otherwise be UTC. Call once at startup.
+void setTimeZone({required String name}) =>
+    RustLib.instance.api.crateApiTasksSetTimeZone(name: name);
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TaskDb>>
 abstract class TaskDb implements RustOpaqueInterface {
@@ -122,6 +127,16 @@ abstract class TaskDb implements RustOpaqueInterface {
   Future<void> setTitle({required String id, required String title});
 
   Future<Sidebar> sidebar();
+
+  /// Android: run the sync node in this process (key at `key_path`, shown to peers as
+  /// `device`), with auto-sync. Changes it brings in tick the change stream.
+  Future<void> startPhoneSync({
+    required String keyPath,
+    required String device,
+  });
+
+  /// Whether the Devices page can work: through tt-daemon, or the phone's own node.
+  bool syncAvailable();
 
   /// Pair with the device that made `ticket`, then sync.
   Future<SyncOutcome> syncJoin({required String ticket});

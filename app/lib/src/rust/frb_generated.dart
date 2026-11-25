@@ -70,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 662612471;
+  int get rustContentHash => -10988201;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -290,6 +290,14 @@ abstract class RustLibApi extends BaseApi {
 
   Future<Sidebar> crateApiTasksTaskDbSidebar({required TaskDb that});
 
+  Future<void> crateApiTasksTaskDbStartPhoneSync({
+    required TaskDb that,
+    required String keyPath,
+    required String device,
+  });
+
+  bool crateApiTasksTaskDbSyncAvailable({required TaskDb that});
+
   Future<SyncOutcome> crateApiTasksTaskDbSyncJoin({
     required TaskDb that,
     required String ticket,
@@ -342,6 +350,8 @@ abstract class RustLibApi extends BaseApi {
   String crateApiTasksDesktopDbPath();
 
   Future<void> crateApiTasksInitApp();
+
+  void crateApiTasksSetTimeZone({required String name});
 
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_SyncPeer;
@@ -1996,6 +2006,75 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "TaskDb_sidebar", argNames: ["that"]);
 
   @override
+  Future<void> crateApiTasksTaskDbStartPhoneSync({
+    required TaskDb that,
+    required String keyPath,
+    required String device,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          sse_encode_String(keyPath, serializer);
+          sse_encode_String(device, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 45,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTasksTaskDbStartPhoneSyncConstMeta,
+        argValues: [that, keyPath, device],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbStartPhoneSyncConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_start_phone_sync",
+        argNames: ["that", "keyPath", "device"],
+      );
+
+  @override
+  bool crateApiTasksTaskDbSyncAvailable({required TaskDb that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskDb(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 46)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiTasksTaskDbSyncAvailableConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksTaskDbSyncAvailableConstMeta =>
+      const TaskConstMeta(
+        debugName: "TaskDb_sync_available",
+        argNames: ["that"],
+      );
+
+  @override
   Future<SyncOutcome> crateApiTasksTaskDbSyncJoin({
     required TaskDb that,
     required String ticket,
@@ -2012,7 +2091,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 45,
+            funcId: 47,
             port: port_,
           );
         },
@@ -2046,7 +2125,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 46,
+            funcId: 48,
             port: port_,
           );
         },
@@ -2077,7 +2156,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 47,
+            funcId: 49,
             port: port_,
           );
         },
@@ -2108,7 +2187,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 48,
+            funcId: 50,
             port: port_,
           );
         },
@@ -2145,7 +2224,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 49,
+            funcId: 51,
             port: port_,
           );
         },
@@ -2182,7 +2261,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 50,
+            funcId: 52,
             port: port_,
           );
         },
@@ -2217,7 +2296,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 51,
+            funcId: 53,
             port: port_,
           );
         },
@@ -2254,7 +2333,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 52,
+            funcId: 54,
             port: port_,
           );
         },
@@ -2292,7 +2371,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 53,
+            funcId: 55,
             port: port_,
           );
         },
@@ -2329,7 +2408,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 54,
+            funcId: 56,
             port: port_,
           );
         },
@@ -2368,7 +2447,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 55,
+            funcId: 57,
             port: port_,
           );
         },
@@ -2395,7 +2474,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 56)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 58)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -2420,7 +2499,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 57,
+            funcId: 59,
             port: port_,
           );
         },
@@ -2437,6 +2516,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiTasksInitAppConstMeta =>
       const TaskConstMeta(debugName: "init_app", argNames: []);
+
+  @override
+  void crateApiTasksSetTimeZone({required String name}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(name, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 60)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiTasksSetTimeZoneConstMeta,
+        argValues: [name],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksSetTimeZoneConstMeta =>
+      const TaskConstMeta(debugName: "set_time_zone", argNames: ["name"]);
 
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_SyncPeer => wire
@@ -4265,6 +4367,21 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
 
   Future<Sidebar> sidebar() =>
       RustLib.instance.api.crateApiTasksTaskDbSidebar(that: this);
+
+  /// Android: run the sync node in this process (key at `key_path`, shown to peers as
+  /// `device`), with auto-sync. Changes it brings in tick the change stream.
+  Future<void> startPhoneSync({
+    required String keyPath,
+    required String device,
+  }) => RustLib.instance.api.crateApiTasksTaskDbStartPhoneSync(
+    that: this,
+    keyPath: keyPath,
+    device: device,
+  );
+
+  /// Whether the Devices page can work: through tt-daemon, or the phone's own node.
+  bool syncAvailable() =>
+      RustLib.instance.api.crateApiTasksTaskDbSyncAvailable(that: this);
 
   /// Pair with the device that made `ticket`, then sync.
   Future<SyncOutcome> syncJoin({required String ticket}) => RustLib.instance.api

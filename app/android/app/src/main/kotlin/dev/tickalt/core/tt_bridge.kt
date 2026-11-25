@@ -675,11 +675,15 @@ internal object IntegrityCheckingUniffiLib {
     }
 
     internal fun ensureInitialized() = Unit
+    external fun uniffi_tt_bridge_checksum_func_background_sync(
+    ): Int
     external fun uniffi_tt_bridge_checksum_method_widgetdb_add(
     ): Int
     external fun uniffi_tt_bridge_checksum_method_widgetdb_complete(
     ): Int
     external fun uniffi_tt_bridge_checksum_method_widgetdb_inbox(
+    ): Int
+    external fun uniffi_tt_bridge_checksum_method_widgetdb_upcoming_reminders(
     ): Int
     external fun uniffi_tt_bridge_checksum_constructor_widgetdb_open(
     ): Int
@@ -714,6 +718,10 @@ internal object UniffiLib {
     external fun uniffi_tt_bridge_fn_method_widgetdb_complete(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
     external fun uniffi_tt_bridge_fn_method_widgetdb_inbox(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_tt_bridge_fn_method_widgetdb_upcoming_reminders(`ptr`: Long,`fromMs`: Long,`untilMs`: Long,`tz`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_tt_bridge_fn_func_background_sync(`dbPath`: RustBuffer.ByValue,`keyPath`: RustBuffer.ByValue,`device`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_tt_bridge_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -834,6 +842,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if ((lib.uniffi_tt_bridge_checksum_func_background_sync() and 0xFFFF) != 2331) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if ((lib.uniffi_tt_bridge_checksum_method_widgetdb_add() and 0xFFFF) != 39170) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -841,6 +852,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_tt_bridge_checksum_method_widgetdb_inbox() and 0xFFFF) != 43025) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_tt_bridge_checksum_method_widgetdb_upcoming_reminders() and 0xFFFF) != 31265) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_tt_bridge_checksum_constructor_widgetdb_open() and 0xFFFF) != 9818) {
@@ -1240,6 +1254,12 @@ public interface WidgetDbInterface {
     
     fun `inbox`(): List<WidgetTask>
     
+    /**
+     * Reminders of open tasks firing in `[from_ms, until_ms)`, soonest first. `tz` is the
+     * device's IANA zone (Android has no /etc/localtime), used for all-day tasks.
+     */
+    fun `upcomingReminders`(`fromMs`: kotlin.Long, `untilMs`: kotlin.Long, `tz`: kotlin.String): List<WidgetReminder>
+    
     companion object
 }
 
@@ -1392,6 +1412,27 @@ open class WidgetDb: Disposable, AutoCloseable, WidgetDbInterface
     
 
     
+    /**
+     * Reminders of open tasks firing in `[from_ms, until_ms)`, soonest first. `tz` is the
+     * device's IANA zone (Android has no /etc/localtime), used for all-day tasks.
+     */
+    @Throws(CoreException::class)override fun `upcomingReminders`(`fromMs`: kotlin.Long, `untilMs`: kotlin.Long, `tz`: kotlin.String): List<WidgetReminder> {
+            return FfiConverterSequenceTypeWidgetReminder.lift(
+    callWithHandle {
+    uniffiRustCallWithError(CoreException) { _status ->
+    UniffiLib.uniffi_tt_bridge_fn_method_widgetdb_upcoming_reminders(
+        it,
+        
+        FfiConverterLong.lower(`fromMs`),
+        FfiConverterLong.lower(`untilMs`),
+        FfiConverterString.lower(`tz`),_status)
+}
+    }
+    )
+    }
+    
+
+    
 
     
 
@@ -1440,6 +1481,60 @@ public object FfiConverterTypeWidgetDb: FfiConverter<WidgetDb, Long> {
 
     override fun write(value: WidgetDb, buf: ByteBuffer) {
         buf.putLong(lower(value))
+    }
+}
+
+
+
+/**
+ * A reminder for Android's AlarmManager.
+ */
+data class WidgetReminder (
+    var `reminderId`: kotlin.String
+    , 
+    var `taskId`: kotlin.String
+    , 
+    var `title`: kotlin.String
+    , 
+    /**
+     * Epoch milliseconds.
+     */
+    var `fireAt`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeWidgetReminder: FfiConverterRustBuffer<WidgetReminder> {
+    override fun read(buf: ByteBuffer): WidgetReminder {
+        return WidgetReminder(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: WidgetReminder) = (
+            FfiConverterString.allocationSize(value.`reminderId`) +
+            FfiConverterString.allocationSize(value.`taskId`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterLong.allocationSize(value.`fireAt`)
+    )
+
+    override fun write(value: WidgetReminder, buf: ByteBuffer) {
+            FfiConverterString.write(value.`reminderId`, buf)
+            FfiConverterString.write(value.`taskId`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterLong.write(value.`fireAt`, buf)
     }
 }
 
@@ -1600,6 +1695,34 @@ public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeWidgetReminder: FfiConverterRustBuffer<List<WidgetReminder>> {
+    override fun read(buf: ByteBuffer): List<WidgetReminder> {
+        val len = buf.getInt()
+        return List<WidgetReminder>(len) {
+            FfiConverterTypeWidgetReminder.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<WidgetReminder>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeWidgetReminder.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<WidgetReminder>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeWidgetReminder.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeWidgetTask: FfiConverterRustBuffer<List<WidgetTask>> {
     override fun read(buf: ByteBuffer): List<WidgetTask> {
         val len = buf.getInt()
@@ -1621,4 +1744,23 @@ public object FfiConverterSequenceTypeWidgetTask: FfiConverterRustBuffer<List<Wi
         }
     }
 }
+        /**
+         * Background sync (Android WorkManager): one round with every paired device, through the
+         * app's sync node if it's running in this process, else one started now. Returns a short
+         * summary for the log.
+         */
+    @Throws(CoreException::class) fun `backgroundSync`(`dbPath`: kotlin.String, `keyPath`: kotlin.String, `device`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(CoreException) { _status ->
+    UniffiLib.uniffi_tt_bridge_fn_func_background_sync(
+    
+        
+        FfiConverterString.lower(`dbPath`),
+        FfiConverterString.lower(`keyPath`),
+        FfiConverterString.lower(`device`),_status)
+}
+    )
+    }
+    
+
 

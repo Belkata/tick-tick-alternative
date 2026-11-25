@@ -5,7 +5,7 @@
 //! (plan/15 M2 Desktop Log). The Dart API is the same either way.
 
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::sync::atomic::Ordering;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -17,6 +17,7 @@ use tt_core::{
 };
 
 use crate::changes::Changes;
+use crate::phone::{self, Phone};
 use crate::frb_generated::StreamSink;
 
 pub use tt_api::{
@@ -173,15 +174,46 @@ impl From<Task> for TaskItem {
 pub struct TaskDb {
     api: Arc<Api>,
     changes: Arc<Changes>,
+    /// The database file, for the phone's in-process sync node.
+    path: String,
+    /// Android: the in-process sync node (desktop syncs through tt-daemon instead).
+    phone: OnceLock<Arc<Phone>>,
 }
 
 impl TaskDb {
     /// Open (or create) the database file at `path` in this process (Android, tests).
     pub fn open(path: String) -> anyhow::Result<TaskDb> {
         Ok(Self {
-            api: Arc::new(Api::local(Store::open(path)?)),
+            api: Arc::new(Api::local(Store::open(&path)?)),
             changes: Arc::default(),
+            path,
+            phone: OnceLock::new(),
         })
+    }
+
+    /// Android: run the sync node in this process (key at `key_path`, shown to peers as
+    /// `device`), with auto-sync. Changes it brings in tick the change stream.
+    pub fn start_phone_sync(&self, key_path: String, device: String) -> anyhow::Result<()> {
+        if self.phone.get().is_some() {
+            return Ok(());
+        }
+        let phone = phone::start(Path::new(&self.path), Path::new(&key_path), device)?;
+        let mut events = phone.svc.subscribe();
+        let changes = self.changes.clone();
+        phone.rt.spawn(async move {
+            while let Ok(_event) = events.recv().await {
+                // A sync, pairing or trust change wrote through the node's own connection.
+                changes.tick();
+            }
+        });
+        let _ = self.phone.set(phone);
+        Ok(())
+    }
+
+    /// Whether the Devices page can work: through tt-daemon, or the phone's own node.
+    #[frb(sync)]
+    pub fn sync_available(&self) -> bool {
+        self.api.is_remote() || self.phone.get().is_some()
     }
 
     /// Desktop: use `tt-daemon` if it serves `path`, else open the file directly. A watcher
@@ -195,7 +227,12 @@ impl TaskDb {
         std::thread::Builder::new()
             .name("tt-watch".into())
             .spawn(move || watch(&watch_api, &watch_changes))?;
-        Ok(Self { api, changes })
+        Ok(Self {
+            api,
+            changes,
+            path,
+            phone: OnceLock::new(),
+        })
     }
 
     /// True when calls go through `tt-daemon`.
@@ -477,7 +514,10 @@ impl TaskDb {
 
     /// The daemon's sync node: this device's id, peer count, last sync. Errors without a daemon.
     pub fn sync_status(&self) -> anyhow::Result<SyncStatus> {
-        self.api.sync_status()
+        match self.local_phone() {
+            Some(p) => Ok(p.svc.status()),
+            None => self.api.sync_status(),
+        }
     }
 
     pub fn peers(&self) -> anyhow::Result<Vec<Peer>> {
@@ -486,17 +526,39 @@ impl TaskDb {
 
     /// A one-time pairing ticket (`tt2…`, 5 minutes) for another device to join with.
     pub fn sync_pair(&self) -> anyhow::Result<String> {
-        self.api.sync_pair()
+        match self.local_phone() {
+            Some(p) => p.svc.node.pairing_ticket(),
+            None => self.api.sync_pair(),
+        }
     }
 
     /// Pair with the device that made `ticket`, then sync.
     pub fn sync_join(&self, ticket: String) -> anyhow::Result<SyncOutcome> {
-        self.api.sync_join(ticket.trim())
+        match self.local_phone() {
+            Some(p) => p.rt.block_on(async {
+                let r = p.svc.node.join(ticket.trim()).await?;
+                p.svc.refresh_peers().await;
+                Ok(tt_sync::service::outcome(r))
+            }),
+            None => self.api.sync_join(ticket.trim()),
+        }
     }
 
     /// Sync with every paired device now.
     pub fn sync_now(&self) -> anyhow::Result<Vec<SyncOutcome>> {
-        self.api.sync_now()
+        match self.local_phone() {
+            Some(p) => Ok(p.rt.block_on(p.svc.round())),
+            None => self.api.sync_now(),
+        }
+    }
+
+    /// The phone's node, when calls don't go through tt-daemon.
+    fn local_phone(&self) -> Option<&Arc<Phone>> {
+        if self.api.is_remote() {
+            None
+        } else {
+            self.phone.get()
+        }
     }
 
     /// Unpair a device.
@@ -512,6 +574,9 @@ impl TaskDb {
         let v = self.api.call(req)?;
         if !self.api.is_remote() {
             self.changes.tick();
+            if let Some(p) = self.phone.get() {
+                p.edited();
+            }
         }
         Ok(v)
     }
@@ -554,6 +619,17 @@ fn now_ms() -> i64 {
 #[frb(sync)]
 pub fn desktop_db_path() -> anyhow::Result<String> {
     Ok(tt_api::paths::default_db()?.to_string_lossy().into_owned())
+}
+
+/// Android: tell the core the device's IANA zone (e.g. `Europe/Sofia`). There's no
+/// /etc/localtime there, so "today" would otherwise be UTC. Call once at startup.
+#[frb(sync)]
+pub fn set_time_zone(name: String) {
+    if name.parse::<chrono_tz::Tz>().is_ok() {
+        // SAFETY: called once at startup from Dart, before sync or other threads read it,
+        // like init_app's own environment setup.
+        unsafe { std::env::set_var("TT_TZ", name) };
+    }
 }
 
 #[frb(init)]
