@@ -97,6 +97,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ChecklistRow dco_decode_checklist_row(dynamic raw);
 
   @protected
+  GcalCalendar dco_decode_gcal_calendar(dynamic raw);
+
+  @protected
+  GcalEvent dco_decode_gcal_event(dynamic raw);
+
+  @protected
+  GoogleStatus dco_decode_google_status(dynamic raw);
+
+  @protected
   int dco_decode_i_32(dynamic raw);
 
   @protected
@@ -110,6 +119,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<ChecklistRow> dco_decode_list_checklist_row(dynamic raw);
+
+  @protected
+  List<GcalCalendar> dco_decode_list_gcal_calendar(dynamic raw);
+
+  @protected
+  List<GcalEvent> dco_decode_list_gcal_event(dynamic raw);
 
   @protected
   List<NavItem> dco_decode_list_nav_item(dynamic raw);
@@ -276,6 +291,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ChecklistRow sse_decode_checklist_row(SseDeserializer deserializer);
 
   @protected
+  GcalCalendar sse_decode_gcal_calendar(SseDeserializer deserializer);
+
+  @protected
+  GcalEvent sse_decode_gcal_event(SseDeserializer deserializer);
+
+  @protected
+  GoogleStatus sse_decode_google_status(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
@@ -293,6 +317,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ChecklistRow> sse_decode_list_checklist_row(
     SseDeserializer deserializer,
   );
+
+  @protected
+  List<GcalCalendar> sse_decode_list_gcal_calendar(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<GcalEvent> sse_decode_list_gcal_event(SseDeserializer deserializer);
 
   @protected
   List<NavItem> sse_decode_list_nav_item(SseDeserializer deserializer);
@@ -480,6 +512,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_checklist_row(ChecklistRow self, SseSerializer serializer);
 
   @protected
+  void sse_encode_gcal_calendar(GcalCalendar self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_gcal_event(GcalEvent self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_google_status(GoogleStatus self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
@@ -497,6 +538,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_checklist_row(
     List<ChecklistRow> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_gcal_calendar(
+    List<GcalCalendar> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_gcal_event(
+    List<GcalEvent> self,
     SseSerializer serializer,
   );
 

@@ -81,6 +81,31 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Unpair a device.
   Future<bool> forgetPeer({required String nodeId});
 
+  /// Google's calendars as last fetched, with which ones are shown.
+  Future<List<GcalCalendar>> gcalCalendars();
+
+  /// Cached Google events overlapping the range, read-only, in this device's zone.
+  Future<List<GcalEvent>> gcalEvents({
+    required PlatformInt64 fromMs,
+    required PlatformInt64 untilMs,
+  });
+
+  /// Show or hide a Google calendar's events (hiding drops its cache on this device).
+  Future<void> gcalSelect({required String calendarId, required bool selected});
+
+  /// Whether the Google page can work: only through tt-daemon.
+  bool googleAvailable();
+
+  /// Opens the browser sign-in; returns its URL (to show if the browser didn't open).
+  Future<String> googleSignIn();
+
+  Future<void> googleSignOut();
+
+  Future<GoogleStatus> googleStatus();
+
+  /// Fetch Google's calendars and events now.
+  Future<void> googleSync();
+
   Future<List<TaskItem>> inbox();
 
   /// True when calls go through `tt-daemon`.
@@ -299,6 +324,116 @@ class ChecklistRow {
           id == other.id &&
           title == other.title &&
           done == other.done;
+}
+
+class GcalCalendar {
+  final String id;
+  final String summary;
+  final String? color;
+  final bool selected;
+
+  const GcalCalendar({
+    required this.id,
+    required this.summary,
+    this.color,
+    required this.selected,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ summary.hashCode ^ color.hashCode ^ selected.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GcalCalendar &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          summary == other.summary &&
+          color == other.color &&
+          selected == other.selected;
+}
+
+class GcalEvent {
+  final String calendarId;
+  final String id;
+  final String summary;
+  final PlatformInt64 startAt;
+  final PlatformInt64 endAt;
+  final bool allDay;
+  final String? htmlLink;
+  final String? color;
+
+  const GcalEvent({
+    required this.calendarId,
+    required this.id,
+    required this.summary,
+    required this.startAt,
+    required this.endAt,
+    required this.allDay,
+    this.htmlLink,
+    this.color,
+  });
+
+  @override
+  int get hashCode =>
+      calendarId.hashCode ^
+      id.hashCode ^
+      summary.hashCode ^
+      startAt.hashCode ^
+      endAt.hashCode ^
+      allDay.hashCode ^
+      htmlLink.hashCode ^
+      color.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GcalEvent &&
+          runtimeType == other.runtimeType &&
+          calendarId == other.calendarId &&
+          id == other.id &&
+          summary == other.summary &&
+          startAt == other.startAt &&
+          endAt == other.endAt &&
+          allDay == other.allDay &&
+          htmlLink == other.htmlLink &&
+          color == other.color;
+}
+
+class GoogleStatus {
+  final bool configured;
+  final bool signedIn;
+  final bool signingIn;
+  final PlatformInt64? lastSyncMs;
+  final String? lastError;
+
+  const GoogleStatus({
+    required this.configured,
+    required this.signedIn,
+    required this.signingIn,
+    this.lastSyncMs,
+    this.lastError,
+  });
+
+  @override
+  int get hashCode =>
+      configured.hashCode ^
+      signedIn.hashCode ^
+      signingIn.hashCode ^
+      lastSyncMs.hashCode ^
+      lastError.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GoogleStatus &&
+          runtimeType == other.runtimeType &&
+          configured == other.configured &&
+          signedIn == other.signedIn &&
+          signingIn == other.signingIn &&
+          lastSyncMs == other.lastSyncMs &&
+          lastError == other.lastError;
 }
 
 class NavItem {

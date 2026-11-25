@@ -136,8 +136,37 @@ pub struct _CalendarItem {
     pub icon: Option<String>,
 }
 
-pub use tt_api::{SyncOutcome, SyncStatus};
-pub use tt_core::Peer;
+pub use tt_api::{GoogleStatus, SyncOutcome, SyncStatus};
+pub use tt_core::{GcalCalendar, GcalEvent, Peer};
+
+#[frb(mirror(GoogleStatus))]
+pub struct _GoogleStatus {
+    pub configured: bool,
+    pub signed_in: bool,
+    pub signing_in: bool,
+    pub last_sync_ms: Option<i64>,
+    pub last_error: Option<String>,
+}
+
+#[frb(mirror(GcalCalendar))]
+pub struct _GcalCalendar {
+    pub id: String,
+    pub summary: String,
+    pub color: Option<String>,
+    pub selected: bool,
+}
+
+#[frb(mirror(GcalEvent))]
+pub struct _GcalEvent {
+    pub calendar_id: String,
+    pub id: String,
+    pub summary: String,
+    pub start_at: i64,
+    pub end_at: i64,
+    pub all_day: bool,
+    pub html_link: Option<String>,
+    pub color: Option<String>,
+}
 
 #[frb(mirror(SyncOutcome))]
 pub struct _SyncOutcome {
@@ -615,6 +644,51 @@ impl TaskDb {
     /// Delete a tag and the tags under it; tasks lose them.
     pub fn delete_tag(&self, id: String) -> anyhow::Result<()> {
         self.write(Request::DeleteTag { id }).map(drop)
+    }
+
+    // ----- Google Calendar (M5b, plan/19). Fetching runs in tt-daemon; the cache is readable anywhere -----
+
+    /// Whether the Google page can work: only through tt-daemon.
+    #[frb(sync)]
+    pub fn google_available(&self) -> bool {
+        self.api.is_remote()
+    }
+
+    pub fn google_status(&self) -> anyhow::Result<GoogleStatus> {
+        self.api.google_status()
+    }
+
+    /// Opens the browser sign-in; returns its URL (to show if the browser didn't open).
+    pub fn google_sign_in(&self) -> anyhow::Result<String> {
+        self.api.google_sign_in()
+    }
+
+    pub fn google_sign_out(&self) -> anyhow::Result<()> {
+        self.api.google_sign_out()
+    }
+
+    /// Fetch Google's calendars and events now.
+    pub fn google_sync(&self) -> anyhow::Result<()> {
+        self.api.google_sync()
+    }
+
+    /// Google's calendars as last fetched, with which ones are shown.
+    pub fn gcal_calendars(&self) -> anyhow::Result<Vec<GcalCalendar>> {
+        self.api.gcal_calendars()
+    }
+
+    /// Show or hide a Google calendar's events (hiding drops its cache on this device).
+    pub fn gcal_select(&self, calendar_id: String, selected: bool) -> anyhow::Result<()> {
+        self.write(Request::GcalSelect {
+            calendar_id,
+            selected,
+        })
+        .map(drop)
+    }
+
+    /// Cached Google events overlapping the range, read-only, in this device's zone.
+    pub fn gcal_events(&self, from_ms: i64, until_ms: i64) -> anyhow::Result<Vec<GcalEvent>> {
+        self.api.gcal_events(from_ms, until_ms, local_tz())
     }
 
     // ----- Devices and sync (answered by tt-daemon's sync node; desktop only) -----
