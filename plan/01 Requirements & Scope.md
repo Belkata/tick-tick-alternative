@@ -40,7 +40,7 @@ Decisions below come from the interview on 2026-11-24 and from looking at how my
 - **Repeat rules**: daily, weekly, monthly and yearly with custom intervals and weekdays, an end date or count, and **repeat after completion**.
 - **Reminders**: several per task, relative ("10 min before") or absolute. They fire as local notifications on phone and desktop.
 - Completing, un-completing and deleting a task. Deleted tasks go to Trash.
-- Quick add is a **plain title only**, with no natural-language parsing. It lands in Inbox. Everything else is set in the detail view.
+- Quick add is a **plain title only**, with no natural-language parsing. It lands in Inbox, or in the list, tag or filter being viewed (a filter's requirements are applied, see [[04 Data Model]] Filters). Everything else is set in the detail view.
 
 ### Calendar
 - **Week and Day** time grids, where you drag to move and drag edges to resize.

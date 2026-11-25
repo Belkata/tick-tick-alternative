@@ -129,6 +129,10 @@ A filter is a named, saved AST (stored as JSON) plus display options: sort, grou
 - **Relative date tokens:** `today`, `tomorrow`, `+7d`, `this_week`, `next_week`, `this_month`. They're re-evaluated at midnight, which also refreshes the widget.
 - **Builder UI:** nested groups toggle between "all of" and "any of", and each condition can be negated. A live preview count shows while you edit.
 - The engine compiles to SQL `WHERE` clauses. The same AST is evaluated in Rust for tests and for the widget.
+- **Adding a task in a filter view keeps it in the filter** (decided 2026-11-25). Quick add there gives the new task what the rule asks for, so it doesn't vanish (`core/src/filter/seed.rs`):
+  - The rule is expanded into alternatives (`any` branches; `not` pushed down by De Morgan). The first one a fresh task can fully meet wins.
+  - It sets the list, tags (the named tag itself; for `has_any`, the first that exists), the lowest allowed priority, and all-day due/start dates: today if allowed, else the nearest allowed day.
+  - A new task can't have a time, a repeat, a done status, or text its title lacks. If no alternative can be met, the first one is applied as far as it goes.
 
 ## Built-in views
 - **Inbox**: the rule above.
