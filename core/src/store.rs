@@ -17,6 +17,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("migrations/004_trust.sql"),
     include_str!("migrations/005_compact.sql"),
     include_str!("migrations/006_in_calendar.sql"),
+    include_str!("migrations/007_view_sort.sql"),
 ];
 
 /// A handle to one Tick Alt database file.
@@ -200,6 +201,10 @@ fn migrate(conn: &Connection) -> Result<()> {
             if to == 6 {
                 // An older build logged these without applying them (unknown field).
                 oplog::replay_field(conn, Entity::Task, "in_calendar")?;
+            }
+            if to == 7 {
+                oplog::replay_field(conn, Entity::List, "sort")?;
+                oplog::replay_field(conn, Entity::Tag, "sort")?;
             }
             conn.pragma_update(None, "user_version", to as i64)?;
             Ok::<_, Error>(())

@@ -128,11 +128,13 @@ fn field_spec(entity: Entity, field: &str) -> Option<Kind> {
         (Entity::List, "name" | "sort_key") => Text,
         (Entity::List, "color" | "icon") => OptText,
         (Entity::List, "archived" | "deleted") => Bool,
+        (Entity::List, "sort") => Json,
         (Entity::List, "created_at") => Int(0, i64::MAX),
 
         (Entity::Tag, "name" | "sort_key") => Text,
         (Entity::Tag, "parent_id" | "color" | "icon") => OptText,
         (Entity::Tag, "deleted") => Bool,
+        (Entity::Tag, "sort") => Json,
         (Entity::Tag, "created_at") => Int(0, i64::MAX),
 
         (Entity::Checklist, "task_id" | "title" | "sort_key") => Text,

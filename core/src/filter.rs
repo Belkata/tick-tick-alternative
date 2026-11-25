@@ -63,8 +63,8 @@ pub struct Filter {
     #[serde(default)]
     pub icon: Option<String>,
     pub rule: FilterRule,
-    /// Sort keys, first wins: `due_asc`, `due_desc`, `start_asc`, `priority_desc`,
-    /// `priority_asc`, `created_asc`, `created_desc`, `title_asc`, `manual`.
+    /// Sort keys, first wins (`SORT_KEYS`): `due_asc`, `due_desc`, `start_asc`,
+    /// `priority_desc`, `priority_asc`, `created_asc`, `created_desc`, `title_asc`, `manual`.
     #[serde(default)]
     pub sort: Vec<String>,
     /// Grouping for the UI (`priority`, `list`, `due`, `tag`); the core doesn't group.
@@ -381,7 +381,7 @@ fn compile_cond(c: &Cond, cx: &mut Ctx) -> Result<String> {
     })
 }
 
-fn order_by(sort: &[String]) -> Result<String> {
+pub(crate) fn order_by(sort: &[String]) -> Result<String> {
     let mut parts = Vec::new();
     let keys: Vec<&str> = if sort.is_empty() {
         vec!["due_asc", "priority_desc"]
@@ -398,7 +398,8 @@ fn order_by(sort: &[String]) -> Result<String> {
             "created_asc" => "task.created_at",
             "created_desc" => "task.created_at DESC",
             "title_asc" => "lower(task.title)",
-            "manual" => "task.sort_key",
+            // Never-arranged tasks (empty key) come first, newest on top.
+            "manual" => "task.sort_key, task.created_at DESC, task.id DESC",
             other => return Err(Error::Invalid(format!("filter: unknown sort '{other}'"))),
         });
     }
@@ -460,7 +461,7 @@ fn row_to_filter(r: &rusqlite::Row<'_>) -> rusqlite::Result<FilterRow> {
                 name,
                 icon,
                 rule: serde_json::from_str(&rule)?,
-                sort: serde_json::from_str(&sort)?,
+                sort: crate::view_sort::known_sort(&sort),
                 group,
                 show_completed,
             },

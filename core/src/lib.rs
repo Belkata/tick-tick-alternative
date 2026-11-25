@@ -19,6 +19,7 @@ mod reminder;
 mod replica;
 mod store;
 mod task;
+mod view_sort;
 
 pub use calendar::{Block, DEFAULT_BLOCK_MIN};
 pub use checklist::ChecklistItem;
@@ -31,6 +32,7 @@ pub use reminder::{Reminder, ReminderFire, ReminderKind};
 pub use replica::{Peer, Removal, SharedPeer, TrustChange, TrustList, VersionVector};
 pub use store::Store;
 pub use task::{MAX_DEPTH, NewTask, RepeatMode, Schedule, Status, Task};
+pub use view_sort::SORT_KEYS;
 
 /// Errors returned by the core.
 #[derive(Debug, thiserror::Error)]
