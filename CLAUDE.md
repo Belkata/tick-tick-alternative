@@ -25,7 +25,15 @@ A personal, local-first TickTick replacement. The pieces:
 
 The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manrope headings) **with Material outlined tag chips**. The mockups are in `plan/ui-styles/styles.html`.
 
-## Where things stand (handoff, 2026-11-25: the Mac, after the Arch laptop)
+## Where things stand (handoff, 2026-11-25 afternoon: the Arch laptop, after the Mac)
+
+**Latest session (Arch laptop, 2026-11-25 afternoon; everything is pushed through the commit adding this note):**
+- **Quick add in a filter view keeps the task in the filter** (`119e38c`, `f733379`, `077b910`; plan/04 "Filters"). `Store::new_task_matching` (`core/src/filter/seed.rs`) expands the rule into alternatives and gives the new task the list, tags, lowest allowed priority and all-day due/start dates (today, or the nearest allowed day) of the first alternative a fresh task can meet. A task can't get a time, a repeat or text its title lacks; then the first alternative is applied as far as it goes. `AddIn` on the socket now carries `now_ms` and `tz`, so **the app and the daemon must come from the same build** (an old app's quick add fails against a new daemon). The Dart API didn't change.
+- **On the phone this needs the next APK** (not built or published; ask before publishing).
+- ⚠️ **`cargo test --workspace` has one failure: `network_sim`** (`replicas_meet_after_lossy_partitioned_syncs`). It predates this work; details and the saved seed in plan/16 "Next". The seed file `core/tests/network_sim.proptest-regressions` is untracked on this laptop. A session for it was proposed but not started. Everything else passes, and clippy is clean (including the Mac session's `daemon/src/tray_sni.rs`, so the Mac's "Next 3" is done).
+- Running here: the release desktop app (rebuilt, relaunched) and the `tick-alt` daemon (restarted) were built from this session's tree just **before** it was rebased onto the Mac commits. So they have filter quick add but not the Mac daemon refactor (tray split into `tray_sni.rs`/`tray_mac.rs`), which is compiled and tested on Linux but **not run** here yet. To catch up: `cargo build --release -p tt-daemon`, `cd app && flutter build linux --release` (close the app first), `systemctl --user restart tick-alt`. The old debug app copy was closed.
+- `tt sync peers` here shows **both** the phone (synced 15:30) and **Boris's MacBook Pro** (synced 15:56), so the Mac is paired with this laptop now (the Mac note below predates that). The 09:14 "Reminder test from the laptop" doesn't appear in `tt completed`; that check is still open.
+
 
 **Done** (details in the logs named in the table above):
 - **M0**: stack and UI style decided; Spikes 1, 3, 4, 5 pass, on macOS too since M2 slice 5.
@@ -40,30 +48,31 @@ The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manro
 - Toolchain: Xcode 27.2 (licence accepted, `xcode-select` points at it, first launch done), Rust 1.100, Flutter 3.50.1, CocoaPods 1.17.0 (Homebrew). `source scripts/env.sh` as always.
 - `/Applications/Tick Alt.app` is installed: a copy of `scripts/build-macos.sh`'s build from `401962f`, with the daemon bundled. `dist/tick-alt-0.3.0-macos.dmg` is the same build.
 - **The LaunchAgent is installed** (`~/Library/LaunchAgents/dev.tickalt.daemon.plist`): `tt-daemon` runs from the app's `Contents/Helpers/Tick Alt Daemon.app`, starts at login and restarts after a crash (tested with `kill -9`). Logs: `~/Library/Logs/tick-alt/daemon.log`. **After rebuilding:** copy the new app into `/Applications` (`ditto`), then `scripts/install-launch-agent.sh "/Applications/Tick Alt.app"` to restart the daemon.
-- Database: `~/Library/Application Support/tick-alt/tt.db`, fresh (only test tasks), sync node `58385947…`. **Not paired** with the Arch laptop or the phone yet.
+- Database: `~/Library/Application Support/tick-alt/tt.db`, sync node `58385947…`. At the Mac's handoff it wasn't paired; since then the Arch laptop lists it as a peer (synced 15:56).
 - The user allowed the daemon's notifications. Reminders show as banners; Done from Notification Centre completed a task. The menu-bar icon looks right (the user checked).
 - **Not tested on the Mac:** Snooze, the menu's Open and Sync now, adding a task by typing in the app (background computer use can't type into Flutter), pairing.
 
 **Next on the Mac** (ask the user which):
-1. Pair the Mac with the Arch laptop and/or the phone (Devices page or `tt sync pair`/`join`), then check M3's exit: "Mac ↔ Arch stay in sync".
+1. The Mac is paired with the Arch laptop now; check M3's exit: "Mac ↔ Arch stay in sync" (edit on each side, see it arrive).
 2. Test Snooze, Open and Sync now from the menu bar, and typing in the app.
-3. On Arch: `cargo clippy -p tt-daemon`, since the Linux tray moved to `daemon/src/tray_sni.rs` and couldn't be compiled on the Mac.
+3. ~~On Arch: `cargo clippy -p tt-daemon`~~ ✅ done 2026-11-25 afternoon: clean, and the daemon tests pass on Linux. It hasn't been *run* on Arch yet (see "Latest session").
 4. Smaller: the bundle's copyright line waits for the LICENSE name; the macOS bundle is universal (arm64 + x86_64, 120 MB unpacked) and could be arm64 only; the "Next" list below still applies.
 
 **Running on the Arch laptop (as of its handoff):**
 - The `tick-alt` user service runs this checkout's `target/release/tt-daemon` on `~/.local/share/tick-alt/tt.db` (schema v5, sync node `c382b28c2f…`, UDP 41824). **After rebuilding the daemon: `systemctl --user restart tick-alt`.**
-- Desktop app, `tt` and daemon were built from `6e11fb9`. The desktop entry is installed (rofi lists "Tick Alt").
+- Desktop app and daemon: see "Latest session" above. The desktop entry is installed (rofi lists "Tick Alt").
 - **The user's phone** (Xiaomi 22101316G) runs v0.2.0 and is **paired with this daemon** (2026-11-25 09:09); tasks sync both ways. A reminder round-trip (09:14 "Reminder test from the laptop": Done on the phone → completed on the laptop) was in progress when this was written; check `tt completed`.
 - Toolchain: Rust 1.100, Flutter 3.50.1 (`~/flutter`), clang, `flutter_rust_bridge_codegen` 2.13.0 (+cargo-expand), Android Studio 2026.2.2 (JBR = JDK 25), SDK in `~/Android/Sdk` (platform 36, build-tools 37.0.0, NDK 28.2.13676358), emulator `tt_pixel` (headless: `emulator -avd tt_pixel -no-window -gpu swiftshader_indirect`).
 
 **Next** (ask the user which; anything in `plan/11` is theirs to decide):
+0. **Fix the `network_sim` failure** (plan/16 "Next"), then **publish an APK** with filter quick add (bump `app/pubspec.yaml`, ask first).
 1. **Finish the phone checks**: did the reminder's Done reach the laptop? Does scanning the pairing QR work on the real phone camera? If not, make tickets compact (e.g. `tt3` + base64url with short field names; keep decoding `tt2`), with tests.
-2. **Visual checks on desktop** (only integration tests have run these): the Devices page, the tray tooltip and Sync now, the filter builder, the right-click edit dialogs, and the start, repeat and reminder fields.
+2. **Visual checks on desktop** (only integration tests have run these): quick add in a filter (e.g. Today → due today, Overdue → yesterday), the Devices page, the tray tooltip and Sync now, the filter builder, the right-click edit dialogs, and the start, repeat and reminder fields.
 3. **Needs the user**: a release key plus the 4 CI secrets (`plan/07` "Release signing"; switching the phone to it costs one uninstall), a LICENSE file (copyright name), installing the PKGBUILD (sudo), and whether to keep the Mac's debug keystore at all (the phone now uses this laptop's).
 4. **Then pick a milestone**: widget polish (choose a list or filter, scrolling, **+** quick add, midnight refresh), **M5** (calendar plus Google: Week/Day/Month, drag to schedule, OAuth, events in and tasks out), **M6** (TickTick CSV import, then switch over).
 5. Smaller open items: convergent resolution of concurrent subtask cycles (`plan/14`), mobile-data sync on the real phone, the Android relay flakiness from Spike 2 (not seen on the emulator), Flutter's "migrate to built-in Kotlin" warning.
 
-Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`, pushed through `6e11fb9`). Never commit secrets, tokens, `.key`/`.jks` files, `key.properties` or personal data.
+Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`, everything pushed). Never commit secrets, tokens, `.key`/`.jks` files, `key.properties` or personal data.
 
 ## Setting up another machine
 Per-machine state doesn't travel: Claude's memory, the repo-local git identity, keystores, the toolchain.
