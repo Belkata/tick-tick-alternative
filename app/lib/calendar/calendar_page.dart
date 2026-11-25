@@ -1051,7 +1051,10 @@ class _CalendarPageState extends State<CalendarPage> {
         );
       },
     );
-    if (_narrow) return tile;
+    // No tooltips on touch: Android shows them on long-press, which is the drag gesture.
+    if (_narrow || Theme.of(context).platform == TargetPlatform.android) {
+      return tile;
+    }
     return Tooltip(
       message: i.allDay ? i.title : '${i.title}\n$time',
       waitDuration: const Duration(milliseconds: 700),
