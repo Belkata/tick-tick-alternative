@@ -4,7 +4,7 @@
 #   systemctl --user enable --now tick-alt.service
 [Unit]
 Description=Tick Alt daemon (task database, tray, reminders)
-Documentation=https://github.com/Belkata/tick-tick-alternative
+Documentation=https://github.com/Belkata/utre
 # The tray and notifications need the graphical session's D-Bus and Wayland environment.
 PartOf=graphical-session.target
 After=graphical-session.target

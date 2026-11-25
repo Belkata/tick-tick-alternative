@@ -8,7 +8,7 @@ pkgver=r0.0000000
 pkgrel=1
 pkgdesc="Local-first task manager: Flutter desktop app, tray daemon and tt CLI"
 arch=(x86_64)
-url="https://github.com/Belkata/tick-tick-alternative"
+url="https://github.com/Belkata/utre"
 license=(MIT)
 depends=(gtk3 glibc gcc-libs hicolor-icon-theme)
 makedepends=(git cargo clang cmake ninja pkgconf flutter)
@@ -20,7 +20,7 @@ provides=(tick-alt)
 conflicts=(tick-alt)
 # The Flutter AOT snapshot (libapp.so) must not be stripped.
 options=(!strip !debug)
-source=("tick-alt::git+https://github.com/Belkata/tick-tick-alternative.git")
+source=("tick-alt::git+https://github.com/Belkata/utre.git")
 sha256sums=('SKIP')
 
 pkgver() {

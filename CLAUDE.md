@@ -74,7 +74,7 @@ The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manro
 4. **Then pick a milestone**: widget polish (choose a list or filter, scrolling, **+** quick add, midnight refresh), **M5** (calendar plus Google: Week/Day/Month, drag to schedule, OAuth, events in and tasks out), **M6** (TickTick CSV import, then switch over).
 5. Smaller open items: convergent resolution of concurrent subtask cycles (`plan/14`), mobile-data sync on the real phone, the Android relay flakiness from Spike 2 (not seen on the emulator), Flutter's "migrate to built-in Kotlin" warning.
 
-Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`, everything pushed). Never commit secrets, tokens, `.key`/`.jks` files, `key.properties` or personal data.
+Repo: **public** at https://github.com/Belkata/utre (`origin`, everything pushed). Never commit secrets, tokens, `.key`/`.jks` files, `key.properties` or personal data.
 
 ## Setting up another machine
 Per-machine state doesn't travel: Claude's memory, the repo-local git identity, keystores, the toolchain.
