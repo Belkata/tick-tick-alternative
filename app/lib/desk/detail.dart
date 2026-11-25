@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../src/rust/api/tasks.dart';
 import 'controller.dart';
+import 'markdown.dart';
 import 'sidebar.dart' show askText;
 import 'task_list.dart';
 import 'theme.dart';
@@ -24,9 +25,16 @@ class DetailPane extends StatelessWidget {
       return Container(
         color: s.panel,
         alignment: Alignment.center,
-        child: Text(
-          'Select a task',
-          style: manrope(13.5, FontWeight.w500, color: s.mute),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.checklist_rounded, size: 34, color: s.line),
+            const SizedBox(height: 10),
+            Text(
+              'Select a task',
+              style: manrope(13.5, FontWeight.w600, color: s.mute),
+            ),
+          ],
         ),
       );
     }
@@ -38,31 +46,169 @@ class DetailPane extends StatelessWidget {
       for (final t in c.sidebar?.tags ?? const <NavItem>[])
         _path(c.sidebar!.tags, t),
     ];
+    final checked = d.checklist.where((i) => i.done).length;
+    final subsDone = d.subtasks.where((t) => t.done).length;
 
-    Widget label(String text) => Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Text(text, style: manrope(12, FontWeight.w600, color: s.mute)),
-    );
-    Widget prop(String k, Widget v) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(width: 62, child: label(k)),
-          Expanded(child: v),
-        ],
+    final dateRows = <Widget>[
+      _PropRow(
+        icon: Icons.event_outlined,
+        label: 'Due',
+        child: _EditField(
+          key: const Key('detail-due'),
+          value: r.dueLabel ?? '',
+          hint: 'fri 14:30',
+          style: manrope(
+            13,
+            FontWeight.w700,
+            color: r.overdue ? s.late : (r.dueToday ? s.today : s.fg),
+          ),
+          inline: true,
+          onSave: (v) => c.run(() => db.setDue(id: id, text: v)),
+        ),
       ),
-    );
-    Widget heading(String text) => Padding(
-      padding: const EdgeInsets.only(top: 14, bottom: 6),
-      child: Text(text, style: manrope(12, FontWeight.w700, color: s.mute)),
-    );
+      _PropRow(
+        icon: Icons.play_circle_outline,
+        label: 'Start',
+        child: _EditField(
+          key: const Key('detail-start'),
+          value: d.startLabel ?? '',
+          hint: 'optional',
+          style: manrope(13, FontWeight.w600, color: s.fg),
+          inline: true,
+          onSave: (v) => c.run(() => db.setStart(id: id, text: v)),
+        ),
+      ),
+      _PropRow(
+        icon: Icons.repeat_rounded,
+        label: 'Repeat',
+        child: _RepeatPicker(
+          rule: d.repeatRule,
+          afterCompletion: d.repeatAfterCompletion,
+          onSet: (rule, after) => c.run(
+            () => db.setRepeat(id: id, rule: rule, afterCompletion: after),
+          ),
+        ),
+      ),
+      // Only a task with a date can be on the calendar, so only then the switch.
+      if (r.dueAt != null || d.startLabel != null)
+        _PropRow(
+          icon: Icons.calendar_month_outlined,
+          label: 'Calendar',
+          child: Row(
+            children: [
+              Transform.scale(
+                scale: 0.75,
+                alignment: Alignment.centerLeft,
+                child: Switch(
+                  key: const Key('detail-in-calendar'),
+                  value: d.inCalendar,
+                  onChanged: (v) =>
+                      c.run(() => db.setInCalendar(id: id, visible: v)),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  d.inCalendar ? 'Shown in Calendar' : 'Kept off the calendar',
+                  style: manrope(12.5, FontWeight.w500, color: s.mute),
+                ),
+              ),
+            ],
+          ),
+        ),
+    ];
+
+    final placeRows = <Widget>[
+      _PropRow(
+        icon: Icons.folder_outlined,
+        label: 'List',
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: DropdownButton<String?>(
+            key: const Key('detail-list'),
+            value: lists.any((l) => l.id == d.listId) ? d.listId : null,
+            isDense: true,
+            underline: const SizedBox.shrink(),
+            style: manrope(13, FontWeight.w600, color: s.fg),
+            items: [
+              DropdownMenuItem(
+                value: null,
+                child: Text(
+                  'No list',
+                  style: manrope(13, FontWeight.w500, color: s.mute),
+                ),
+              ),
+              for (final l in lists)
+                DropdownMenuItem(value: l.id, child: Text(l.name)),
+            ],
+            onChanged: (v) => c.run(() => db.setList(id: id, listId: v)),
+          ),
+        ),
+      ),
+      _PropRow(
+        icon: Icons.sell_outlined,
+        label: 'Tags',
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            for (final t in r.tags)
+              TagPill(
+                label: t.path,
+                color: t.color,
+                icon: t.icon,
+                onDeleted: () => c.run(() => db.untag(id: id, tagId: t.id)),
+              ),
+            _AddTag(
+              paths: tagPaths,
+              onAdd: (p) => c.run(() => db.tag(id: id, path: p)),
+            ),
+          ],
+        ),
+      ),
+      _PropRow(
+        icon: Icons.account_tree_outlined,
+        label: 'Parent',
+        child: Row(
+          children: [
+            Flexible(
+              child: InkWell(
+                key: const Key('detail-parent'),
+                borderRadius: BorderRadius.circular(6),
+                onTap: () => _pickParent(context, id, r.parentId),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    d.parentTitle ?? 'None',
+                    overflow: TextOverflow.ellipsis,
+                    style: manrope(
+                      13,
+                      d.parentTitle == null ? FontWeight.w500 : FontWeight.w600,
+                      color: d.parentTitle == null ? s.mute : s.fg,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (r.parentId != null)
+              IconButton(
+                key: const Key('detail-parent-clear'),
+                tooltip: 'Make it a top-level task',
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.close, size: 14, color: s.mute),
+                onPressed: () =>
+                    c.run(() => db.setParent(id: id, parentId: null)),
+              ),
+          ],
+        ),
+      ),
+    ];
 
     return Container(
       color: s.panel,
       child: ListView(
         key: ValueKey('detail-$id'),
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         children: [
           // A subtask: one tap goes up the tree.
           if (r.parentId != null)
@@ -87,24 +233,28 @@ class DetailPane extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.only(top: 5),
                 child: PriorityCheck(
                   priority: r.priority,
                   done: r.done,
+                  size: 20,
                   onTap: () => c.toggleDone(id),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Expanded(
                 child: _EditField(
                   key: const Key('detail-title'),
                   value: r.title,
                   focus: titleFocus,
+                  multiline: true,
+                  minLines: 1,
+                  maxLines: 4,
                   style: manrope(
-                    17,
+                    21,
                     FontWeight.w800,
                     color: r.done ? s.mute : s.fg,
-                  ),
+                  ).copyWith(height: 1.25),
                   onSave: (v) => v.trim().isEmpty
                       ? null
                       : c.run(() => db.setTitle(id: id, title: v.trim())),
@@ -112,253 +262,144 @@ class DetailPane extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          _PriorityPicker(
+            value: r.priority,
+            onPick: (p) => c.run(() => db.setPriority(id: id, priority: p)),
+          ),
+          const SizedBox(height: 14),
+          _Card(children: dateRows),
           const SizedBox(height: 10),
-          prop(
-            'Priority',
-            _PriorityPicker(
-              value: r.priority,
-              onPick: (p) => c.run(() => db.setPriority(id: id, priority: p)),
+          _Card(children: placeRows),
+          _Section(
+            icon: Icons.notes_rounded,
+            title: 'Notes',
+            child: _Notes(
+              key: const Key('detail-notes'),
+              value: d.notes,
+              onSave: (v) => c.run(() => db.setNotes(id: id, notes: v)),
             ),
           ),
-          prop(
-            'Due',
-            _EditField(
-              key: const Key('detail-due'),
-              value: r.dueLabel ?? '',
-              hint: 'fri 14:30',
-              style: manrope(
-                13,
-                FontWeight.w600,
-                color: r.overdue ? s.late : (r.dueToday ? s.today : s.fg),
-              ),
-              boxed: true,
-              onSave: (v) => c.run(() => db.setDue(id: id, text: v)),
-            ),
-          ),
-          prop(
-            'Start',
-            _EditField(
-              key: const Key('detail-start'),
-              value: d.startLabel ?? '',
-              hint: 'optional',
-              style: manrope(13, FontWeight.w600, color: s.fg),
-              boxed: true,
-              onSave: (v) => c.run(() => db.setStart(id: id, text: v)),
-            ),
-          ),
-          prop(
-            'Repeat',
-            _RepeatPicker(
-              rule: d.repeatRule,
-              afterCompletion: d.repeatAfterCompletion,
-              onSet: (rule, after) => c.run(
-                () => db.setRepeat(id: id, rule: rule, afterCompletion: after),
-              ),
-            ),
-          ),
-          prop(
-            'List',
-            Align(
-              alignment: Alignment.centerLeft,
-              child: DropdownButton<String?>(
-                key: const Key('detail-list'),
-                value: lists.any((l) => l.id == d.listId) ? d.listId : null,
-                isDense: true,
-                underline: const SizedBox.shrink(),
-                style: manrope(13, FontWeight.w600, color: s.fg),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(
-                      'No list',
-                      style: manrope(13, FontWeight.w500, color: s.mute),
-                    ),
-                  ),
-                  for (final l in lists)
-                    DropdownMenuItem(value: l.id, child: Text(l.name)),
-                ],
-                onChanged: (v) => c.run(() => db.setList(id: id, listId: v)),
-              ),
-            ),
-          ),
-          prop(
-            'Tags',
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
+          _Section(
+            icon: Icons.checklist_rounded,
+            title: 'Checklist',
+            trailing: d.checklist.isEmpty
+                ? null
+                : '$checked/${d.checklist.length}',
+            progress: d.checklist.isEmpty ? null : checked / d.checklist.length,
+            child: Column(
               children: [
-                for (final t in r.tags)
-                  TagPill(
-                    label: t.path,
-                    color: t.color,
-                    icon: t.icon,
-                    onDeleted: () => c.run(() => db.untag(id: id, tagId: t.id)),
-                  ),
-                _AddTag(
-                  paths: tagPaths,
-                  onAdd: (p) => c.run(() => db.tag(id: id, path: p)),
-                ),
-              ],
-            ),
-          ),
-          prop(
-            'Parent',
-            Row(
-              children: [
-                Flexible(
-                  child: InkWell(
-                    key: const Key('detail-parent'),
-                    borderRadius: BorderRadius.circular(6),
-                    onTap: () => _pickParent(context, id, r.parentId),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        d.parentTitle ?? 'None',
-                        overflow: TextOverflow.ellipsis,
-                        style: manrope(
-                          13,
-                          d.parentTitle == null
-                              ? FontWeight.w500
-                              : FontWeight.w600,
-                          color: d.parentTitle == null ? s.mute : s.fg,
+                for (final item in d.checklist)
+                  Row(
+                    children: [
+                      PriorityCheck(
+                        priority: 0,
+                        done: item.done,
+                        size: 15,
+                        onTap: () => c.run(
+                          () => db.checklistSet(
+                            itemId: item.id,
+                            done: !item.done,
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                ),
-                if (r.parentId != null)
-                  IconButton(
-                    key: const Key('detail-parent-clear'),
-                    tooltip: 'Make it a top-level task',
-                    visualDensity: VisualDensity.compact,
-                    icon: Icon(Icons.close, size: 14, color: s.mute),
-                    onPressed: () =>
-                        c.run(() => db.setParent(id: id, parentId: null)),
-                  ),
-              ],
-            ),
-          ),
-          // Only a task with a date can be on the calendar, so only then the switch.
-          if (r.dueAt != null || d.startLabel != null)
-            prop(
-              'Calendar',
-              Row(
-                children: [
-                  Transform.scale(
-                    scale: 0.8,
-                    alignment: Alignment.centerLeft,
-                    child: Switch(
-                      key: const Key('detail-in-calendar'),
-                      value: d.inCalendar,
-                      onChanged: (v) =>
-                          c.run(() => db.setInCalendar(id: id, visible: v)),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      d.inCalendar
-                          ? 'Shown in Calendar'
-                          : 'Kept off the calendar',
-                      style: manrope(12.5, FontWeight.w500, color: s.mute),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          heading('Checklist'),
-          for (final item in d.checklist)
-            Row(
-              children: [
-                PriorityCheck(
-                  priority: 0,
-                  done: item.done,
-                  size: 14,
-                  onTap: () => c.run(
-                    () => db.checklistSet(itemId: item.id, done: !item.done),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    item.title,
-                    style:
-                        manrope(
-                          13,
-                          FontWeight.w500,
-                          color: item.done ? s.mute : s.fg,
-                        ).copyWith(
-                          decoration: item.done
-                              ? TextDecoration.lineThrough
-                              : null,
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style:
+                              manrope(
+                                13,
+                                FontWeight.w500,
+                                color: item.done ? s.mute : s.fg,
+                              ).copyWith(
+                                decoration: item.done
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
                         ),
+                      ),
+                      IconButton(
+                        tooltip: 'Remove',
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(Icons.close, size: 14, color: s.mute),
+                        onPressed: () =>
+                            c.run(() => db.checklistRemove(itemId: item.id)),
+                      ),
+                    ],
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Remove',
-                  visualDensity: VisualDensity.compact,
-                  icon: Icon(Icons.close, size: 14, color: s.mute),
-                  onPressed: () =>
-                      c.run(() => db.checklistRemove(itemId: item.id)),
+                _AddLine(
+                  key: const Key('add-checklist'),
+                  hint: 'Add an item',
+                  onAdd: (v) =>
+                      c.run(() => db.checklistAdd(taskId: id, title: v)),
                 ),
               ],
             ),
-          _AddLine(
-            key: const Key('add-checklist'),
-            hint: 'Add an item',
-            onAdd: (v) => c.run(() => db.checklistAdd(taskId: id, title: v)),
           ),
-          heading('Subtasks'),
-          for (final sub in d.subtasks)
-            TaskCard(
-              row: sub,
-              selected: false,
-              showList: false,
-              onTap: () => c.select(sub.id),
-              onCheck: () => c.toggleDone(sub.id),
-            ),
-          _AddLine(
-            key: const Key('add-subtask'),
-            hint: 'Add a subtask',
-            onAdd: (v) => c.run(() => db.addSubtask(parentId: id, title: v)),
-          ),
-          heading('Reminders'),
-          for (final rem in d.reminders)
-            Row(
+          _Section(
+            icon: Icons.subdirectory_arrow_right_rounded,
+            title: 'Subtasks',
+            trailing: d.subtasks.isEmpty
+                ? null
+                : '$subsDone/${d.subtasks.length}',
+            progress: d.subtasks.isEmpty ? null : subsDone / d.subtasks.length,
+            child: Column(
               children: [
-                Icon(Icons.notifications_none, size: 14, color: s.mute),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    rem.label,
-                    style: manrope(13, FontWeight.w500, color: s.fg),
+                for (final sub in d.subtasks)
+                  TaskCard(
+                    row: sub,
+                    selected: false,
+                    showList: false,
+                    onTap: () => c.select(sub.id),
+                    onCheck: () => c.toggleDone(sub.id),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Remove',
-                  visualDensity: VisualDensity.compact,
-                  icon: Icon(Icons.close, size: 14, color: s.mute),
-                  onPressed: () => c.run(() => db.removeReminder(id: rem.id)),
+                _AddLine(
+                  key: const Key('add-subtask'),
+                  hint: 'Add a subtask',
+                  onAdd: (v) =>
+                      c.run(() => db.addSubtask(parentId: id, title: v)),
                 ),
               ],
             ),
-          _AddReminder(
-            onBefore: (m) =>
-                c.run(() => db.addReminderBefore(taskId: id, minutes: m)),
-            onAt: (text) =>
-                c.run(() => db.addReminderAt(taskId: id, text: text)),
           ),
-          heading('Notes'),
-          _EditField(
-            key: const Key('detail-notes'),
-            value: d.notes,
-            hint: 'Notes',
-            multiline: true,
-            boxed: true,
-            style: manrope(13, FontWeight.w500, color: s.fg),
-            onSave: (v) => c.run(() => db.setNotes(id: id, notes: v)),
+          _Section(
+            icon: Icons.notifications_none_rounded,
+            title: 'Reminders',
+            child: Column(
+              children: [
+                for (final rem in d.reminders)
+                  Row(
+                    children: [
+                      Icon(Icons.alarm, size: 14, color: s.mute),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          rem.label,
+                          style: manrope(13, FontWeight.w500, color: s.fg),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Remove',
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(Icons.close, size: 14, color: s.mute),
+                        onPressed: () =>
+                            c.run(() => db.removeReminder(id: rem.id)),
+                      ),
+                    ],
+                  ),
+                _AddReminder(
+                  onBefore: (m) =>
+                      c.run(() => db.addReminderBefore(taskId: id, minutes: m)),
+                  onAt: (text) =>
+                      c.run(() => db.addReminderAt(taskId: id, text: text)),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 22),
+          Divider(color: s.line, height: 1),
+          const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -409,6 +450,7 @@ class DetailPane extends StatelessWidget {
 }
 
 /// A text field that shows [value] and saves on Enter or when focus leaves.
+/// [inline] drops the box: it reads as text and underlines when focused.
 class _EditField extends StatefulWidget {
   const _EditField({
     super.key,
@@ -418,7 +460,9 @@ class _EditField extends StatefulWidget {
     this.focus,
     this.hint = '',
     this.multiline = false,
-    this.boxed = false,
+    this.inline = false,
+    this.minLines = 1,
+    this.maxLines = 1,
   });
 
   final String value;
@@ -426,8 +470,12 @@ class _EditField extends StatefulWidget {
   final TextStyle style;
   final FocusNode? focus;
   final String hint;
+
+  /// A wrapping single-paragraph field (Enter still saves).
   final bool multiline;
-  final bool boxed;
+  final bool inline;
+  final int minLines;
+  final int maxLines;
 
   @override
   State<_EditField> createState() => _EditFieldState();
@@ -471,26 +519,360 @@ class _EditFieldState extends State<_EditField> {
   @override
   Widget build(BuildContext context) {
     final s = context.soft;
+    final plain = InputDecoration(
+      hintText: widget.hint,
+      hintStyle: manrope(
+        widget.style.fontSize ?? 13,
+        FontWeight.w500,
+        color: s.mute.withValues(alpha: 0.7),
+      ),
+      filled: false,
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      focusedBorder: widget.inline
+          ? UnderlineInputBorder(borderSide: BorderSide(color: s.accent))
+          : InputBorder.none,
+      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+    );
     return TextField(
       controller: _text,
       focusNode: _focus,
       style: widget.style,
-      minLines: widget.multiline ? 3 : 1,
-      maxLines: widget.multiline ? 12 : 1,
-      textInputAction: widget.multiline
-          ? TextInputAction.newline
-          : TextInputAction.done,
-      onSubmitted: widget.multiline ? null : (_) => _save(),
-      decoration: widget.boxed
-          ? InputDecoration(hintText: widget.hint, fillColor: s.bg)
-          : InputDecoration(
-              hintText: widget.hint,
+      minLines: widget.minLines,
+      maxLines: widget.multiline ? widget.maxLines : 1,
+      keyboardType: TextInputType.text,
+      textInputAction: TextInputAction.done,
+      onSubmitted: (_) => _save(),
+      decoration: plain,
+    );
+  }
+}
+
+/// A rounded group of property rows with hairlines between them.
+class _Card extends StatelessWidget {
+  const _Card({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    return Container(
+      decoration: BoxDecoration(
+        color: s.bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: s.line),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) Divider(height: 1, indent: 40, color: s.line),
+            children[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// icon, label, value: one line of a [_Card].
+class _PropRow extends StatelessWidget {
+  const _PropRow({
+    required this.icon,
+    required this.label,
+    required this.child,
+  });
+
+  final IconData icon;
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 42),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: s.mute),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 58,
+              child: Text(
+                label,
+                style: manrope(12, FontWeight.w600, color: s.mute),
+              ),
+            ),
+            Expanded(child: child),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A titled block: icon, name, an optional count and progress bar, then [child].
+class _Section extends StatelessWidget {
+  const _Section({
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.trailing,
+    this.progress,
+  });
+
+  final IconData icon;
+  final String title;
+  final Widget child;
+  final String? trailing;
+  final double? progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    return Padding(
+      padding: const EdgeInsets.only(top: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: s.mute),
+              const SizedBox(width: 8),
+              Text(title, style: manrope(13, FontWeight.w800, color: s.fg)),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                Text(
+                  trailing!,
+                  style: manrope(11.5, FontWeight.w700, color: s.mute),
+                ),
+              ],
+              if (progress != null) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 4,
+                      backgroundColor: s.line,
+                      color: s.accent,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+/// Notes in Markdown: rendered until you click it, then a text box with a
+/// formatting bar. Saves when it loses focus or on Done.
+class _Notes extends StatefulWidget {
+  const _Notes({super.key, required this.value, required this.onSave});
+
+  final String value;
+  final Future<void>? Function(String) onSave;
+
+  @override
+  State<_Notes> createState() => _NotesState();
+}
+
+class _NotesState extends State<_Notes> {
+  final _text = TextEditingController();
+  final _focus = FocusNode();
+  bool _editing = false;
+  late String _shown = widget.value;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() {
+      if (!_focus.hasFocus && _editing) _finish();
+    });
+  }
+
+  @override
+  void didUpdateWidget(_Notes old) {
+    super.didUpdateWidget(old);
+    if (widget.value != old.value && !_editing) _shown = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _text.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _edit() {
+    _text.text = _shown;
+    setState(() => _editing = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _focus.requestFocus();
+      _text.selection = TextSelection.collapsed(offset: _text.text.length);
+    });
+  }
+
+  void _finish() {
+    final v = _text.text;
+    setState(() {
+      _editing = false;
+      _shown = v;
+    });
+    if (v != widget.value) widget.onSave(v);
+  }
+
+  /// Wrap the selection in [left]/[right], or insert them with the cursor between.
+  void _wrap(String left, [String? right]) {
+    right ??= left;
+    final sel = _text.selection.isValid
+        ? _text.selection
+        : TextSelection.collapsed(offset: _text.text.length);
+    final t = _text.text;
+    final inner = t.substring(sel.start, sel.end);
+    _text.value = TextEditingValue(
+      text: t.replaceRange(sel.start, sel.end, '$left$inner$right'),
+      selection: inner.isEmpty
+          ? TextSelection.collapsed(offset: sel.start + left.length)
+          : TextSelection(
+              baseOffset: sel.start + left.length,
+              extentOffset: sel.start + left.length + inner.length,
+            ),
+    );
+    _focus.requestFocus();
+  }
+
+  /// Put [prefix] at the start of the cursor's line.
+  void _prefix(String prefix) {
+    final sel = _text.selection.isValid
+        ? _text.selection
+        : TextSelection.collapsed(offset: _text.text.length);
+    final t = _text.text;
+    final at = t.lastIndexOf('\n', sel.start == 0 ? 0 : sel.start - 1) + 1;
+    final start = sel.start < at ? 0 : at;
+    _text.value = TextEditingValue(
+      text: t.replaceRange(start, start, prefix),
+      selection: TextSelection.collapsed(offset: sel.end + prefix.length),
+    );
+    _focus.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    if (!_editing) {
+      final empty = _shown.trim().isEmpty;
+      return InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: _edit,
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 64),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: s.bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: s.line),
+          ),
+          child: empty
+              ? Text(
+                  'Add notes. Markdown works: **bold**, - lists, - [ ] tasks',
+                  style: manrope(13, FontWeight.w500, color: s.mute),
+                )
+              : MarkdownView(
+                  source: _shown,
+                  onChanged: (v) {
+                    setState(() => _shown = v);
+                    widget.onSave(v);
+                  },
+                ),
+        ),
+      );
+    }
+    Widget tool(IconData i, String tip, VoidCallback f) => IconButton(
+      tooltip: tip,
+      visualDensity: VisualDensity.compact,
+      iconSize: 17,
+      icon: Icon(i, color: s.mute),
+      onPressed: f,
+    );
+    return Container(
+      decoration: BoxDecoration(
+        color: s.bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: s.accent, width: 1.5),
+      ),
+      child: Column(
+        children: [
+          TextFieldTapRegion(
+            child: Focus(
+              canRequestFocus: false,
+              descendantsAreFocusable: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 2, 8, 0),
+                child: Row(
+                  children: [
+                    tool(Icons.format_bold, 'Bold', () => _wrap('**')),
+                    tool(Icons.format_italic, 'Italic', () => _wrap('*')),
+                    tool(Icons.code, 'Code', () => _wrap('`')),
+                    tool(Icons.title, 'Heading', () => _prefix('## ')),
+                    tool(
+                      Icons.format_list_bulleted,
+                      'List',
+                      () => _prefix('- '),
+                    ),
+                    tool(
+                      Icons.check_box_outlined,
+                      'Task',
+                      () => _prefix('- [ ] '),
+                    ),
+                    tool(Icons.link, 'Link', () => _wrap('[', '](https://)')),
+                    const Spacer(),
+                    TextButton(
+                      key: const Key('notes-done'),
+                      onPressed: _finish,
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: const Text('Done'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Divider(height: 1, color: s.line),
+          TextField(
+            key: const Key('notes-field'),
+            controller: _text,
+            focusNode: _focus,
+            minLines: 5,
+            maxLines: 16,
+            style: manrope(
+              13,
+              FontWeight.w500,
+              color: s.fg,
+            ).copyWith(height: 1.5),
+            decoration: InputDecoration(
+              hintText: 'Write in Markdown',
               filled: false,
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+              contentPadding: const EdgeInsets.all(12),
             ),
+          ),
+        ],
+      ),
     );
   }
 }
