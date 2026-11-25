@@ -27,6 +27,8 @@ void main() {
   Future<TaskDb> pumpCalendar(
     WidgetTester tester, {
     Size size = const Size(1400, 900),
+    // Runs once the database file exists, before the app starts.
+    void Function(String dbPath)? beforeLaunch,
   }) async {
     // On a phone the phone layout comes from the real screen (a forced 1:1 size would
     // leave no room once the on-screen keyboard's physical-pixel inset is applied).
@@ -41,6 +43,7 @@ void main() {
     if (prefs.existsSync()) prefs.deleteSync();
     final dir = await Directory.systemTemp.createTemp('tt-cal');
     final db = await TaskDb.open(path: '${dir.path}/tt.db');
+    beforeLaunch?.call('${dir.path}/tt.db');
     final report = await db.add(title: 'Write report');
     await db.setStart(id: report.id, text: 'today 10:00');
     await db.add(title: 'Plan trip');
@@ -188,4 +191,79 @@ void main() {
       expect((await db.unscheduled()).map((r) => r.title), ['Call mum']);
     },
   );
+  // M5b (plan/19): Google's events come from the daemon's cache. Here the cache is filled
+  // with the sqlite3 CLI, as the daemon's fetch would, so no Google account is needed.
+  testWidgets('Google events show read-only; hidden calendars stay hidden', (
+    tester,
+  ) async {
+    // Google is desktop only, and the cache is filled with the sqlite3 CLI.
+    if (Platform.isAndroid) {
+      return;
+    }
+    final probe = await Process.run('sqlite3', [
+      '-version',
+    ]).catchError((_) => ProcessResult(0, 1, '', ''));
+    if (probe.exitCode != 0) {
+      return;
+    }
+    const local = "strftime('%s','now','localtime','start of day','utc')";
+    final sql =
+        '''
+      INSERT INTO gcal_calendar (id, summary, color, selected) VALUES
+        ('work@x', 'Work Blocks', '#16a765', 1), ('off@x', 'Hidden calendar', '#4986e7', 0);
+      INSERT INTO gcal_event (calendar_id, id, summary, start_at, end_at, all_day, html_link) VALUES
+        ('work@x', 'e1', 'Dentist', ($local + 13*3600) * 1000, ($local + 14*3600) * 1000, 0,
+         'https://www.google.com/calendar/event?eid=e1'),
+        ('work@x', 'e2', 'Mums birthday', strftime('%s', date('now','localtime')) * 1000,
+         strftime('%s', date('now','localtime','+1 day')) * 1000, 1, NULL),
+        ('off@x', 'h1', 'Secret meeting', ($local + 15*3600) * 1000, ($local + 16*3600) * 1000, 0, NULL);
+    ''';
+    final db = await pumpCalendar(
+      tester,
+      beforeLaunch: (path) {
+        final r = Process.runSync('sqlite3', [path, sql]);
+        expect(r.exitCode, 0, reason: '${r.stderr}');
+      },
+    );
+    // A data change (the daemon's commit, here a write of ours) makes the page reload.
+    await db.add(title: 'Nudge');
+    await settle(tester);
+
+    expect(find.text('Dentist'), findsOneWidget);
+    expect(find.text('Mums birthday'), findsOneWidget);
+    expect(find.text('Secret meeting'), findsNothing);
+    expect(
+      find.text('Write report'),
+      findsOneWidget,
+      reason: 'tasks still show',
+    );
+
+    // A tap opens the read-only details, not the task detail.
+    await tester.tap(find.text('Dentist'));
+    await settle(tester);
+    expect(find.byKey(const Key('google-event-dialog')), findsOneWidget);
+    expect(find.text('Work Blocks'), findsOneWidget);
+    expect(find.byKey(const Key('google-event-copy-link')), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await settle(tester);
+    expect(find.byKey(const Key('google-event-dialog')), findsNothing);
+
+    // Dragging it does nothing: it stays where Google has it.
+    final before = (await db.gcalEvents(
+      fromMs: 0,
+      untilMs: 1 << 50,
+    )).map((e) => e.startAt).toList();
+    await mouseDrag(
+      tester,
+      tester.getCenter(find.text('Dentist')),
+      tester.getCenter(find.text('Dentist')) + const Offset(0, 120),
+    );
+    expect(
+      (await db.gcalEvents(
+        fromMs: 0,
+        untilMs: 1 << 50,
+      )).map((e) => e.startAt).toList(),
+      before,
+    );
+  });
 }
