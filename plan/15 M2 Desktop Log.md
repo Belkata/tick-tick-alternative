@@ -237,3 +237,10 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
 - **`scripts/build-macos.sh`** builds the Rust binaries and the Flutter app, then puts `tt-daemon` into `Tick Alt.app/Contents/Helpers/Tick Alt Daemon.app` (`dev.tickalt.daemon`, `LSUIElement`, display name "Tick Alt") with `tt` beside it. It signs everything ad hoc and makes **`dist/tick-alt-<version>-macos.dmg`** (64 MB for 0.3.0). The daemon has a bundle of its own so notifications work and their actions reach it rather than the window app.
 - `install-launch-agent.sh [<Tick Alt.app>]` runs the bundled daemon (else `target/release/tt-daemon`, without notifications). ⏸ The user hasn't installed the LaunchAgent yet (the agent that ran this wasn't allowed to add a login item).
 - ⏸ **Not tested:** Snooze on macOS, the menu's Open, Sync now from the menu, pairing the Mac with the phone or the Arch laptop.
+
+## Arranging tags in the sidebar (2026-11-25, on the Arch laptop, at the user's request)
+- The **Tags** header has an **Arrange** button (⇅). It swaps each tag's count for a drag handle; dragging a handle moves the tag, with the tags under it, among its siblings. A drop elsewhere snaps to the nearest place under the same parent (re-nesting stays with `tt tags mv`). **Done** (✓) ends it. Same on the phone's drawer.
+- Core: `Store::place_tag(id, before)` (plan/04 "Tag"); `load_tags` now walks the tree in Rust, siblings by `sort_key`, then name **ignoring case** (it used to sort by the raw path, so capitalised names came before all lowercase ones). Socket/`Api`: `PlaceTag`. Dart: `TaskDb.placeTag`. CLI: `tt tags order <tag> [--before <tag>]`.
+- The drop logic is in `app/lib/desk/tag_order.dart` (unit tests in `app/test/tag_order_test.dart`); the sidebar shows the new order at once and the reload confirms it. Integration test: "arrange tags by dragging them in the sidebar".
+- Lists and filters can't be arranged yet; they have `sort_key` too, so the same approach would fit.
+- ⏸ Checked by tests only, not by eye in the running app.

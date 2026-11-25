@@ -7,6 +7,7 @@ import '../src/rust/api/tasks.dart';
 import 'controller.dart';
 import 'filter_builder.dart';
 import 'style_dialog.dart';
+import 'tag_order.dart';
 import 'theme.dart';
 
 /// Inbox, Lists, Filters, the Tags tree, Completed and Trash (plan/08).
@@ -43,11 +44,13 @@ class DeskSidebar extends StatelessWidget {
       int depth = 0,
       Key? key,
       VoidCallback? onEdit,
+      Widget? trail,
     }) => NavTile(
       key: key,
       label: label,
       lead: lead,
       count: count,
+      trail: trail,
       depth: depth,
       selected: c.view == v,
       onTap: () {
@@ -169,19 +172,22 @@ class DeskSidebar extends StatelessWidget {
               key: Key('nav-filter-${f.name}'),
               onEdit: () => showFilterBuilder(context, c, filterId: f.id),
             ),
-          if ((sb?.tags ?? const []).isNotEmpty) ...[
-            section('Tags'),
-            for (final t in sb!.tags)
-              nav(
+          if ((sb?.tags ?? const []).isNotEmpty)
+            _TagSection(
+              c: c,
+              tags: sb!.tags,
+              header: (action) => section('Tags', action: action),
+              tile: (t, trail) => nav(
                 TaskView(kind: ViewKind.tag, id: t.id),
                 t.name,
                 lead: emojiOr(t.icon, dot(t.color)),
                 count: t.count,
                 depth: t.depth,
+                trail: trail,
                 key: Key('nav-tag-${t.name}'),
                 onEdit: () => showStyleDialog(context, c, item: t, isTag: true),
               ),
-          ],
+            ),
           const SizedBox(height: 10),
           nav(
             const TaskView(kind: ViewKind.completed),
@@ -207,6 +213,100 @@ class DeskSidebar extends StatelessWidget {
   }
 }
 
+/// The Tags tree. Its header button switches to arranging: each row gets a drag
+/// handle, and a tag moves with the tags under it, among its siblings.
+class _TagSection extends StatefulWidget {
+  const _TagSection({
+    required this.c,
+    required this.tags,
+    required this.header,
+    required this.tile,
+  });
+
+  final DeskController c;
+  final List<NavItem> tags;
+  final Widget Function(Widget action) header;
+  final Widget Function(NavItem tag, Widget? trail) tile;
+
+  @override
+  State<_TagSection> createState() => _TagSectionState();
+}
+
+class _TagSectionState extends State<_TagSection> {
+  bool _arranging = false;
+
+  /// The order after a drop, shown until the sidebar reloads with it.
+  List<NavItem>? _moved;
+
+  @override
+  void didUpdateWidget(_TagSection old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.tags, widget.tags)) _moved = null;
+  }
+
+  void _drop(List<NavItem> tags, int from, int to) {
+    final move = tagDrop(tags, from, to);
+    if (move == null) return;
+    setState(() => _moved = applyTagMove(tags, move.id, move.before));
+    widget.c.run(() => widget.c.db.placeTag(id: move.id, before: move.before));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    final tags = _moved ?? widget.tags;
+    final header = widget.header(
+      _SmallButton(
+        key: const Key('arrange-tags'),
+        icon: _arranging ? Icons.check : Icons.swap_vert,
+        tooltip: _arranging ? 'Done arranging' : 'Arrange tags',
+        onTap: () => setState(() => _arranging = !_arranging),
+      ),
+    );
+    if (!_arranging) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [header, for (final t in tags) widget.tile(t, null)],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          itemCount: tags.length,
+          // onReorderItem's index counts after the lift; tagDrop wants it before.
+          onReorderItem: (from, to) =>
+              _drop(tags, from, to < from ? to : to + 1),
+          proxyDecorator: (child, _, _) =>
+              Material(color: Colors.transparent, child: child),
+          itemBuilder: (context, i) => KeyedSubtree(
+            key: ValueKey(tags[i].id),
+            child: widget.tile(
+              tags[i],
+              ReorderableDragStartListener(
+                index: i,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.grab,
+                  child: Icon(
+                    Icons.drag_indicator,
+                    key: Key('drag-tag-${tags[i].name}'),
+                    size: 16,
+                    color: s.mute,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// One sidebar row: icon or dot, label, count. The selected row is a raised card.
 class NavTile extends StatelessWidget {
   const NavTile({
@@ -218,6 +318,7 @@ class NavTile extends StatelessWidget {
     this.count,
     this.depth = 0,
     this.onEdit,
+    this.trail,
   });
 
   final String label;
@@ -229,6 +330,9 @@ class NavTile extends StatelessWidget {
   final Widget? lead;
   final int? count;
   final int depth;
+
+  /// Shown at the end instead of the count, e.g. a drag handle.
+  final Widget? trail;
 
   @override
   Widget build(BuildContext context) {
@@ -262,7 +366,9 @@ class NavTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (count != null && count! > 0)
+                if (trail != null)
+                  trail!
+                else if (count != null && count! > 0)
                   Text(
                     '$count',
                     style: manrope(

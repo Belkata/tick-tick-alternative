@@ -231,6 +231,44 @@ void main() {
     expect(tag.color, '#3fae5a');
   });
 
+  testWidgets('arrange tags by dragging them in the sidebar', (tester) async {
+    final db = await pumpApp(tester);
+    await addTask(tester, 'Plant bulbs');
+    final id = (await db.inbox()).single.id;
+    await db.tag(id: id, path: 'garden');
+    await db.tag(id: id, path: 'work');
+    await settle(tester);
+    Future<List<String>> names() async => [
+      for (final t in (await db.sidebar()).tags) t.name,
+    ];
+    expect(await names(), ['garden', 'work']);
+
+    await tester.tap(find.byKey(const Key('arrange-tags')));
+    await settle(tester);
+    final above = tester.getTopLeft(find.byKey(const Key('nav-tag-garden')));
+    final g = await tester.startGesture(
+      tester.getCenter(find.byKey(const Key('drag-tag-work'))),
+    );
+    for (var i = 0; i < 10; i++) {
+      await g.moveBy(const Offset(0, -6));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await g.moveTo(Offset(above.dx + 40, above.dy - 4));
+    await tester.pump(const Duration(milliseconds: 100));
+    await g.up();
+    await settle(tester);
+    expect(await names(), ['work', 'garden']);
+
+    // Done leaves arranging; the order stays.
+    await tester.tap(find.byKey(const Key('arrange-tags')));
+    await settle(tester);
+    expect(find.byKey(const Key('drag-tag-work')), findsNothing);
+    expect(
+      tester.getTopLeft(find.byKey(const Key('nav-tag-work'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(const Key('nav-tag-garden'))).dy),
+    );
+  });
+
   testWidgets('detail: start date, repeat and reminders', (tester) async {
     final db = await pumpApp(tester);
     await addTask(tester, 'Water plants');
