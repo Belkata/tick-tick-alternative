@@ -33,7 +33,8 @@ The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manro
 - **M2** (desktop, `plan/15`): the three-pane Flutter app, `tt-daemon` owning the DB over `$XDG_RUNTIME_DIR/tick-alt.sock`, the systemd user unit, the filter builder and edit dialogs, the PKGBUILD (`packaging/arch`, test-built, not installed). ⏸ The DMG waits for the Mac.
 - **M3** (sync, `plan/16`): protocol 2 over iroh (tt2 pairing tickets, trusted peers, trust sharing, removal spreading), compaction (schema **v5**), the network simulation test. The daemon runs the sync node with auto-sync, tray status and Sync now.
 - **M4** (Android, `plan/17`): in-process phone sync (`app/rust/src/phone.rs` + shared `tt_sync::service::SyncService`), QR pairing, AlarmManager reminders (Done / Snooze 10 min / 1 h), WorkManager background sync (15 min, plus expedited after outside edits), a share target, the CI release workflow. Tested on the emulator.
-- **Released**: pre-release **v0.2.0** on GitHub (`tick-alt-0.2.0-arm64.apk`, signed with this laptop's **debug** key). Its CI run fails until release-key secrets exist; that's expected.
+- **M5a** (local calendar, `plan/18`): Day/Week/Month on real tasks in the Soft style, Unscheduled panel (desktop) and bottom drawer (phone) with drag in and out, `placeBlock`/`unschedule` in the core. M5b (Google) is next.
+- **Released**: pre-release **v0.3.0** on GitHub (`tick-alt-0.3.0-arm64.apk`, the calendar; v0.2.0 before it), signed with this laptop's **debug** key, so it updates v0.2.0 in place. Its CI run fails until release-key secrets exist; that's expected.
 
 **Running on this laptop now:**
 - The `tick-alt` user service runs this checkout's `target/release/tt-daemon` on `~/.local/share/tick-alt/tt.db` (schema v5, sync node `c382b28c2f…`, UDP 41824). **After rebuilding the daemon: `systemctl --user restart tick-alt`.**

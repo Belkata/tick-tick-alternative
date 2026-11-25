@@ -108,4 +108,4 @@ The same `CalendarPage`, with a phone layout below 760 px wide (phones, and narr
 **On the emulator** (`tt_pixel`, Android 16, x86_64; 2026-11-25):
 - A **release** APK (`--target-platform android-x64`, built from a clean worktree at the slice 4 commit, so the TickTick-import work in progress elsewhere stayed out) starts and shows the calendar: Day view in light mode, the week strip, a completed task faded, the drawer and the + button. No R8 problems (nothing new is loaded by reflection).
 - `adb input draganddrop` can't long-press, as noted in M0, so the drags were checked by running `integration_test/calendar_test.dart` on the emulator (debug build): **all 4 tests pass with real long-press drags**, the phone test using the emulator's own screen. The tests drag with a long-press on Android and a mouse drag on desktop.
-- Not tried yet on the real phone (Xiaomi): the drawer, long-press drags and quick add by hand. That needs a new APK (v0.3.0) on it.
+- Published as pre-release **v0.3.0** (`tick-alt-0.3.0-arm64.apk`, same debug key as v0.2.0, SHA-256 `c097ae43…476b`). Not tried yet on the real phone (Xiaomi): the drawer, long-press drags and quick add by hand.
