@@ -40,9 +40,9 @@ Each milestone ends with something usable. Building the core first means the CLI
 **Exit:** usable daily on one machine.
 
 ## M3: P2P sync (desktop ↔ desktop)
-- [ ] Device identity, QR / text pairing, trusted peers. 🟡 Text pairing (`tt2` tickets) and trusted peers done; QR waits for M4. See [[16 M3 Sync Log]].
-- [ ] Sync protocol: version vectors and op streaming. Compaction and snapshots. 🟡 Version vectors and op streaming done; compaction and snapshots to do.
-- [ ] Property-based convergence tests and a network simulation.
+- [ ] Device identity, QR / text pairing, trusted peers. 🟡 Text pairing (`tt2` tickets), trusted peers and trust sharing (with removal spreading) done; QR waits for M4. See [[16 M3 Sync Log]].
+- [x] Sync protocol: version vectors and op streaming. Compaction and snapshots. ✅ Version vectors and op streaming; compaction drops superseded ops, and the compacted log is the snapshot.
+- [x] Property-based convergence tests and a network simulation. ✅ See [[16 M3 Sync Log]].
 - [x] Tray sync status. ✅ Tooltip line plus a working Sync now in the menu (M3 slice 2).
 
 **Exit:** Mac ↔ Arch stay in sync.

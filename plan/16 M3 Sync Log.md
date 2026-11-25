@@ -45,10 +45,26 @@ Back to [[00 Overview]] · [[10 Roadmap]] · [[05 P2P Sync]].
 - **Live run:** two throwaway daemons as temporary systemd units, relays off. Paired through `tt sync pair` and `join` via the daemons; a task added on one reached the other through **auto-sync alone** in under 7 s; `peers` and `sync now` worked.
 - **The user's service** runs it (node `c382b28c2f…`, no peers yet). The key `~/.local/share/tick-alt/tt.key` came from the earlier spike app run.
 
+## Slice 3: simulation, trust sharing and compaction ✅ (2026-11-25, while the user was away)
+- **Network simulation** (`core/tests/network_sim.rs`, plan/05 "Testing the sync engine"): 4 replicas, random interleavings.
+  - Steps: edits; one-way sends cut off mid-stream (only a prefix in HLC order arrives, like a dropped connection between batches); full sessions; retried batches; compaction at any moment. Partitions come from pairs that don't meet.
+  - Checks: retried batches change nothing; compaction keeps the state and the vector; without compaction, each replica's ops from a device form an unbroken prefix of that device's log; after two rings of sessions every replica has the same state and vector.
+  - 96 cases per run (about 4 s). Stress-run with 3 × 1,000 cases.
+  - A mutation (delivering a stream's *end* instead of its start) is caught, so the test can fail.
+  - The shared edit generators moved to `core/tests/common/`.
+- **Trust sharing** (plan/05 pairing step 4, schema v4 `peer_removed`):
+  - Each session now ends with a **Trust** frame (sync **protocol 2**): who the sender trusts (with when it paired them) and who it forgot.
+  - `Store::merge_trust` adds unknown peers and drops forgotten ones; the newer of "paired" and "forgotten" wins, by wall clock. It never adds this device or touches the sender. `remove_peer` leaves a tombstone, and an explicit re-pair clears it.
+  - Sync reports list `learned` and `dropped`; `tt` prints them, the daemon logs them and refreshes its peer count.
+  - Test: B and C each pair with A only, then sync with each other directly; A forgets C, and at B's next sync with A, B forgets C and C is refused.
+- **Compaction** (schema v5 `device_clock`):
+  - `Store::compact()` drops ops a newer op on the same field superseded. Under per-field LWW only winners shape state, so this is safe whatever peers have seen: a peer missing a dropped op still gets the winner, which is never dropped.
+  - **A compacted log is the snapshot**: a new device bootstraps from it, so no separate snapshot mechanism is needed.
+  - The version vector also reads `device_clock` (each device's newest HLC, recorded before dropping), so it never goes backwards and peers don't resend compacted ops.
+  - ⚠️ After compaction a vector means "has every winner up to here", no longer "holds every op". The stress run found the simulation's old retried-batch step relied on the latter; it now resends ops the receiver really holds.
+  - The daemon compacts a minute after startup, then daily. `tt sync compact` does it by hand (a test task renamed 5 times dropped 5 ops).
+- The user's service runs this build (real DB at schema v5, same node id, no peers). The release app was rebuilt too.
+
 ## Next
-- **Check with the user:** the Devices page and the tray status line in the real app, and a real second device (the Mac, or the phone after M4).
-- M3 still open:
-  - op-log compaction and snapshots;
-  - trust sharing (plan/05 step 4) and removal spreading to all devices;
-  - a network simulation test.
-- Not done yet: QR pairing (Android, M4).
+- **Check with the user:** the Devices page and the tray line in the real app, and a real second device (the Mac, or the phone after M4). `git push`: these commits are local.
+- Still open in M3: QR pairing (Android, M4). Subtask cycles from concurrent moves (from plan/14's known gaps) need a convergent resolution.
