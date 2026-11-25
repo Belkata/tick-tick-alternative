@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Make this laptop's daemon, `tt` and desktop app match the checkout, rebuilding only what
+# Make this laptop's daemon, `utre` and desktop app match the checkout, rebuilding only what
 # changed since the last run (each part is fingerprinted by the content of its files).
 #   scripts/update-desktop.sh           build what changed, restart the daemon, relaunch the app
 #   scripts/update-desktop.sh --all     rebuild everything regardless
 #   scripts/update-desktop.sh --no-restart   build only
 #
-# The daemon and `tt` use the `fast` profile (Cargo.toml); the app is Flutter's release build.
+# The daemon and `utre` use the `fast` profile (Cargo.toml); the app is Flutter's release build.
 # Before restarting the daemon the database is backed up (once per schema version and day),
 # since a new build may migrate it.
 set -euo pipefail
@@ -45,8 +45,8 @@ app_paths=("${rust_paths[@]}" app/lib app/rust app/linux app/pubspec.yaml app/pu
 
 daemon_built=0
 if changed daemon "${rust_paths[@]}"; then
-  echo "== utre-daemon and tt (fast profile)"
-  cargo build --profile fast -p utre-daemon -p tt
+  echo "== utre-daemon and utre (fast profile)"
+  cargo build --profile fast -p utre-daemon -p utre
   done_part daemon
   daemon_built=1
 fi
@@ -62,11 +62,11 @@ fi
 [[ $restart == 1 ]] || { echo "Built; not restarting."; exit 0; }
 
 if [[ $daemon_built == 1 || $force == 1 ]]; then
-  db="${TT_DB:-$HOME/.local/share/tick-alt/tt.db}"
+  db="${UTRE_DB:-$HOME/.local/share/utre/utre.db}"
   if [[ -f "$db" ]] && command -v sqlite3 >/dev/null; then
     version="$(sqlite3 "$db" 'PRAGMA user_version;')"
     backup_dir="$(dirname "$db")/backups"
-    backup="$backup_dir/tt-v$version-$(date +%F).db"
+    backup="$backup_dir/utre-v$version-$(date +%F).db"
     mkdir -p "$backup_dir"
     [[ -f "$backup" ]] || { sqlite3 "$db" ".backup '$backup'"; echo "Backed up the database to $backup"; }
   fi
@@ -77,9 +77,9 @@ fi
 if [[ $app_built == 1 || $force == 1 ]]; then
   if [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
     echo "== relaunching the app"
-    pkill -x tick_alt || true
+    pkill -x utre || true
     sleep 1
-    setsid -f "$repo/app/build/linux/x64/release/bundle/tick_alt" >/dev/null 2>&1
+    setsid -f "$repo/app/build/linux/x64/release/bundle/utre" >/dev/null 2>&1
   else
     echo "No display here: start the app yourself."
   fi

@@ -1,5 +1,5 @@
-pkgbase = tick-alt-git
-	pkgdesc = Local-first task manager: Flutter desktop app, tray daemon and tt CLI
+pkgbase = utre-git
+	pkgdesc = Local-first task manager: Flutter desktop app, tray daemon and utre CLI
 	pkgver = r0.0000000
 	pkgrel = 1
 	url = https://github.com/Belkata/utre
@@ -18,11 +18,12 @@ pkgbase = tick-alt-git
 	depends = hicolor-icon-theme
 	optdepends = waybar: tray icon (any StatusNotifierItem host works)
 	optdepends = dunst: reminder notifications with Done and Snooze (any notification daemon works)
-	provides = tick-alt
-	conflicts = tick-alt
+	provides = utre
+	conflicts = utre
+	conflicts = tick-alt-git
 	options = !strip
 	options = !debug
-	source = tick-alt::git+https://github.com/Belkata/utre.git
+	source = utre::git+https://github.com/Belkata/utre.git
 	sha256sums = SKIP
 
-pkgname = tick-alt-git
+pkgname = utre-git

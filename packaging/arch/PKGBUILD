@@ -1,12 +1,12 @@
-# Tick Alt for Arch Linux (plan/08 Packaging, plan/15 slice 5).
+# Utre for Arch Linux (plan/08 Packaging, plan/15 slice 5).
 # Builds the app, the daemon and the CLI from the GitHub repository's main branch.
 #   cd packaging/arch && makepkg -si
 # Needs Flutter on PATH (AUR flutter-bin, or a checkout: source scripts/env.sh) and Rust.
-# After installing: systemctl --user enable --now tick-alt.service
-pkgname=tick-alt-git
+# After installing: systemctl --user enable --now utre.service
+pkgname=utre-git
 pkgver=r0.0000000
 pkgrel=1
-pkgdesc="Local-first task manager: Flutter desktop app, tray daemon and tt CLI"
+pkgdesc="Local-first task manager: Flutter desktop app, tray daemon and utre CLI"
 arch=(x86_64)
 url="https://github.com/Belkata/utre"
 license=(MIT)
@@ -16,52 +16,52 @@ optdepends=(
   'waybar: tray icon (any StatusNotifierItem host works)'
   'dunst: reminder notifications with Done and Snooze (any notification daemon works)'
 )
-provides=(tick-alt)
-conflicts=(tick-alt)
+provides=(utre)
+conflicts=(utre tick-alt-git)
 # The Flutter AOT snapshot (libapp.so) must not be stripped.
 options=(!strip !debug)
-source=("tick-alt::git+https://github.com/Belkata/utre.git")
+source=("utre::git+https://github.com/Belkata/utre.git")
 sha256sums=('SKIP')
 
 pkgver() {
-  cd tick-alt
+  cd utre
   printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
 }
 
 prepare() {
-  cd tick-alt
+  cd utre
   export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
   cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
 }
 
 build() {
-  cd tick-alt
-  export CARGO_TARGET_DIR="$srcdir/tick-alt/target"
-  cargo build --release --frozen -p tt -p utre-daemon
+  cd utre
+  export CARGO_TARGET_DIR="$srcdir/utre/target"
+  cargo build --release --frozen -p utre -p utre-daemon
   cd app
   flutter --no-version-check build linux --release
 }
 
 check() {
-  cd tick-alt
-  export CARGO_TARGET_DIR="$srcdir/tick-alt/target"
+  cd utre
+  export CARGO_TARGET_DIR="$srcdir/utre/target"
   cargo test --release --frozen -p utre-core -p utre-api --features utre-api/server
 }
 
 package() {
-  cd tick-alt
-  install -Dm755 target/release/tt "$pkgdir/usr/bin/tt"
+  cd utre
+  install -Dm755 target/release/utre "$pkgdir/usr/bin/utre"
   install -Dm755 target/release/utre-daemon "$pkgdir/usr/bin/utre-daemon"
 
   # The Flutter bundle stays together (it finds lib/ and data/ next to its binary).
-  install -d "$pkgdir/usr/lib/tick-alt"
-  cp -r app/build/linux/x64/release/bundle/. "$pkgdir/usr/lib/tick-alt/"
-  ln -s /usr/lib/tick-alt/tick_alt "$pkgdir/usr/bin/tick-alt"
+  install -d "$pkgdir/usr/lib/utre"
+  cp -r app/build/linux/x64/release/bundle/. "$pkgdir/usr/lib/utre/"
+  ln -s /usr/lib/utre/utre "$pkgdir/usr/bin/utre-app"
 
-  install -Dm644 daemon/tick-alt.service "$pkgdir/usr/lib/systemd/user/tick-alt.service"
-  install -Dm644 app/linux/packaging/dev.tickalt.tick_alt.desktop \
-    "$pkgdir/usr/share/applications/dev.tickalt.tick_alt.desktop"
-  install -Dm644 app/linux/packaging/dev.tickalt.tick_alt.svg \
-    "$pkgdir/usr/share/icons/hicolor/scalable/apps/dev.tickalt.tick_alt.svg"
+  install -Dm644 daemon/utre.service "$pkgdir/usr/lib/systemd/user/utre.service"
+  install -Dm644 app/linux/packaging/dev.utre.utre.desktop \
+    "$pkgdir/usr/share/applications/dev.utre.utre.desktop"
+  install -Dm644 app/linux/packaging/dev.utre.utre.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/dev.utre.utre.svg"
   install -Dm644 app/assets/fonts/OFL.txt "$pkgdir/usr/share/licenses/$pkgname/Manrope-OFL.txt"
 }
