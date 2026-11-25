@@ -271,7 +271,7 @@ void main() {
     );
   });
 
-  testWidgets('sort a list from the header, then drag in manual order', (
+  testWidgets('one sort for every view, then drag in manual order', (
     tester,
   ) async {
     final db = await pumpApp(tester);
@@ -294,6 +294,27 @@ void main() {
     await settle(tester);
     expect(await db.viewSort(view: view), ['title_asc']);
     expect(await titles(), ['Apples', 'Bank', 'Cobbler']);
+    expect(y('Apples'), lessThan(y('Bank')));
+
+    // The choice holds in every view, and when coming back.
+    await tester.tap(find.text('Inbox').first);
+    await settle(tester);
+    expect(await db.viewSort(view: const TaskView(kind: ViewKind.inbox)), [
+      'title_asc',
+    ]);
+    await tester.tap(find.byKey(const Key('sort-menu')));
+    await settle(tester);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('sort-title')),
+        matching: find.byIcon(Icons.check),
+      ),
+      findsOneWidget,
+    );
+    await tester.tapAt(Offset.zero);
+    await settle(tester);
+    await tester.tap(find.text('Errands'));
+    await settle(tester);
     expect(y('Apples'), lessThan(y('Bank')));
 
     await tester.tap(find.byKey(const Key('sort-menu')));

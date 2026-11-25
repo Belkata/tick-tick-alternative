@@ -28,16 +28,6 @@ Future<void> showFilterBuilder(
   );
 }
 
-/// The sorts the builder's dropdown offers; anything else shows as Default.
-const _sortItems = {
-  'due_asc',
-  'priority_desc',
-  'created_desc',
-  'created_asc',
-  'title_asc',
-  'manual',
-};
-
 class _FilterBuilder extends StatefulWidget {
   const _FilterBuilder({required this.c, required this.def, this.filterId});
 
@@ -212,53 +202,6 @@ class _FilterBuilderState extends State<_FilterBuilder> {
                       Text(
                         'Include completed',
                         style: manrope(13, FontWeight.w500),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Sort ',
-                        style: manrope(13, FontWeight.w500, color: s.mute),
-                      ),
-                      DropdownButton<String>(
-                        value: _sortItems.contains(def.sort.firstOrNull)
-                            ? def.sort.first
-                            : '',
-                        isDense: true,
-                        underline: const SizedBox.shrink(),
-                        style: manrope(13, FontWeight.w600, color: s.fg),
-                        items: const [
-                          DropdownMenuItem(value: '', child: Text('Default')),
-                          DropdownMenuItem(
-                            value: 'due_asc',
-                            child: Text('Due date'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'priority_desc',
-                            child: Text('Priority'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'created_desc',
-                            child: Text('Newest first'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'created_asc',
-                            child: Text('Oldest first'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'title_asc',
-                            child: Text('Title'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'manual',
-                            child: Text('Manual'),
-                          ),
-                        ],
-                        onChanged: (v) => setState(
-                          () => def.sort = (v == null || v.isEmpty) ? [] : [v],
-                        ),
                       ),
                     ],
                   ),
