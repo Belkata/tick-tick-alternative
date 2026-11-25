@@ -51,8 +51,19 @@ void main() {
     return db;
   }
 
+  /// A drag the way the platform does it: a mouse drag on desktop, a long-press then
+  /// move on Android (cards and blocks there use long-press dragging).
   Future<void> mouseDrag(WidgetTester tester, Offset from, Offset to) async {
-    final g = await tester.startGesture(from, kind: PointerDeviceKind.mouse);
+    final touch = Platform.isAndroid;
+    final g = await tester.startGesture(
+      from,
+      kind: touch ? PointerDeviceKind.touch : PointerDeviceKind.mouse,
+    );
+    if (touch) {
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
     await tester.pump(const Duration(milliseconds: 100));
     const steps = 12;
     for (var i = 1; i <= steps; i++) {
