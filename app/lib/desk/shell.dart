@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../src/rust/api/tasks.dart';
 import '../widget_bridge.dart';
 import 'controller.dart';
+import 'desk_prefs.dart';
 import 'detail.dart';
 import 'sidebar.dart';
 import 'task_list.dart';
@@ -67,12 +68,23 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
   /// At or above this width the three panes sit side by side.
   static const wide = 760.0;
 
+  /// The detail pane's width, dragged by the user (null: the default for the window).
+  DeskPrefs _prefs = DeskPrefs();
+  static const _minDetail = 260.0;
+
+  /// The detail width when the current resize drag began.
+  double _dragFrom = 0;
+  static const _minList = 300.0;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     c.addListener(_onChange);
     c.reload();
+    DeskPrefs.load().then((p) {
+      if (mounted) setState(() => _prefs = p);
+    });
     // Android share sheet: shared text or links become Inbox tasks.
     WidgetBridge.onShared(_addShared);
     WidgetBridge.takeShared().then((t) {
@@ -363,7 +375,14 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
                 _page != null && widget.pages[_page!].railSidebar && !_railOpen;
             if (isWide) {
               final sideW = box.maxWidth >= 1100 ? 230.0 : 200.0;
-              final detailW = box.maxWidth >= 1100 ? 340.0 : 290.0;
+              // The list keeps at least _minList; the rest can go to the detail.
+              final maxDetail = (box.maxWidth - sideW - 8 - _minList).clamp(
+                _minDetail,
+                double.infinity,
+              );
+              final detailW =
+                  (_prefs.detailWidth ?? (box.maxWidth >= 1100 ? 340.0 : 290.0))
+                      .clamp(_minDetail, maxDetail);
               return Scaffold(
                 body: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -383,7 +402,21 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
                           onOpen: _openRow,
                         ),
                       ),
-                      VerticalDivider(width: 1, color: s.line),
+                      _ResizeHandle(
+                        color: s.line,
+                        onStart: () => _dragFrom = detailW,
+                        onDrag: (dx) => setState(
+                          () => _prefs.detailWidth = (_dragFrom - dx).clamp(
+                            _minDetail,
+                            maxDetail,
+                          ),
+                        ),
+                        onDone: _prefs.save,
+                        onReset: () {
+                          setState(() => _prefs.detailWidth = null);
+                          _prefs.save();
+                        },
+                      ),
                       SizedBox(
                         width: detailW,
                         child: DetailPane(c: c, titleFocus: _titleFocus),
@@ -432,6 +465,68 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// The line between the task list and the detail pane: drag it to resize the pane,
+/// double-click to go back to the default width.
+class _ResizeHandle extends StatefulWidget {
+  const _ResizeHandle({
+    required this.color,
+    required this.onStart,
+    required this.onDrag,
+    required this.onDone,
+    required this.onReset,
+  });
+
+  final Color color;
+
+  final VoidCallback onStart;
+
+  /// How far the pointer is from where it was pressed, in logical pixels (right is
+  /// positive). Measured from the press, so the line stays under the pointer.
+  final ValueChanged<double> onDrag;
+  final VoidCallback onDone;
+  final VoidCallback onReset;
+
+  @override
+  State<_ResizeHandle> createState() => _ResizeHandleState();
+}
+
+class _ResizeHandleState extends State<_ResizeHandle> {
+  bool _hot = false;
+  double _downX = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    // 1 px line, with a wider invisible grip around it that overlaps neither pane.
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      onEnter: (_) => setState(() => _hot = true),
+      onExit: (_) => setState(() => _hot = false),
+      child: GestureDetector(
+        key: const Key('detail-resize'),
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragDown: (d) {
+          _downX = d.globalPosition.dx;
+          widget.onStart();
+        },
+        onHorizontalDragUpdate: (d) =>
+            widget.onDrag(d.globalPosition.dx - _downX),
+        onHorizontalDragEnd: (_) => widget.onDone(),
+        onDoubleTap: widget.onReset,
+        child: SizedBox(
+          width: 7,
+          child: Center(
+            child: Container(
+              width: _hot ? 3 : 1,
+              color: _hot ? s.accent : widget.color,
+            ),
+          ),
         ),
       ),
     );
