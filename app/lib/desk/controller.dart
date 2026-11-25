@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../src/rust/api/tasks.dart';
+import 'task_sort.dart';
 
 /// State for the three-pane shell: the open view, the selected task and what they show.
 /// Every write goes through the bridge; its change stream triggers a reload, so the
@@ -20,6 +21,9 @@ class DeskController extends ChangeNotifier {
   String? selectedId;
   Sidebar? sidebar;
   List<TaskRow> tasks = const [];
+
+  /// How the open view is sorted (core sort keys); empty where there's no sort menu.
+  List<String> sort = const [];
   TaskDetail? detail;
   bool loaded = false;
 
@@ -43,6 +47,7 @@ class DeskController extends ChangeNotifier {
     final sel = selectedId;
     final Sidebar sb;
     final List<TaskRow> rows;
+    final List<String> order;
     final TaskDetail? d;
     try {
       sb = await db.sidebar();
@@ -51,6 +56,7 @@ class DeskController extends ChangeNotifier {
         return;
       }
       rows = await db.tasks(view: v);
+      order = sortable(v.kind) ? await db.viewSort(view: v) : const <String>[];
       d = sel == null ? null : await db.task(id: sel);
     } catch (e) {
       if (gen != _generation) return;
@@ -61,6 +67,7 @@ class DeskController extends ChangeNotifier {
     if (gen != _generation) return;
     sidebar = sb;
     tasks = rows;
+    sort = order;
     detail = d;
     if (d == null) selectedId = null;
     loaded = true;
@@ -138,6 +145,20 @@ class DeskController extends ChangeNotifier {
     final t = title.trim();
     if (t.isEmpty) return;
     await run(() => db.addIn(view: view, title: t));
+  }
+
+  /// Choose how the open view is sorted.
+  Future<void> setSort(List<String> keys) async {
+    sort = keys;
+    notifyListeners();
+    await run(() => db.setViewSort(view: view, sort: keys));
+  }
+
+  /// Manual order: move a task before `before` (or last), showing it there at once.
+  Future<void> placeTask(String id, String? before) async {
+    tasks = applyTaskMove(tasks, id, before);
+    notifyListeners();
+    await run(() => db.placeTask(view: view, id: id, before: before));
   }
 
   Future<void> toggleDone(String id) => run(() => db.toggleDone(id: id));

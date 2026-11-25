@@ -28,6 +28,16 @@ Future<void> showFilterBuilder(
   );
 }
 
+/// The sorts the builder's dropdown offers; anything else shows as Default.
+const _sortItems = {
+  'due_asc',
+  'priority_desc',
+  'created_desc',
+  'created_asc',
+  'title_asc',
+  'manual',
+};
+
 class _FilterBuilder extends StatefulWidget {
   const _FilterBuilder({required this.c, required this.def, this.filterId});
 
@@ -213,7 +223,9 @@ class _FilterBuilderState extends State<_FilterBuilder> {
                         style: manrope(13, FontWeight.w500, color: s.mute),
                       ),
                       DropdownButton<String>(
-                        value: def.sort.firstOrNull ?? '',
+                        value: _sortItems.contains(def.sort.firstOrNull)
+                            ? def.sort.first
+                            : '',
                         isDense: true,
                         underline: const SizedBox.shrink(),
                         style: manrope(13, FontWeight.w600, color: s.fg),
@@ -232,8 +244,16 @@ class _FilterBuilderState extends State<_FilterBuilder> {
                             child: Text('Newest first'),
                           ),
                           DropdownMenuItem(
+                            value: 'created_asc',
+                            child: Text('Oldest first'),
+                          ),
+                          DropdownMenuItem(
                             value: 'title_asc',
                             child: Text('Title'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'manual',
+                            child: Text('Manual'),
                           ),
                         ],
                         onChanged: (v) => setState(

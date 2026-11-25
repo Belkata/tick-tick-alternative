@@ -271,6 +271,62 @@ void main() {
     );
   });
 
+  testWidgets('sort a list from the header, then drag in manual order', (
+    tester,
+  ) async {
+    final db = await pumpApp(tester);
+    final list = await db.createList(name: 'Errands');
+    await settle(tester);
+    await tester.tap(find.text('Errands'));
+    await settle(tester);
+    for (final t in ['Bank', 'Cobbler', 'Apples']) {
+      await addTask(tester, t);
+    }
+    final view = TaskView(kind: ViewKind.list, id: list);
+    Future<List<String>> titles() async => [
+      for (final r in await db.tasks(view: view)) r.title,
+    ];
+    double y(String title) => tester.getTopLeft(find.text(title)).dy;
+
+    await tester.tap(find.byKey(const Key('sort-menu')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('sort-title')));
+    await settle(tester);
+    expect(await db.viewSort(view: view), ['title_asc']);
+    expect(await titles(), ['Apples', 'Bank', 'Cobbler']);
+    expect(y('Apples'), lessThan(y('Bank')));
+
+    await tester.tap(find.byKey(const Key('sort-menu')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('sort-manual')));
+    await settle(tester);
+    expect(await titles(), [
+      'Apples',
+      'Cobbler',
+      'Bank',
+    ], reason: 'newest first');
+
+    // Drag Bank to the top, in small steps so the list keeps up.
+    final target = tester.getTopLeft(find.text('Apples')).dy - 20;
+    final g = await tester.startGesture(tester.getCenter(find.text('Bank')));
+    var at = tester.getCenter(find.text('Bank')).dy;
+    while (at > target) {
+      await g.moveBy(const Offset(0, -6));
+      at -= 6;
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await tester.pump(const Duration(milliseconds: 300));
+    await g.up();
+    await settle(tester);
+    expect(await titles(), ['Bank', 'Apples', 'Cobbler']);
+    expect(y('Bank'), lessThan(y('Apples')));
+
+    // A click still opens the task.
+    await tester.tap(find.text('Cobbler'));
+    await settle(tester);
+    expect(find.byType(DetailPane), findsOneWidget);
+  });
+
   testWidgets('drag the line before the detail pane to resize it', (
     tester,
   ) async {
