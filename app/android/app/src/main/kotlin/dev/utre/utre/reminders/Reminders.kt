@@ -1,4 +1,4 @@
-package dev.tickalt.tick_alt.reminders
+package dev.utre.utre.reminders
 
 import android.Manifest
 import android.app.AlarmManager
@@ -13,11 +13,11 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import dev.tickalt.tick_alt.MainActivity
-import dev.tickalt.tick_alt.R
-import dev.tickalt.tick_alt.sync.SyncWorker
-import dev.tickalt.tick_alt.widget.TaskListWidget
-import dev.tickalt.tick_alt.widget.TtCore
+import dev.utre.utre.MainActivity
+import dev.utre.utre.R
+import dev.utre.utre.sync.SyncWorker
+import dev.utre.utre.widget.TaskListWidget
+import dev.utre.utre.widget.UtreCore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,9 +46,9 @@ object Reminders {
         }
         val now = System.currentTimeMillis()
         val due = try {
-            TtCore.db(ctx).upcomingReminders(now, now + WINDOW_MS, TimeZone.getDefault().id)
+            UtreCore.db(ctx).upcomingReminders(now, now + WINDOW_MS, TimeZone.getDefault().id)
         } catch (e: Exception) {
-            android.util.Log.w("TickAlt", "reminders: ${e.message}")
+            android.util.Log.w("Utre", "reminders: ${e.message}")
             return
         }
         val codes = mutableSetOf<String>()
@@ -144,7 +144,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 val pending = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        TtCore.db(ctx).complete(task)
+                        UtreCore.db(ctx).complete(task)
                         TaskListWidget.refreshAll(ctx)
                         Reminders.schedule(ctx)
                         SyncWorker.syncSoon(ctx)
@@ -161,9 +161,9 @@ class ReminderReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val FIRE = "dev.tickalt.reminder.FIRE"
-        const val DONE = "dev.tickalt.reminder.DONE"
-        const val SNOOZE = "dev.tickalt.reminder.SNOOZE"
-        const val SNOOZE_LONG = "dev.tickalt.reminder.SNOOZE_LONG"
+        const val FIRE = "dev.utre.reminder.FIRE"
+        const val DONE = "dev.utre.reminder.DONE"
+        const val SNOOZE = "dev.utre.reminder.SNOOZE"
+        const val SNOOZE_LONG = "dev.utre.reminder.SNOOZE_LONG"
     }
 }

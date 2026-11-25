@@ -1,8 +1,8 @@
-package dev.tickalt.tick_alt
+package dev.utre.utre
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import dev.tickalt.core.WidgetDb
+import dev.utre.core.WidgetDb
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

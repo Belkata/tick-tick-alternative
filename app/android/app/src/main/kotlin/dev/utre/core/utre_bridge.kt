@@ -3,7 +3,7 @@
 
 @file:Suppress("NAME_SHADOWING")
 
-package dev.tickalt.core
+package dev.utre.core
 
 // Common helper code.
 //
@@ -59,7 +59,7 @@ open class RustBuffer : Structure() {
     companion object {
         internal fun alloc(size: ULong = 0UL) = uniffiRustCall() { status ->
             // Note: need to convert the size to a `Long` value to make this work with JVM.
-            UniffiLib.ffi_tt_bridge_rustbuffer_alloc(size.toLong(), status)
+            UniffiLib.ffi_utre_bridge_rustbuffer_alloc(size.toLong(), status)
         }.also {
             if(it.data == null) {
                throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=${size})")
@@ -75,7 +75,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = uniffiRustCall() { status ->
-            UniffiLib.ffi_tt_bridge_rustbuffer_free(buf, status)
+            UniffiLib.ffi_utre_bridge_rustbuffer_free(buf, status)
         }
     }
 
@@ -392,7 +392,7 @@ private fun findLibraryName(componentName: String): String {
     if (libOverride != null) {
         return libOverride
     }
-    return "tt_bridge"
+    return "utre_bridge"
 }
 
 // Define FFI callback types
@@ -669,25 +669,25 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 // We now use JNA's "direct mapping" - unclear if same considerations apply exactly.
 internal object IntegrityCheckingUniffiLib {
     init {
-        Native.register(IntegrityCheckingUniffiLib::class.java, findLibraryName(componentName = "tt_bridge"))
+        Native.register(IntegrityCheckingUniffiLib::class.java, findLibraryName(componentName = "utre_bridge"))
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
 
     internal fun ensureInitialized() = Unit
-    external fun uniffi_tt_bridge_checksum_func_background_sync(
+    external fun uniffi_utre_bridge_checksum_func_background_sync(
     ): Int
-    external fun uniffi_tt_bridge_checksum_method_widgetdb_add(
+    external fun uniffi_utre_bridge_checksum_method_widgetdb_add(
     ): Int
-    external fun uniffi_tt_bridge_checksum_method_widgetdb_complete(
+    external fun uniffi_utre_bridge_checksum_method_widgetdb_complete(
     ): Int
-    external fun uniffi_tt_bridge_checksum_method_widgetdb_inbox(
+    external fun uniffi_utre_bridge_checksum_method_widgetdb_inbox(
     ): Int
-    external fun uniffi_tt_bridge_checksum_method_widgetdb_upcoming_reminders(
+    external fun uniffi_utre_bridge_checksum_method_widgetdb_upcoming_reminders(
     ): Int
-    external fun uniffi_tt_bridge_checksum_constructor_widgetdb_open(
+    external fun uniffi_utre_bridge_checksum_constructor_widgetdb_open(
     ): Int
-    external fun ffi_tt_bridge_uniffi_contract_version(
+    external fun ffi_utre_bridge_uniffi_contract_version(
     ): Int
 
         
@@ -702,130 +702,130 @@ internal object UniffiLib {
     
 
     init {
-        Native.register(UniffiLib::class.java, findLibraryName(componentName = "tt_bridge"))
+        Native.register(UniffiLib::class.java, findLibraryName(componentName = "utre_bridge"))
         
     }
 
     internal fun ensureInitialized() = Unit
-    external fun uniffi_tt_bridge_fn_clone_widgetdb(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_utre_bridge_fn_clone_widgetdb(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
-    external fun uniffi_tt_bridge_fn_free_widgetdb(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_utre_bridge_fn_free_widgetdb(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-    external fun uniffi_tt_bridge_fn_constructor_widgetdb_open(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_utre_bridge_fn_constructor_widgetdb_open(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
-    external fun uniffi_tt_bridge_fn_method_widgetdb_add(`ptr`: Long,`title`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_utre_bridge_fn_method_widgetdb_add(`ptr`: Long,`title`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_tt_bridge_fn_method_widgetdb_complete(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_utre_bridge_fn_method_widgetdb_complete(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
-    external fun uniffi_tt_bridge_fn_method_widgetdb_inbox(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_utre_bridge_fn_method_widgetdb_inbox(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_tt_bridge_fn_method_widgetdb_upcoming_reminders(`ptr`: Long,`fromMs`: Long,`untilMs`: Long,`tz`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_utre_bridge_fn_method_widgetdb_upcoming_reminders(`ptr`: Long,`fromMs`: Long,`untilMs`: Long,`tz`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_tt_bridge_fn_func_background_sync(`dbPath`: RustBuffer.ByValue,`keyPath`: RustBuffer.ByValue,`device`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_utre_bridge_fn_func_background_sync(`dbPath`: RustBuffer.ByValue,`keyPath`: RustBuffer.ByValue,`device`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun ffi_tt_bridge_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun ffi_tt_bridge_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun ffi_tt_bridge_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-    external fun ffi_tt_bridge_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun ffi_tt_bridge_rust_future_poll_u8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_u8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_u8(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_u8(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_u8(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_u8(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
-    external fun ffi_tt_bridge_rust_future_poll_i8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_i8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_i8(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_i8(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_i8(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_i8(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
-    external fun ffi_tt_bridge_rust_future_poll_u16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_u16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_u16(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_u16(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_u16(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_u16(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
-    external fun ffi_tt_bridge_rust_future_poll_i16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_i16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_i16(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_i16(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_i16(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_i16(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Short
-    external fun ffi_tt_bridge_rust_future_poll_u32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_u32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_u32(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_u32(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_u32(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_u32(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
-    external fun ffi_tt_bridge_rust_future_poll_i32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_i32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_i32(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_i32(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_i32(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_i32(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
-    external fun ffi_tt_bridge_rust_future_poll_u64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_u64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_u64(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_u64(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_u64(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_u64(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
-    external fun ffi_tt_bridge_rust_future_poll_i64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_i64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_i64(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_i64(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_i64(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_i64(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
-    external fun ffi_tt_bridge_rust_future_poll_f32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_f32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_f32(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_f32(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_f32(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_f32(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Float
-    external fun ffi_tt_bridge_rust_future_poll_f64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_f64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_f64(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_f64(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_f64(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_f64(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
-    external fun ffi_tt_bridge_rust_future_poll_rust_buffer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_rust_buffer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_rust_buffer(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_rust_buffer(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_rust_buffer(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_rust_buffer(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun ffi_tt_bridge_rust_future_poll_void(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+    external fun ffi_utre_bridge_rust_future_poll_void(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_cancel_void(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_cancel_void(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_free_void(`handle`: Long,
+    external fun ffi_utre_bridge_rust_future_free_void(`handle`: Long,
     ): Unit
-    external fun ffi_tt_bridge_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_utre_bridge_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
 
         
@@ -835,29 +835,29 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
     // Get the bindings contract version from our ComponentInterface
     val bindings_contract_version = 30
     // Get the scaffolding contract version by calling the into the dylib
-    val scaffolding_contract_version = lib.ffi_tt_bridge_uniffi_contract_version()
+    val scaffolding_contract_version = lib.ffi_utre_bridge_uniffi_contract_version()
     if (bindings_contract_version != scaffolding_contract_version) {
         throw RuntimeException("UniFFI contract version mismatch: try cleaning and rebuilding your project")
     }
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
-    if ((lib.uniffi_tt_bridge_checksum_func_background_sync() and 0xFFFF) != 2331) {
+    if ((lib.uniffi_utre_bridge_checksum_func_background_sync() and 0xFFFF) != 27317) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if ((lib.uniffi_tt_bridge_checksum_method_widgetdb_add() and 0xFFFF) != 39170) {
+    if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_add() and 0xFFFF) != 16303) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if ((lib.uniffi_tt_bridge_checksum_method_widgetdb_complete() and 0xFFFF) != 14909) {
+    if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_complete() and 0xFFFF) != 46071) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if ((lib.uniffi_tt_bridge_checksum_method_widgetdb_inbox() and 0xFFFF) != 43025) {
+    if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_inbox() and 0xFFFF) != 56612) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if ((lib.uniffi_tt_bridge_checksum_method_widgetdb_upcoming_reminders() and 0xFFFF) != 31265) {
+    if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_upcoming_reminders() and 0xFFFF) != 6560) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if ((lib.uniffi_tt_bridge_checksum_constructor_widgetdb_open() and 0xFFFF) != 9818) {
+    if ((lib.uniffi_utre_bridge_checksum_constructor_widgetdb_open() and 0xFFFF) != 19111) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1252,6 +1252,9 @@ public interface WidgetDbInterface {
      */
     fun `complete`(`id`: kotlin.String): kotlin.Boolean
     
+    /**
+     * The Inbox, sorted like the app's views (the device's sort).
+     */
     fun `inbox`(): List<WidgetTask>
     
     /**
@@ -1347,7 +1350,7 @@ open class WidgetDb: Disposable, AutoCloseable, WidgetDbInterface
                 return;
             }
             uniffiRustCall { status ->
-                UniffiLib.uniffi_tt_bridge_fn_free_widgetdb(handle, status)
+                UniffiLib.uniffi_utre_bridge_fn_free_widgetdb(handle, status)
             }
         }
     }
@@ -1360,7 +1363,7 @@ open class WidgetDb: Disposable, AutoCloseable, WidgetDbInterface
             throw InternalException("uniffiCloneHandle() called on NoHandle object");
         }
         return uniffiRustCall() { status ->
-            UniffiLib.uniffi_tt_bridge_fn_clone_widgetdb(handle, status)
+            UniffiLib.uniffi_utre_bridge_fn_clone_widgetdb(handle, status)
         }
     }
 
@@ -1369,7 +1372,7 @@ open class WidgetDb: Disposable, AutoCloseable, WidgetDbInterface
             return FfiConverterTypeWidgetTask.lift(
     callWithHandle {
     uniffiRustCallWithError(CoreException) { _status ->
-    UniffiLib.uniffi_tt_bridge_fn_method_widgetdb_add(
+    UniffiLib.uniffi_utre_bridge_fn_method_widgetdb_add(
         it,
         
         FfiConverterString.lower(`title`),_status)
@@ -1387,7 +1390,7 @@ open class WidgetDb: Disposable, AutoCloseable, WidgetDbInterface
             return FfiConverterBoolean.lift(
     callWithHandle {
     uniffiRustCallWithError(CoreException) { _status ->
-    UniffiLib.uniffi_tt_bridge_fn_method_widgetdb_complete(
+    UniffiLib.uniffi_utre_bridge_fn_method_widgetdb_complete(
         it,
         
         FfiConverterString.lower(`id`),_status)
@@ -1398,11 +1401,14 @@ open class WidgetDb: Disposable, AutoCloseable, WidgetDbInterface
     
 
     
+    /**
+     * The Inbox, sorted like the app's views (the device's sort).
+     */
     @Throws(CoreException::class)override fun `inbox`(): List<WidgetTask> {
             return FfiConverterSequenceTypeWidgetTask.lift(
     callWithHandle {
     uniffiRustCallWithError(CoreException) { _status ->
-    UniffiLib.uniffi_tt_bridge_fn_method_widgetdb_inbox(
+    UniffiLib.uniffi_utre_bridge_fn_method_widgetdb_inbox(
         it,
         _status)
 }
@@ -1420,7 +1426,7 @@ open class WidgetDb: Disposable, AutoCloseable, WidgetDbInterface
             return FfiConverterSequenceTypeWidgetReminder.lift(
     callWithHandle {
     uniffiRustCallWithError(CoreException) { _status ->
-    UniffiLib.uniffi_tt_bridge_fn_method_widgetdb_upcoming_reminders(
+    UniffiLib.uniffi_utre_bridge_fn_method_widgetdb_upcoming_reminders(
         it,
         
         FfiConverterLong.lower(`fromMs`),
@@ -1446,7 +1452,7 @@ open class WidgetDb: Disposable, AutoCloseable, WidgetDbInterface
     @Throws(CoreException::class) fun `open`(`path`: kotlin.String): WidgetDb {
             return FfiConverterTypeWidgetDb.lift(
     uniffiRustCallWithError(CoreException) { _status ->
-    UniffiLib.uniffi_tt_bridge_fn_constructor_widgetdb_open(
+    UniffiLib.uniffi_utre_bridge_fn_constructor_widgetdb_open(
     
         
         FfiConverterString.lower(`path`),_status)
@@ -1752,7 +1758,7 @@ public object FfiConverterSequenceTypeWidgetTask: FfiConverterRustBuffer<List<Wi
     @Throws(CoreException::class) fun `backgroundSync`(`dbPath`: kotlin.String, `keyPath`: kotlin.String, `device`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(CoreException) { _status ->
-    UniffiLib.uniffi_tt_bridge_fn_func_background_sync(
+    UniffiLib.uniffi_utre_bridge_fn_func_background_sync(
     
         
         FfiConverterString.lower(`dbPath`),

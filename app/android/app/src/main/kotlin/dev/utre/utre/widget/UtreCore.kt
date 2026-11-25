@@ -1,7 +1,7 @@
-package dev.tickalt.tick_alt.widget
+package dev.utre.utre.widget
 
 import android.content.Context
-import dev.tickalt.core.WidgetDb
+import dev.utre.core.WidgetDb
 
 /**
  * One process-wide connection to the Rust core for widget code.
@@ -9,7 +9,7 @@ import dev.tickalt.core.WidgetDb
  * The path must match the one Flutter uses: path_provider's
  * getApplicationSupportDirectory() is Context.filesDir on Android.
  */
-object TtCore {
+object UtreCore {
     @Volatile private var db: WidgetDb? = null
 
     fun db(context: Context): WidgetDb =
@@ -17,5 +17,5 @@ object TtCore {
             db ?: WidgetDb.open(dbPath(context)).also { db = it }
         }
 
-    fun dbPath(context: Context): String = "${context.applicationContext.filesDir.absolutePath}/tt.db"
+    fun dbPath(context: Context): String = "${context.applicationContext.filesDir.absolutePath}/utre.db"
 }

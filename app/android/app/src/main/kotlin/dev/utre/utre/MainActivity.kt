@@ -1,4 +1,4 @@
-package dev.tickalt.tick_alt
+package dev.utre.utre
 
 import android.Manifest
 import android.appwidget.AppWidgetManager
@@ -7,11 +7,11 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import dev.tickalt.tick_alt.reminders.Reminders
-import dev.tickalt.tick_alt.sync.SyncWorker
+import dev.utre.utre.reminders.Reminders
+import dev.utre.utre.sync.SyncWorker
 import java.util.TimeZone
-import dev.tickalt.tick_alt.widget.TaskListWidget
-import dev.tickalt.tick_alt.widget.TaskListWidgetReceiver
+import dev.utre.utre.widget.TaskListWidget
+import dev.utre.utre.widget.TaskListWidgetReceiver
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -27,7 +27,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        val ch = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "tick_alt/widget")
+        val ch = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "utre/widget")
         channel = ch
         ch.setMethodCallHandler { call, result ->
             when (call.method) {

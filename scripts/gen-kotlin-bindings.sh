@@ -14,11 +14,11 @@ case "$(uname -s)" in
 esac
 
 out=app/android/app/src/main/kotlin
-rm -rf "$out/dev/tickalt/core"
+rm -rf "$out/dev/utre/core"
 cargo run -p uniffi-bindgen -- generate \
   --library "$lib" \
   --language kotlin \
   --out-dir "$out" \
   --no-format
 
-echo "Wrote $out/dev/tickalt/core/utre_bridge.kt"
+echo "Wrote $out/dev/utre/core/utre_bridge.kt"

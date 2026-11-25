@@ -5337,7 +5337,7 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
   );
 
   /// Ticks with a new version number after every change: this handle's writes, and on
-  /// desktop also every change the daemon reports (other windows, `tt`, outside writes).
+  /// desktop also every change the daemon reports (other windows, `utre`, outside writes).
   Stream<int> changes() =>
       RustLib.instance.api.crateApiTasksTaskDbChanges(that: this);
 
