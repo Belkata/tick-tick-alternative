@@ -109,3 +109,8 @@ The same `CalendarPage`, with a phone layout below 760 px wide (phones, and narr
 - A **release** APK (`--target-platform android-x64`, built from a clean worktree at the slice 4 commit, so the TickTick-import work in progress elsewhere stayed out) starts and shows the calendar: Day view in light mode, the week strip, a completed task faded, the drawer and the + button. No R8 problems (nothing new is loaded by reflection).
 - `adb input draganddrop` can't long-press, as noted in M0, so the drags were checked by running `integration_test/calendar_test.dart` on the emulator (debug build): **all 4 tests pass with real long-press drags**, the phone test using the emulator's own screen. The tests drag with a long-press on Android and a mouse drag on desktop.
 - Published as pre-release **v0.3.0** (`tick-alt-0.3.0-arm64.apk`, same debug key as v0.2.0, SHA-256 `c097ae43…476b`). Not tried yet on the real phone (Xiaomi): the drawer, long-press drags and quick add by hand.
+
+## Show in Calendar (2026-11-25, on the Arch laptop, at the user's request)
+- Every task has **Show in Calendar** (`task.in_calendar`, schema **v6**, on by default). Off keeps it out of `Store::calendar` (blocks and past occurrences) and the Unscheduled panel, whatever its source filter. A switch in the detail pane; `tt edit <id> --calendar false`; `tt show` says "calendar hidden".
+- A build before v6 logs `in_calendar` ops it receives but rejects them (unknown field). The v6 migration replays those ops (`oplog::replay_field`), so the Mac on 0.3.0 catches up once it's updated. Until then it shows hidden tasks on its calendar.
+- `Task` deserialises a missing `in_calendar` as true, so an app talking to an older daemon still works (though it can't hide anything).

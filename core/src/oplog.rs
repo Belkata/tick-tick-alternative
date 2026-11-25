@@ -120,7 +120,7 @@ fn field_spec(entity: Entity, field: &str) -> Option<Kind> {
         (Entity::Task, "start_at" | "due_at" | "duration_min" | "completed_at" | "deleted_at") => {
             OptInt
         }
-        (Entity::Task, "all_day") => Bool,
+        (Entity::Task, "all_day" | "in_calendar") => Bool,
         (Entity::Task, "repeat_mode") => Enum(REPEAT_MODES),
         (Entity::Task, "status") => Enum(STATUSES),
         (Entity::Task, "created_at") => Int(0, i64::MAX),
@@ -274,6 +274,20 @@ fn touch_task(conn: &Connection, id: &str, hlc: Hlc) -> Result<()> {
         "UPDATE task SET updated_at = max(updated_at, ?2) WHERE id = ?1",
         params![id, hlc.wall as i64],
     )?;
+    Ok(())
+}
+
+/// Apply again the logged ops for a field that a newer schema adds. A build that
+/// didn't know the field logged them (so sync doesn't resend them) but rejected them.
+pub(crate) fn replay_field(conn: &Connection, entity: Entity, field: &str) -> Result<()> {
+    let ops: Vec<Op> = read_ops(conn, None)?
+        .into_iter()
+        .filter(|o| o.entity == entity && o.field == field)
+        .collect();
+    for op in ops {
+        conn.execute("DELETE FROM op WHERE hlc = ?1", [op.hlc.to_string()])?;
+        apply(conn, &op)?;
+    }
     Ok(())
 }
 

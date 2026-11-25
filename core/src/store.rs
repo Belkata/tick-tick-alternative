@@ -16,6 +16,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("migrations/003_m3.sql"),
     include_str!("migrations/004_trust.sql"),
     include_str!("migrations/005_compact.sql"),
+    include_str!("migrations/006_in_calendar.sql"),
 ];
 
 /// A handle to one Tick Alt database file.
@@ -195,6 +196,10 @@ fn migrate(conn: &Connection) -> Result<()> {
             conn.execute_batch(sql)?;
             if to == 2 {
                 backfill_ops(conn)?;
+            }
+            if to == 6 {
+                // An older build logged these without applying them (unknown field).
+                oplog::replay_field(conn, Entity::Task, "in_calendar")?;
             }
             conn.pragma_update(None, "user_version", to as i64)?;
             Ok::<_, Error>(())
@@ -432,6 +437,33 @@ mod tests {
         b.apply_remote(&reversed).unwrap();
         assert_eq!(b.get_task(&t.id).unwrap().unwrap().title, "v2");
         assert_eq!(b.apply_remote(&ops).unwrap(), 0, "all duplicates");
+    }
+
+    #[test]
+    fn v6_applies_in_calendar_ops_an_older_build_only_logged() {
+        let s = Store::open_in_memory().unwrap();
+        let t = s.add_task("x").unwrap();
+        let op = Op {
+            hlc: Hlc {
+                wall: u64::MAX >> 16,
+                counter: 0,
+                device: 99,
+            },
+            entity: Entity::Task,
+            entity_id: t.id.clone(),
+            field: "in_calendar".into(),
+            value: Value::from(false),
+        };
+        // What a v5 build does with the unknown field: log the op, change nothing.
+        s.conn
+            .execute(
+                "INSERT INTO op (hlc, entity, entity_id, field, value) VALUES (?1, 'task', ?2, 'in_calendar', 'false')",
+                params![op.hlc.to_string(), t.id],
+            )
+            .unwrap();
+        oplog::replay_field(&s.conn, Entity::Task, "in_calendar").unwrap();
+        assert!(!s.get_task(&t.id).unwrap().unwrap().in_calendar);
+        assert_eq!(s.ops().unwrap().iter().filter(|o| *o == &op).count(), 1);
     }
 
     #[test]

@@ -28,7 +28,7 @@ erDiagram
 | `title` | text | |
 | `notes` | text | Plain text in v1. Markdown is optional later. |
 | `list_id` | UUID? | `NULL` means no list. |
-| `parent_id` | UUID? | Subtask. Max depth 3 (TickTick allows 5, which is more than needed). |
+| `parent_id` | UUID? | Subtask. Max depth 3 (TickTick allows 5, which is more than needed). Set from the detail's Parent picker (`Store::parent_candidates` lists the tasks that fit). |
 | `priority` | 0–3 | none, low, med, high |
 | `start_at`, `due_at` | timestamp? | With `all_day` bool and `tz` (IANA, or `floating` for all-day). |
 | `duration_min` | int? | For calendar blocks. Defaults to 30 when dropped on the grid (decided 2026-11-25, [[18 M5 Calendar Log]]). |
@@ -37,6 +37,7 @@ erDiagram
 | `sort_key` | text | Fractional index, for manual ordering inside a list or tag. |
 | `created_at`, `updated_at` | timestamp | |
 | `gcal_event_id` | text? | Deterministic. See [[06 Google Calendar]]. |
+| `in_calendar` | bool | "Show in Calendar" (schema v6, 2026-11-25). On by default; off keeps the task off the calendar grid and its Unscheduled panel. |
 
 ### Checklist item
 `id`, `task_id`, `title`, `done`, `sort_key`. These are lightweight: no dates, tags or reminders.

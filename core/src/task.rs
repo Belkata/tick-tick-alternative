@@ -89,6 +89,14 @@ pub struct Task {
     pub gcal_event_id: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
+    /// Shown on the calendar and its Unscheduled panel ("Show in Calendar").
+    /// Defaults to on when a peer or daemon from before v6 leaves it out.
+    #[serde(default = "yes")]
+    pub in_calendar: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 impl Task {
@@ -119,6 +127,7 @@ impl Task {
             gcal_event_id: row.get(17)?,
             created_at: row.get(18)?,
             updated_at: row.get(19)?,
+            in_calendar: row.get(20)?,
         })
     }
 }
@@ -126,7 +135,7 @@ impl Task {
 pub(crate) const TASK_COLUMNS: &str = "task.id, task.title, task.notes, task.list_id, task.parent_id, \
      task.priority, task.start_at, task.due_at, task.all_day, task.tz, task.duration_min, \
      task.repeat_rule, task.repeat_mode, task.status, task.completed_at, task.deleted_at, \
-     task.sort_key, task.gcal_event_id, task.created_at, task.updated_at";
+     task.sort_key, task.gcal_event_id, task.created_at, task.updated_at, task.in_calendar";
 
 /// When a task happens. All-day dates are floating: stored as UTC midnight of the
 /// calendar date and shown on that date in any zone.
@@ -444,6 +453,37 @@ impl Store {
         })
     }
 
+    /// Show the task on the calendar (and its Unscheduled panel) or keep it off.
+    pub fn set_in_calendar(&self, id: &str, show: bool) -> Result<()> {
+        self.write(|w| {
+            require_task(w.conn, id)?;
+            w.set(Entity::Task, id, "in_calendar", show)
+        })
+    }
+
+    /// Open tasks that `id` could move under: not itself or its subtasks, and not so
+    /// deep that its subtree would pass [MAX_DEPTH]. By title.
+    pub fn parent_candidates(&self, id: &str) -> Result<Vec<Task>> {
+        require_task(&self.conn, id)?;
+        let below = descendants(&self.conn, id)?;
+        let height = subtree_height(&self.conn, id)?;
+        let open = query_tasks(
+            &self.conn,
+            &format!(
+                "SELECT {TASK_COLUMNS} FROM task WHERE status = 'open' AND id != ?1 \
+                 ORDER BY lower(title), id"
+            ),
+            [id],
+        )?;
+        let mut out = Vec::new();
+        for t in open {
+            if !below.contains(&t.id) && depth(&self.conn, &t.id)? + 1 + height <= MAX_DEPTH {
+                out.push(t);
+            }
+        }
+        Ok(out)
+    }
+
     /// Set or clear when a task happens. `None` clears every date field.
     pub fn set_schedule(&self, id: &str, schedule: Option<&Schedule>) -> Result<()> {
         self.write(|w| {
@@ -622,6 +662,42 @@ mod tests {
         );
         s.set_parent(&c.id, Some(&a.id)).unwrap();
         assert_eq!(s.subtasks(&a.id).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn parent_candidates_leave_out_loops_and_too_deep_tasks() {
+        let s = Store::open_in_memory().unwrap();
+        let sub = |title: &str, parent: &str| NewTask {
+            title: title.into(),
+            parent_id: Some(parent.into()),
+            ..Default::default()
+        };
+        let a = s.add_task("a").unwrap();
+        let b = s.create_task(&sub("b", &a.id)).unwrap();
+        let c = s.create_task(&sub("c", &b.id)).unwrap();
+        let x = s.add_task("x").unwrap();
+        let done = s.add_task("done").unwrap();
+        s.complete_task(&done.id).unwrap();
+        let titles = |id: &str| -> Vec<String> {
+            s.parent_candidates(id)
+                .unwrap()
+                .into_iter()
+                .map(|t| t.title)
+                .collect()
+        };
+        // a has two levels below it, so only a top-level parent would fit... and none
+        // would: a + 2 levels under x makes 4.
+        assert!(titles(&a.id).is_empty());
+        // b (one level below) can go under a top-level task, not under c.
+        assert_eq!(titles(&b.id), ["a", "x"]);
+        // c (a leaf) can go anywhere above level 3 except itself.
+        assert_eq!(titles(&c.id), ["a", "b", "x"]);
+        // Every candidate is accepted by set_parent.
+        for t in s.parent_candidates(&c.id).unwrap() {
+            s.set_parent(&c.id, Some(&t.id)).unwrap();
+        }
+        // c ended under x: x can't go under c (loop) or b (c would reach level 4).
+        assert_eq!(titles(&x.id), ["a"]);
     }
 
     #[test]

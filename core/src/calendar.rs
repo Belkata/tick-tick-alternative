@@ -99,7 +99,7 @@ impl Store {
 
         let sql = format!(
             "SELECT {TASK_COLUMNS} FROM task
-              WHERE task.status != 'deleted'
+              WHERE task.status != 'deleted' AND task.in_calendar = 1
                 AND coalesce(task.start_at, task.due_at) IS NOT NULL
                 AND coalesce(task.start_at, task.due_at) < ?2
                 AND (coalesce(task.start_at, task.due_at) >= ?1
@@ -130,11 +130,12 @@ impl Store {
         let sql = format!(
             "SELECT {TASK_COLUMNS}, c.occurrence_at FROM completion c
                JOIN task ON task.id = c.task_id
-              WHERE task.status != 'deleted' AND c.occurrence_at BETWEEN ?1 AND ?2"
+              WHERE task.status != 'deleted' AND task.in_calendar = 1
+                AND c.occurrence_at BETWEEN ?1 AND ?2"
         );
         let mut stmt = self.conn.prepare(&sql)?;
         let rows = stmt.query_map(params![from - SLACK_MS, until + SLACK_MS], |r| {
-            Ok((Task::from_row(r)?, r.get::<_, i64>(20)?))
+            Ok((Task::from_row(r)?, r.get::<_, i64>(21)?))
         })?;
         for row in rows {
             let (t, occurrence) = row?;
@@ -343,6 +344,18 @@ mod tests {
             (blocks[1].start_at, blocks[1].end_at),
             (midnight("2026-11-26"), midnight("2026-11-27"))
         );
+    }
+
+    #[test]
+    fn tasks_kept_off_the_calendar_dont_show() {
+        let s = Store::open_in_memory().unwrap();
+        let t = timed(&s, "private", Some(at("2026-11-24", 9, 0)), None);
+        assert_eq!(week(&s, "2026-11-23").len(), 1);
+        s.set_in_calendar(&t.id, false).unwrap();
+        assert!(week(&s, "2026-11-23").is_empty());
+        assert!(!s.get_task(&t.id).unwrap().unwrap().in_calendar);
+        s.set_in_calendar(&t.id, true).unwrap();
+        assert_eq!(week(&s, "2026-11-23").len(), 1);
     }
 
     #[test]
