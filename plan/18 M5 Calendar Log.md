@@ -27,11 +27,15 @@ Today's calendar is still the M0 spike (`app/lib/calendar/spike_calendar.dart`):
 ## Defaults (not asked; change any of them)
 - Weeks start on **Monday**.
 - Blocks take the colour of the task's first tag, else its list, else the teal accent. Future repeat occurrences get a small repeat icon.
-- Dropping a block on the all-day row makes the task all-day; dragging an all-day task into the grid gives it a time. Dropping a block back on the Unscheduled panel clears its start (and its due, if the due is the only date).
+- Dropping a block on the all-day row makes the task all-day; dragging an all-day task into the grid gives it a time. Dropping a block back on the Unscheduled panel clears its start and due, so it really leaves the calendar (the duration is kept for the next drop). Repeating tasks can't be unscheduled until the repeat is stopped.
+- Rules settled while building slice 1 (2026-11-25):
+  - **The due only moves when the block passes it.** A timed block that starts after the due pushes the due to the block's end; an all-day one pushes it to that day.
+  - **Switching kind keeps the due's day.** All-day → timed turns the due into 23:59 that day; timed → all-day turns it into its date.
+  - **All-day blocks are one day**, at the start (else due) date. No multi-day bars in M5a: with start + duration, a due-only all-day task dragged earlier would otherwise stretch across days.
 - Clicking a block opens the task's detail (the detail pane on desktop, the bottom sheet on phone).
 
 ## Slices
-1. **Core and API: calendar items.**
+1. **Core and API: calendar items.** ✅ (2026-11-25, see below)
    - A `calendar(from, until, tz)` read in the `api!` table (`api/src/proto.rs`), so it reaches the socket, the bridge and the phone. It returns one item per block: task id, title, start, end, all-day, done, colour, whether it's a repeat occurrence and whether it can be dragged.
    - Expanding occurrences in `core/src/recur.rs` (fixed-mode RRULEs inside the window; past occurrences come from the completion history and show as done).
    - The Unscheduled source: the no-date default plus any saved filter, through the existing filter compiler.
@@ -42,3 +46,12 @@ Today's calendar is still the M0 spike (`app/lib/calendar/spike_calendar.dart`):
 
 ## Before starting
 - Check kalender's current version on pub.dev (the spike used 0.34.0) and record it in [[02 Tech Stack Options]].
+
+## Slice 1: core and API ✅ (2026-11-25, on the Arch laptop)
+- `core/src/calendar.rs`: `Store::calendar(from, until, tz)` returns `Block`s (all-day ones as local-midnight spans in the viewer's zone); `place_block(id, start, end?, all_day, tz)`; `unschedule(id)`. `DEFAULT_BLOCK_MIN = 30`.
+- `recur::occurrences_after` expands a fixed RRULE inside the window (COUNT counts the current occurrence; capped at 20 000 steps). Later occurrences keep the task's start-to-due gap in local time, so a 09:00 daily stays 09:00 across DST.
+- Past occurrences come from the `completion` table (`occurrence_at`) and show as done.
+- `tt-api`: `calendar`, `unscheduled(filter_id?)`, `place_block`, `unschedule` in the `api!` table; `CalendarItem` adds the title, priority and colour (first coloured tag, else the list) plus an icon.
+- Bridge: `TaskDb.calendar`, `unscheduled`, `placeBlock`, `unschedule` (bindings regenerated).
+- Tests: 12 new core tests (start + duration, due-only and all-day, done, weekly repeats, DST, COUNT and after-completion, history, placing, resizing, kind switches, refusals, unscheduling) and a socket round trip. `cargo test --workspace`, clippy, `flutter analyze` and `flutter test` are clean.
+- Known approximation: a past occurrence's block uses the task's *current* start-to-due gap and duration.
