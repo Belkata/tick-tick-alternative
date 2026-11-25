@@ -26,6 +26,37 @@ pub struct Peer {
     pub last_addr: Option<String>,
 }
 
+/// A trusted device as one peer tells another about it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SharedPeer {
+    pub node_id: String,
+    pub name: String,
+    /// When it was paired (epoch ms), to weigh against removals.
+    pub added_at: i64,
+    pub addr: Option<String>,
+}
+
+/// A forgotten device.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Removal {
+    pub node_id: String,
+    pub removed_at: i64,
+}
+
+/// Who a device trusts and who it forgot, exchanged at the end of every sync.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TrustList {
+    pub peers: Vec<SharedPeer>,
+    pub removed: Vec<Removal>,
+}
+
+/// What merging a trust list changed (device names).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TrustChange {
+    pub added: Vec<String>,
+    pub removed: Vec<String>,
+}
+
 /// HLC text is `wall-counter-device` in fixed-width hex: the device is the last 16 chars.
 const DEVICE_OFFSET: usize = 12 + 1 + 6 + 1;
 
@@ -89,15 +120,111 @@ impl Store {
                last_addr = coalesce(excluded.last_addr, peer.last_addr)",
             params![node_id, name, now_ms, addr],
         )?;
+        // Pairing again on purpose overrides an earlier "forget".
+        self.conn
+            .execute("DELETE FROM peer_removed WHERE node_id = ?1", [node_id])?;
         Ok(())
     }
 
     /// Stop trusting a device. Returns false if it wasn't a peer.
+    /// Stop trusting a device, and remember that, so the removal spreads to the other
+    /// paired devices at their next sync. Returns false if it wasn't a peer.
     pub fn remove_peer(&self, node_id: &str) -> Result<bool> {
-        Ok(self
+        let removed = self
             .conn
             .execute("DELETE FROM peer WHERE node_id = ?1", [node_id])?
-            > 0)
+            > 0;
+        if removed {
+            self.remember_removal(node_id, crate::task::now_ms())?;
+        }
+        Ok(removed)
+    }
+
+    fn remember_removal(&self, node_id: &str, at: i64) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO peer_removed (node_id, removed_at) VALUES (?1, ?2) \
+             ON CONFLICT(node_id) DO UPDATE SET removed_at = max(removed_at, excluded.removed_at)",
+            params![node_id, at],
+        )?;
+        Ok(())
+    }
+
+    /// What this device tells its peers about trust: who it trusts, and who was forgotten.
+    pub fn trust_list(&self) -> Result<TrustList> {
+        let peers = self
+            .peers()?
+            .into_iter()
+            .map(|p| SharedPeer {
+                node_id: p.node_id,
+                name: p.name,
+                added_at: p.added_at,
+                addr: p.last_addr,
+            })
+            .collect();
+        let mut stmt = self
+            .conn
+            .prepare("SELECT node_id, removed_at FROM peer_removed ORDER BY node_id")?;
+        let removed = stmt
+            .query_map([], |r| {
+                Ok(Removal {
+                    node_id: r.get(0)?,
+                    removed_at: r.get(1)?,
+                })
+            })?
+            .collect::<rusqlite::Result<_>>()?;
+        Ok(TrustList { peers, removed })
+    }
+
+    /// Fold a paired device's trust list into ours (plan/05 pairing step 4): its peers
+    /// become ours, its removals remove ours. The newer of "added" and "removed" wins,
+    /// by wall-clock time; an explicit re-pair clears a removal. `self_id` (this device)
+    /// and `sender` (who sent the list) are never added or removed this way.
+    pub fn merge_trust(
+        &self,
+        theirs: &TrustList,
+        self_id: &str,
+        sender: &str,
+    ) -> Result<TrustChange> {
+        let tx = self.conn.unchecked_transaction()?;
+        let mut change = TrustChange::default();
+        for r in &theirs.removed {
+            if r.node_id == self_id || r.node_id == sender {
+                continue;
+            }
+            if let Some(p) = self.peer(&r.node_id)?
+                && p.added_at <= r.removed_at
+            {
+                self.conn
+                    .execute("DELETE FROM peer WHERE node_id = ?1", [&r.node_id])?;
+                change.removed.push(p.name);
+            }
+            self.remember_removal(&r.node_id, r.removed_at)?;
+        }
+        for p in &theirs.peers {
+            if p.node_id == self_id || p.node_id == sender || self.is_trusted(&p.node_id)? {
+                continue;
+            }
+            let removed_at: Option<i64> = self
+                .conn
+                .query_row(
+                    "SELECT removed_at FROM peer_removed WHERE node_id = ?1",
+                    [&p.node_id],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            if removed_at.is_some_and(|t| t >= p.added_at) {
+                continue; // Forgotten after that device paired it.
+            }
+            self.conn.execute(
+                "INSERT INTO peer (node_id, name, added_at, last_addr) VALUES (?1, ?2, ?3, ?4)",
+                params![p.node_id, p.name, p.added_at, p.addr],
+            )?;
+            self.conn
+                .execute("DELETE FROM peer_removed WHERE node_id = ?1", [&p.node_id])?;
+            change.added.push(p.name.clone());
+        }
+        tx.commit()?;
+        Ok(change)
     }
 
     /// Record a successful sync with a trusted peer (and its current name and address).
@@ -132,6 +259,7 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
+    use super::{Removal, SharedPeer, TrustList};
     use crate::Store;
 
     #[test]
@@ -179,5 +307,99 @@ mod tests {
         assert!(!s.state_dump().unwrap().contains("arch"));
         assert!(s.remove_peer("n1").unwrap());
         assert!(!s.remove_peer("n1").unwrap());
+    }
+
+    #[test]
+    fn trust_spreads_and_forgetting_follows() {
+        let (me, sender) = ("me", "mac");
+        let s = Store::open_in_memory().unwrap();
+        s.add_peer(sender, "mac", None, 10).unwrap();
+
+        // The Mac trusts the phone (paired at 20) and this device: we learn the phone only.
+        let list = TrustList {
+            peers: vec![
+                SharedPeer {
+                    node_id: "phone".into(),
+                    name: "phone".into(),
+                    added_at: 20,
+                    addr: Some("{}".into()),
+                },
+                SharedPeer {
+                    node_id: me.into(),
+                    name: "me".into(),
+                    added_at: 5,
+                    addr: None,
+                },
+            ],
+            removed: vec![],
+        };
+        let ch = s.merge_trust(&list, me, sender).unwrap();
+        assert_eq!(ch.added, ["phone"]);
+        assert!(s.is_trusted("phone").unwrap() && !s.is_trusted(me).unwrap());
+        assert_eq!(s.peer("phone").unwrap().unwrap().added_at, 20);
+
+        // The Mac forgot the phone at 30 (after it was paired): we drop it, and remember.
+        let forgot = TrustList {
+            peers: vec![],
+            removed: vec![Removal {
+                node_id: "phone".into(),
+                removed_at: 30,
+            }],
+        };
+        assert_eq!(
+            s.merge_trust(&forgot, me, sender).unwrap().removed,
+            ["phone"]
+        );
+        assert!(!s.is_trusted("phone").unwrap());
+        // A stale list from another device (phone paired at 20) can't bring it back...
+        assert!(s.merge_trust(&list, me, sender).unwrap().added.is_empty());
+        // ...but a newer pairing somewhere (at 40) does.
+        let repaired = TrustList {
+            peers: vec![SharedPeer {
+                node_id: "phone".into(),
+                name: "phone".into(),
+                added_at: 40,
+                addr: None,
+            }],
+            removed: vec![],
+        };
+        assert_eq!(
+            s.merge_trust(&repaired, me, sender).unwrap().added,
+            ["phone"]
+        );
+
+        // Nobody removes the sender or this device through a list.
+        let hostile = TrustList {
+            peers: vec![],
+            removed: vec![
+                Removal {
+                    node_id: sender.into(),
+                    removed_at: 99,
+                },
+                Removal {
+                    node_id: me.into(),
+                    removed_at: 99,
+                },
+            ],
+        };
+        assert!(
+            s.merge_trust(&hostile, me, sender)
+                .unwrap()
+                .removed
+                .is_empty()
+        );
+        assert!(s.is_trusted(sender).unwrap());
+    }
+
+    #[test]
+    fn forgetting_is_remembered_and_explicit_pairing_clears_it() {
+        let s = Store::open_in_memory().unwrap();
+        s.add_peer("phone", "phone", None, 1).unwrap();
+        assert!(s.remove_peer("phone").unwrap());
+        let list = s.trust_list().unwrap();
+        assert_eq!(list.removed.len(), 1);
+        assert_eq!(list.removed[0].node_id, "phone");
+        s.add_peer("phone", "phone", None, i64::MAX).unwrap();
+        assert!(s.trust_list().unwrap().removed.is_empty());
     }
 }

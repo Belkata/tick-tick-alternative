@@ -23,7 +23,7 @@ pub use filter::{Cond, Filter, FilterRule, SavedFilter};
 pub use organize::{List, Tag};
 pub use recur::{Completion, Repeat};
 pub use reminder::{Reminder, ReminderFire, ReminderKind};
-pub use replica::{Peer, VersionVector};
+pub use replica::{Peer, Removal, SharedPeer, TrustChange, TrustList, VersionVector};
 pub use store::Store;
 pub use task::{MAX_DEPTH, NewTask, RepeatMode, Schedule, Status, Task};
 
