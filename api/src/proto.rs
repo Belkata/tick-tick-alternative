@@ -181,6 +181,7 @@ macro_rules! api {
 api! {
     // ----- Tasks: reads -----
     read Inbox inbox() -> Vec<Task> => |s| s.inbox();
+    read InboxSorted inbox_sorted(sort: Vec<String>) -> Vec<Task> => |s| s.inbox_sorted(&sort);
     read OpenTasks open_tasks() -> Vec<Task> => |s| s.open_tasks();
     read GetTask get_task(id: String) -> Option<Task> => |s| s.get_task(&id);
     read ResolveTaskId resolve_task_id(suffix: String) -> Option<String> => |s| s.resolve_task_id(&suffix);
@@ -271,6 +272,11 @@ api! {
     read Sidebar sidebar(now_ms: i64, tz: TzName) -> Sidebar => |s| views::sidebar(s, now_ms, tz.tz());
     read Tasks tasks(view: TaskView, now_ms: i64, tz: TzName) -> Vec<TaskRow>
         => |s| views::tasks(s, &view, now_ms, tz.tz());
+    read ViewSort view_sort(view: TaskView) -> Vec<String> => |s| views::view_sort(s, &view);
+    write SetViewSort set_view_sort(view: TaskView, sort: Vec<String>) -> ()
+        => |s| views::set_view_sort(s, &view, &sort);
+    write PlaceTask place_task(view: TaskView, id: String, before: Option<String>, now_ms: i64, tz: TzName) -> ()
+        => |s| views::place_task(s, &view, &id, before.as_deref(), now_ms, tz.tz());
     read TaskDetail task_detail(id: String, now_ms: i64, tz: TzName) -> Option<TaskDetail>
         => |s| views::task_detail(s, &id, now_ms, tz.tz());
     write AddIn add_in(view: TaskView, title: String, now_ms: i64, tz: TzName) -> String

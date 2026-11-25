@@ -9,7 +9,7 @@ use anyhow::{Context, Result, bail};
 use chrono_tz::Tz;
 use clap::{Args, Parser, Subcommand};
 use show::{SHORT_ID_LEN, line, offset_label, parse_offset, priority_name, short_id, when};
-use tt_api::Api;
+use tt_api::{Api, TaskView, ViewKind};
 use tt_core::{
     Filter, FilterRule, NewTask, ReminderKind, Repeat, RepeatMode, Schedule, Task, local_tz,
     parse_when,
@@ -93,6 +93,21 @@ enum Command {
     Tags {
         #[command(subcommand)]
         cmd: Option<TagsCmd>,
+    },
+    /// Show or set how a view is sorted (Inbox without a flag): due, priority, title,
+    /// newest, oldest or manual, or sort keys such as `start_asc,title_asc`.
+    Sort {
+        #[command(flatten)]
+        view: ViewArgs,
+        key: Option<String>,
+    },
+    /// Move a task in manual order: before another task, or last without --before.
+    Order {
+        id: String,
+        #[arg(long)]
+        before: Option<String>,
+        #[command(flatten)]
+        view: ViewArgs,
     },
     /// List or manage lists.
     Lists {
@@ -203,6 +218,32 @@ struct LsArgs {
     /// Include done tasks (list, tag and --all views).
     #[arg(long)]
     done: bool,
+}
+
+/// Which view `tt sort` and `tt order` act on; the Inbox without a flag.
+#[derive(Args)]
+#[group(id = "sort_view", multiple = false)]
+struct ViewArgs {
+    #[arg(long, short)]
+    list: Option<String>,
+    #[arg(long, short = 't')]
+    tag: Option<String>,
+    #[arg(long, short)]
+    filter: Option<String>,
+}
+
+/// The sort keys behind each choice in the apps' sort menu.
+fn sort_preset(name: &str) -> Vec<String> {
+    let keys: &[&str] = match name {
+        "due" => &["due_asc", "priority_desc"],
+        "priority" => &["priority_desc", "due_asc"],
+        "title" => &["title_asc"],
+        "newest" => &["created_desc"],
+        "oldest" => &["created_asc"],
+        "manual" => &["manual"],
+        other => return other.split(',').map(|k| k.trim().to_string()).collect(),
+    };
+    keys.iter().map(|k| k.to_string()).collect()
 }
 
 #[derive(Subcommand)]
@@ -564,6 +605,19 @@ impl Ctx {
                 );
             }
             Command::Tags { cmd } => self.tags(cmd)?,
+            Command::Sort { view, key } => {
+                let view = self.view(&view)?;
+                if let Some(key) = key {
+                    s.set_view_sort(&view, sort_preset(&key))?;
+                }
+                println!("{}", s.view_sort(&view)?.join(", "));
+            }
+            Command::Order { id, before, view } => {
+                let view = self.view(&view)?;
+                let id = self.task_id(&id)?;
+                let before = before.map(|b| self.task_id(&b)).transpose()?;
+                s.place_task(&view, &id, before.as_ref(), self.now, self.tz)?;
+            }
             Command::Lists { cmd } => self.lists(cmd)?,
             Command::Repeat {
                 id,
@@ -680,6 +734,35 @@ impl Ctx {
             .with_context(|| format!("no single task matches id '{short}'"))
     }
 
+    fn view(&self, v: &ViewArgs) -> Result<TaskView> {
+        let s = &self.store;
+        Ok(if let Some(l) = &v.list {
+            TaskView {
+                kind: ViewKind::List,
+                id: Some(self.list_id(l)?),
+            }
+        } else if let Some(t) = &v.tag {
+            TaskView {
+                kind: ViewKind::Tag,
+                id: Some(s.find_tag(t)?.with_context(|| format!("no tag '{t}'"))?.id),
+            }
+        } else if let Some(f) = &v.filter {
+            TaskView {
+                kind: ViewKind::Filter,
+                id: Some(
+                    s.find_filter(f)?
+                        .with_context(|| format!("no filter '{f}'"))?
+                        .id,
+                ),
+            }
+        } else {
+            TaskView {
+                kind: ViewKind::Inbox,
+                id: None,
+            }
+        })
+    }
+
     fn list_id(&self, name: &str) -> Result<String> {
         Ok(self
             .store
@@ -745,21 +828,30 @@ impl Ctx {
 
     fn ls(&self, a: LsArgs) -> Result<()> {
         let s = &self.store;
-        let run = |rule: &str| -> Result<Vec<Task>> {
+        let run_sorted = |rule: &str, sort: &[String]| -> Result<Vec<Task>> {
             let rule: FilterRule = serde_json::from_str(rule)?;
-            s.run_rule(&rule, &[], a.done, self.now, self.tz)
+            s.run_rule(&rule, sort, a.done, self.now, self.tz)
         };
+        let run = |rule: &str| run_sorted(rule, &[]);
+        let sort_of = |kind: ViewKind, id: Option<String>| s.view_sort(&TaskView { kind, id });
         let cond = |field: &str, op: &str, value: &str| {
             serde_json::json!({"field": field, "op": op, "value": value}).to_string()
         };
         if a.all {
             self.print_tasks(&run(r#"{"all":[]}"#)?, "No open tasks.");
         } else if let Some(l) = &a.list {
-            self.list_id(l)?;
-            self.print_tasks(&run(&cond("list", "is", l))?, "No tasks in that list.");
+            let sort = sort_of(ViewKind::List, Some(self.list_id(l)?))?;
+            self.print_tasks(
+                &run_sorted(&cond("list", "is", l), &sort)?,
+                "No tasks in that list.",
+            );
         } else if let Some(t) = &a.tag {
-            s.find_tag(t)?.with_context(|| format!("no tag '{t}'"))?;
-            self.print_tasks(&run(&cond("tag", "has", t))?, "No tasks with that tag.");
+            let tag = s.find_tag(t)?.with_context(|| format!("no tag '{t}'"))?;
+            let sort = sort_of(ViewKind::Tag, Some(tag.id))?;
+            self.print_tasks(
+                &run_sorted(&cond("tag", "has", t), &sort)?,
+                "No tasks with that tag.",
+            );
         } else if let Some(f) = &a.filter {
             let f = s
                 .find_filter(f)?
@@ -770,7 +862,8 @@ impl Ctx {
         } else if a.trash {
             self.print_tasks(&s.trash()?, "Trash is empty.");
         } else {
-            self.print_tasks(&s.inbox()?, "Inbox is empty.");
+            let sort = sort_of(ViewKind::Inbox, None)?;
+            self.print_tasks(&s.inbox_sorted(sort)?, "Inbox is empty.");
         }
         Ok(())
     }
