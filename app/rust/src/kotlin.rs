@@ -68,8 +68,11 @@ impl WidgetDb {
         })
     }
 
+    /// The Inbox, sorted like the app's views (the device's sort).
     pub fn inbox(&self) -> Result<Vec<WidgetTask>, CoreError> {
-        Ok(self.lock().inbox()?.into_iter().map(Into::into).collect())
+        let s = self.lock();
+        let sort = s.device_sort()?;
+        Ok(s.inbox_sorted(&sort)?.into_iter().map(Into::into).collect())
     }
 
     pub fn add(&self, title: String) -> Result<WidgetTask, CoreError> {

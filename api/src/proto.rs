@@ -182,6 +182,8 @@ api! {
     // ----- Tasks: reads -----
     read Inbox inbox() -> Vec<Task> => |s| s.inbox();
     read InboxSorted inbox_sorted(sort: Vec<String>) -> Vec<Task> => |s| s.inbox_sorted(&sort);
+    read DeviceSort device_sort() -> Vec<String> => |s| s.device_sort();
+    write SetDeviceSort set_device_sort(sort: Vec<String>) -> () => |s| s.set_device_sort(&sort);
     read OpenTasks open_tasks() -> Vec<Task> => |s| s.open_tasks();
     read GetTask get_task(id: String) -> Option<Task> => |s| s.get_task(&id);
     read ResolveTaskId resolve_task_id(suffix: String) -> Option<String> => |s| s.resolve_task_id(&suffix);

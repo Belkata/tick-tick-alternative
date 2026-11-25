@@ -209,52 +209,30 @@ pub fn sidebar(s: &Store, now: i64, tz: Tz) -> tt_core::Result<Sidebar> {
     })
 }
 
-/// The sort a view uses when none is saved (`SORT_KEYS` in tt-core).
-fn default_sort(kind: ViewKind) -> Vec<String> {
-    let keys: &[&str] = match kind {
-        ViewKind::Inbox => &["created_asc"],
-        ViewKind::List | ViewKind::Tag | ViewKind::Filter => &["due_asc", "priority_desc"],
-        ViewKind::Completed | ViewKind::Trash => &[],
-    };
-    keys.iter().map(|k| k.to_string()).collect()
+/// Views with a sort menu; Completed and Trash keep their own order.
+fn sortable(kind: ViewKind) -> bool {
+    !matches!(kind, ViewKind::Completed | ViewKind::Trash)
 }
 
-/// How a view is sorted: its saved sort, or the default. Empty for Completed and
-/// Trash, which keep their own order and offer no sort.
+/// How a view is sorted: the device's one sort, shared by every sortable view.
+/// Empty for Completed and Trash.
 pub fn view_sort(s: &Store, view: &TaskView) -> tt_core::Result<Vec<String>> {
-    let saved = match view.kind {
-        ViewKind::Inbox => s.inbox_sort()?,
-        ViewKind::List => s.list_sort(view.id()?)?,
-        ViewKind::Tag => s.tag_sort(view.id()?)?,
-        ViewKind::Filter => s
-            .find_filter(view.id()?)?
-            .ok_or_else(|| tt_core::Error::NotFound(format!("filter {}", view.id().unwrap_or(""))))?
-            .filter
-            .sort
-            .into_iter()
-            .filter(|k| tt_core::SORT_KEYS.contains(&k.as_str()))
-            .collect(),
-        ViewKind::Completed | ViewKind::Trash => return Ok(Vec::new()),
-    };
-    Ok(if saved.is_empty() {
-        default_sort(view.kind)
+    if sortable(view.kind) {
+        s.device_sort()
     } else {
-        saved
-    })
+        Ok(Vec::new())
+    }
 }
 
-/// Save how a view is sorted. Lists, tags and filters sync it; the Inbox's is per device.
+/// Choose the sort from a view's menu. It applies to every view on this device.
 pub fn set_view_sort(s: &Store, view: &TaskView, sort: &[String]) -> tt_core::Result<()> {
-    match view.kind {
-        ViewKind::Inbox => s.set_inbox_sort(sort),
-        ViewKind::List => s.set_list_sort(view.id()?, sort),
-        ViewKind::Tag => s.set_tag_sort(view.id()?, sort),
-        ViewKind::Filter => s.set_filter_sort(view.id()?, sort),
-        ViewKind::Completed | ViewKind::Trash => Err(tt_core::Error::Invalid(format!(
+    if !sortable(view.kind) {
+        return Err(tt_core::Error::Invalid(format!(
             "the {:?} view can't be sorted",
             view.kind
-        ))),
+        )));
     }
+    s.set_device_sort(sort)
 }
 
 /// The open tasks a sortable view shows, in `sort` order.
@@ -308,7 +286,7 @@ pub fn place_task(
 pub fn tasks(s: &Store, view: &TaskView, now: i64, tz: Tz) -> tt_core::Result<Vec<TaskRow>> {
     let tasks = match view.kind {
         ViewKind::Inbox | ViewKind::List | ViewKind::Tag | ViewKind::Filter => {
-            sorted_tasks(s, view, &view_sort(s, view)?, now, tz)?
+            sorted_tasks(s, view, &s.device_sort()?, now, tz)?
         }
         ViewKind::Trash => s.trash()?,
         ViewKind::Completed => {
@@ -670,7 +648,7 @@ mod tests {
     }
 
     #[test]
-    fn views_follow_their_sort_and_manual_moves() {
+    fn one_sort_for_every_view_and_manual_moves() {
         let s = Store::open_in_memory().unwrap();
         let tz = Tz::Europe__Sofia;
         let now = 1_795_600_000_000; // 2026-11-25
@@ -691,9 +669,20 @@ mod tests {
         assert_eq!(view_sort(&s, &list).unwrap(), ["due_asc", "priority_desc"]);
         set_view_sort(&s, &list, &["title_asc".into()]).unwrap();
         assert_eq!(titles(&list), ["a", "b", "c"]);
-        assert_eq!(view_sort(&s, &list).unwrap(), ["title_asc"]);
 
-        set_view_sort(&s, &list, &["manual".into()]).unwrap();
+        // The choice is the same in every view.
+        let inbox = TaskView {
+            kind: ViewKind::Inbox,
+            id: None,
+        };
+        assert_eq!(view_sort(&s, &inbox).unwrap(), ["title_asc"]);
+        let tag = TaskView {
+            kind: ViewKind::Tag,
+            id: Some(s.ensure_tag_path("x").unwrap()),
+        };
+        assert_eq!(view_sort(&s, &tag).unwrap(), ["title_asc"]);
+
+        set_view_sort(&s, &inbox, &["manual".into()]).unwrap();
         assert_eq!(
             titles(&list),
             ["a", "c", "b"],
@@ -703,11 +692,6 @@ mod tests {
         place_task(&s, &list, &rows[2].id, Some(&rows[0].id), now, tz).unwrap();
         assert_eq!(titles(&list), ["b", "a", "c"]);
 
-        let inbox = TaskView {
-            kind: ViewKind::Inbox,
-            id: None,
-        };
-        assert_eq!(view_sort(&s, &inbox).unwrap(), ["created_asc"]);
         let trash = TaskView {
             kind: ViewKind::Trash,
             id: None,

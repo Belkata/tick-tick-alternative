@@ -94,13 +94,9 @@ enum Command {
         #[command(subcommand)]
         cmd: Option<TagsCmd>,
     },
-    /// Show or set how a view is sorted (Inbox without a flag): due, priority, title,
+    /// Show or set how every view is sorted on this device: due, priority, title,
     /// newest, oldest or manual, or sort keys such as `start_asc,title_asc`.
-    Sort {
-        #[command(flatten)]
-        view: ViewArgs,
-        key: Option<String>,
-    },
+    Sort { key: Option<String> },
     /// Move a task in manual order: before another task, or last without --before.
     Order {
         id: String,
@@ -220,7 +216,7 @@ struct LsArgs {
     done: bool,
 }
 
-/// Which view `tt sort` and `tt order` act on; the Inbox without a flag.
+/// Which view `tt order` acts on; the Inbox without a flag.
 #[derive(Args)]
 #[group(id = "sort_view", multiple = false)]
 struct ViewArgs {
@@ -301,9 +297,6 @@ enum FilterCmd {
     Add {
         name: String,
         rule: String,
-        /// Sort keys, e.g. `--sort priority_desc --sort due_asc`.
-        #[arg(long)]
-        sort: Vec<String>,
         #[arg(long)]
         show_completed: bool,
     },
@@ -610,12 +603,11 @@ impl Ctx {
                 );
             }
             Command::Tags { cmd } => self.tags(cmd)?,
-            Command::Sort { view, key } => {
-                let view = self.view(&view)?;
+            Command::Sort { key } => {
                 if let Some(key) = key {
-                    s.set_view_sort(&view, sort_preset(&key))?;
+                    s.set_device_sort(sort_preset(&key))?;
                 }
-                println!("{}", s.view_sort(&view)?.join(", "));
+                println!("{}", s.device_sort()?.join(", "));
             }
             Command::Order { id, before, view } => {
                 let view = self.view(&view)?;
@@ -837,22 +829,21 @@ impl Ctx {
             let rule: FilterRule = serde_json::from_str(rule)?;
             s.run_rule(&rule, sort, a.done, self.now, self.tz)
         };
-        let run = |rule: &str| run_sorted(rule, &[]);
-        let sort_of = |kind: ViewKind, id: Option<String>| s.view_sort(&TaskView { kind, id });
+        let sort = s.device_sort()?;
+        let run = |rule: &str| run_sorted(rule, &sort);
         let cond = |field: &str, op: &str, value: &str| {
             serde_json::json!({"field": field, "op": op, "value": value}).to_string()
         };
         if a.all {
             self.print_tasks(&run(r#"{"all":[]}"#)?, "No open tasks.");
         } else if let Some(l) = &a.list {
-            let sort = sort_of(ViewKind::List, Some(self.list_id(l)?))?;
+            self.list_id(l)?;
             self.print_tasks(
                 &run_sorted(&cond("list", "is", l), &sort)?,
                 "No tasks in that list.",
             );
         } else if let Some(t) = &a.tag {
-            let tag = s.find_tag(t)?.with_context(|| format!("no tag '{t}'"))?;
-            let sort = sort_of(ViewKind::Tag, Some(tag.id))?;
+            s.find_tag(t)?.with_context(|| format!("no tag '{t}'"))?;
             self.print_tasks(
                 &run_sorted(&cond("tag", "has", t), &sort)?,
                 "No tasks with that tag.",
@@ -867,8 +858,7 @@ impl Ctx {
         } else if a.trash {
             self.print_tasks(&s.trash()?, "Trash is empty.");
         } else {
-            let sort = sort_of(ViewKind::Inbox, None)?;
-            self.print_tasks(&s.inbox_sorted(sort)?, "Inbox is empty.");
+            self.print_tasks(&s.inbox_sorted(&sort[..])?, "Inbox is empty.");
         }
         Ok(())
     }
@@ -1060,7 +1050,6 @@ impl Ctx {
             Some(FilterCmd::Add {
                 name,
                 rule,
-                sort,
                 show_completed,
             }) => {
                 let rule: FilterRule =
@@ -1069,7 +1058,7 @@ impl Ctx {
                     name: name.clone(),
                     icon: None,
                     rule,
-                    sort,
+                    sort: vec![],
                     group: None,
                     show_completed,
                 };
