@@ -44,11 +44,8 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets
 
-      # network_sim (replicas_meet_after_lossy_partitioned_syncs) is a known failure that
-      # predates CI (plan/16 "Next"). It is skipped here, in this one place; whoever fixes
-      # it deletes the --skip.
       - name: Tests
-        run: cargo test --workspace -- --skip replicas_meet_after_lossy_partitioned_syncs
+        run: cargo test --workspace
 
   flutter:
     name: Flutter (analyze + test)

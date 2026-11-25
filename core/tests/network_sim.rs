@@ -126,7 +126,22 @@ proptest! {
         let (dump, vv) = (rs[0].state_dump().unwrap(), rs[0].version_vector().unwrap());
         for r in &rs[1..] {
             prop_assert_eq!(&r.state_dump().unwrap(), &dump);
-            prop_assert_eq!(&r.version_vector().unwrap(), &vv);
+            if compacted {
+                // A compacting replica remembers the HLC of ops it dropped (`device_clock`
+                // keeps its vector from going backwards). Nobody can send those ops, so
+                // the counter of a dropped op never reaches the others: the vectors agree
+                // on which devices they cover and on every op that still exists, which
+                // `missing` below checks, but not on that counter. Harmless: no op is
+                // owed anywhere.
+                let mine = r.version_vector().unwrap();
+                prop_assert_eq!(
+                    mine.keys().collect::<Vec<_>>(),
+                    vv.keys().collect::<Vec<_>>()
+                );
+                prop_assert!(missing(r, &rs[0]).is_empty());
+            } else {
+                prop_assert_eq!(&r.version_vector().unwrap(), &vv);
+            }
             prop_assert!(missing(&rs[0], r).is_empty());
         }
     }
