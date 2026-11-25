@@ -40,6 +40,7 @@ import androidx.glance.layout.size
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import dev.tickalt.tick_alt.sync.SyncWorker
 import dev.tickalt.core.WidgetTask
 import dev.tickalt.tick_alt.MainActivity
 import kotlinx.coroutines.Dispatchers
@@ -168,6 +169,8 @@ class CompleteTaskAction : ActionCallback {
         withContext(Dispatchers.IO) { TtCore.db(context).complete(id) }
         // Redraw every placed widget, not just this one, so copies never disagree.
         TaskListWidget.refreshAll(context)
+        // Send the change out soon rather than at the next 15-minute sync.
+        SyncWorker.syncSoon(context)
     }
 
     companion object {

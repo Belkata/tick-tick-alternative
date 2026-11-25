@@ -33,6 +33,7 @@ object Reminders {
     private const val PREFS = "reminders"
     private const val WINDOW_MS = 48L * 3600 * 1000
     const val SNOOZE_MS = 10L * 60 * 1000
+    const val SNOOZE_LONG_MS = 60L * 60 * 1000
 
     /** Replace every scheduled alarm with the core's current list. */
     fun schedule(context: Context) {
@@ -59,10 +60,10 @@ object Reminders {
         prefs.edit().putStringSet("codes", codes).apply()
     }
 
-    /** Show the reminder again in [SNOOZE_MS]. */
-    fun snooze(context: Context, taskId: String, title: String) {
+    /** Show the reminder again in `delayMs` (10 minutes or an hour). */
+    fun snooze(context: Context, taskId: String, title: String, delayMs: Long) {
         val code = (taskId + "snooze").hashCode()
-        set(context, System.currentTimeMillis() + SNOOZE_MS, alarmIntent(context, code, taskId, title))
+        set(context, System.currentTimeMillis() + delayMs, alarmIntent(context, code, taskId, title))
     }
 
     private fun set(context: Context, at: Long, intent: PendingIntent) {
@@ -118,6 +119,7 @@ object Reminders {
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .addAction(0, "Done", action(ReminderReceiver.DONE))
             .addAction(0, "Snooze 10 min", action(ReminderReceiver.SNOOZE))
+            .addAction(0, "1 h", action(ReminderReceiver.SNOOZE_LONG))
             .build()
         NotificationManagerCompat.from(context).notify(code, n)
     }
@@ -132,9 +134,10 @@ class ReminderReceiver : BroadcastReceiver() {
         val code = intent.getIntExtra("code", 0)
         when (intent.action) {
             FIRE -> if (task != null) Reminders.notify(ctx, code, task, title)
-            SNOOZE -> if (task != null) {
+            SNOOZE, SNOOZE_LONG -> if (task != null) {
                 NotificationManagerCompat.from(ctx).cancel(code)
-                Reminders.snooze(ctx, task, title)
+                val delay = if (intent.action == SNOOZE_LONG) Reminders.SNOOZE_LONG_MS else Reminders.SNOOZE_MS
+                Reminders.snooze(ctx, task, title, delay)
             }
             DONE -> if (task != null) {
                 NotificationManagerCompat.from(ctx).cancel(code)
@@ -144,6 +147,7 @@ class ReminderReceiver : BroadcastReceiver() {
                         TtCore.db(ctx).complete(task)
                         TaskListWidget.refreshAll(ctx)
                         Reminders.schedule(ctx)
+                        SyncWorker.syncSoon(ctx)
                     } finally {
                         pending.finish()
                     }
@@ -160,5 +164,6 @@ class ReminderReceiver : BroadcastReceiver() {
         const val FIRE = "dev.tickalt.reminder.FIRE"
         const val DONE = "dev.tickalt.reminder.DONE"
         const val SNOOZE = "dev.tickalt.reminder.SNOOZE"
+        const val SNOOZE_LONG = "dev.tickalt.reminder.SNOOZE_LONG"
     }
 }
