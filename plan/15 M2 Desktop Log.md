@@ -207,3 +207,18 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
 - **Trash polish:** no "empty Trash" or 30-day purge yet. The core has neither (M1's known gaps); it needs a core purge op first, which belongs with M3's op-log compaction.
 - Filter grouping (`group`), manual sort and drag-to-reorder: later.
 - Keyboard access to the builder and the edit dialogs: they're mouse-first for now.
+
+## Slice 5: the Mac (2026-11-25, on the Mac) 🟡
+**Done without Xcode:**
+- **`tt-daemon` builds and runs on macOS.** The ksni tray moved to `daemon/src/tray_sni.rs` (Linux only); `tray_mac.rs` is a menu-bar item with the same interface; `tray_none.rs` covers other platforms.
+  - `tray_mac.rs` uses **tray-icon 0.26.1** (muda 0.21.2 menus), objc2 0.6.5, objc2-app-kit 0.3.2 and dispatch2 0.3.1. AppKit needs its run loop on the main thread, so on macOS `main` hands the main thread to `tray::run_app` and the tokio runtime runs on a second thread. Updates reach the icon through GCD's main queue; the icon's state lives in a main-thread `thread_local`. The process is an accessory app (no Dock icon).
+  - It shows a template icon (filled while the Inbox has tasks, an outline when empty) with the Inbox count beside it. The menu matches Linux: the first 5 Inbox tasks (each sends its own notification, for testing), Open, Refresh, the sync line, Sync now, Quit.
+  - **Notifications:** notify-rust's default macOS backend (`NSUserNotificationCenter`, deprecated but working). It has no app bundle to post as yet, and it reports the button's *label*, so `Done`/`Snooze 10 min` are matched as well as the ids. `UNUserNotificationCenter` needs a bundle: revisit with the .app.
+  - The device name comes from `scutil --get ComputerName` (macOS has no `/etc/hostname`). Open runs `open $TT_APP`, else `open -b dev.tickalt.tickAlt`.
+- **LaunchAgent:** `daemon/dev.tickalt.daemon.plist` and `scripts/install-launch-agent.sh` (`--remove` to undo). It starts at login, restarts after a crash (`KeepAlive.SuccessfulExit = false`) and stays stopped after Quit. Logs go to `~/Library/Logs/tick-alt/daemon.log`.
+- **Checked on the Mac:** `cargo test --workspace` passes and clippy is clean. Two daemons on throwaway DBs paired with `tt sync pair`/`join` and synced both ways, including auto-sync after edits.
+- ⚠️ **Unix socket paths max out at 104 bytes on macOS.** The default (`~/Library/Application Support/tick-alt/tick-alt.sock`) fits; a long `$TT_SOCKET` fails with "path must be shorter than SUN_LEN".
+- ⏸ Not verified: the Linux tray after the move (verbatim, plus a small wrapper). Run `cargo clippy -p tt-daemon` on Arch.
+- **App Sandbox off** in both entitlements files: in the sandbox, `dirs::data_dir()` is the app's container, so the app couldn't reach the daemon's socket or the shared `tick-alt/tt.db`. Fine for a personal, ad-hoc-signed app (plan/08).
+
+**Waiting for Xcode** (installed 2026-11-25, licence not yet accepted): `flutter build macos`, the window title and `.app` name, the menu's Open, notifications from a bundle, the DMG.
