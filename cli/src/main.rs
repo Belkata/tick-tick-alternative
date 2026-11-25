@@ -68,6 +68,9 @@ enum Command {
         /// Make it top-level again.
         #[arg(long, conflicts_with = "parent")]
         no_parent: bool,
+        /// Show it on the calendar (`true`, the default) or keep it off (`false`).
+        #[arg(long)]
+        calendar: Option<bool>,
     },
     /// Mark a task done (a repeating one moves to its next date).
     Done { id: String },
@@ -459,6 +462,7 @@ impl Ctx {
                 no_date,
                 parent,
                 no_parent,
+                calendar,
             } => {
                 let id = self.task_id(&id)?;
                 let task = s.get_task(&id)?.context("task vanished")?;
@@ -487,6 +491,9 @@ impl Ctx {
                     || fields.duration.is_some()
                 {
                     s.set_schedule(&id, Some(&self.schedule(&fields, Some(&task))?))?;
+                }
+                if let Some(show) = calendar {
+                    s.set_in_calendar(&id, show)?;
                 }
                 if let Some(p) = parent {
                     s.set_parent(&id, Some(&self.task_id(&p)?))?;
@@ -795,6 +802,9 @@ impl Ctx {
         }
         if let Some(m) = t.duration_min {
             println!("  duration  {m} min");
+        }
+        if !t.in_calendar {
+            println!("  calendar  hidden");
         }
         if let Some(r) = &t.repeat_rule {
             println!(

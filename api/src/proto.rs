@@ -204,6 +204,7 @@ api! {
     write SetTaskDue set_task_due(id: String, due_at: Option<i64>) -> () => |s| s.set_task_due(&id, due_at);
     write SetParent set_parent(id: String, parent_id: Option<String>) -> ()
         => |s| s.set_parent(&id, parent_id.as_deref());
+    write SetInCalendar set_in_calendar(id: String, show: bool) -> () => |s| s.set_in_calendar(&id, show);
     write SetRepeat set_repeat(id: String, repeat: Option<Repeat>) -> () => |s| s.set_repeat(&id, repeat.as_ref());
     write CompleteTask complete_task(id: String) -> bool => |s| s.complete_task(&id);
     write ReopenTask reopen_task(id: String) -> bool => |s| s.reopen_task(&id);
@@ -288,6 +289,8 @@ api! {
     write PlaceBlock place_block(id: String, start_at: i64, end_at: Option<i64>, all_day: bool, tz: TzName) -> ()
         => |s| s.place_block(&id, start_at, end_at, all_day, tz.tz());
     write Unschedule unschedule(id: String) -> () => |s| s.unschedule(&id);
+    read ParentCandidates parent_candidates(id: String, now_ms: i64, tz: TzName) -> Vec<TaskRow>
+        => |s| views::parent_candidates(s, &id, now_ms, tz.tz());
     write TagByPath tag_by_path(task_id: String, path: String) -> ()
         => |s| { let tag = s.ensure_tag_path(&path)?; s.tag_task(&task_id, &tag) };
 }

@@ -142,6 +142,10 @@ pub struct TaskDetail {
     pub checklist: Vec<ChecklistRow>,
     pub subtasks: Vec<TaskRow>,
     pub reminders: Vec<ReminderRow>,
+    /// The parent's title when this is a subtask (`row.parent_id` is its id).
+    pub parent_title: Option<String>,
+    /// "Show in Calendar".
+    pub in_calendar: bool,
 }
 
 fn rule(v: serde_json::Value) -> tt_core::Result<FilterRule> {
@@ -250,6 +254,11 @@ pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Result<Opt
         return Ok(None);
     };
     let (notes, list_id, repeat_rule) = (t.notes.clone(), t.list_id.clone(), t.repeat_rule.clone());
+    let in_calendar = t.in_calendar;
+    let parent_title = match &t.parent_id {
+        Some(p) => s.get_task(p)?.map(|p| p.title),
+        None => None,
+    };
     let repeat_after_completion = t.repeat_mode == tt_core::RepeatMode::AfterCompletion;
     let start_label = t.start_at.map(|ms| when_label(ms, t.all_day, now, tz));
     let checklist = s
@@ -287,6 +296,8 @@ pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Result<Opt
         checklist,
         subtasks,
         reminders,
+        parent_title,
+        in_calendar,
     }))
 }
 
@@ -449,7 +460,19 @@ pub fn unscheduled(
             tz,
         )?,
     };
-    tasks.into_iter().map(|t| task_row(s, t, now, tz)).collect()
+    tasks
+        .into_iter()
+        .filter(|t| t.in_calendar)
+        .map(|t| task_row(s, t, now, tz))
+        .collect()
+}
+
+/// Open tasks that `id` can be moved under (the detail's Parent picker).
+pub fn parent_candidates(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Result<Vec<TaskRow>> {
+    s.parent_candidates(id)?
+        .into_iter()
+        .map(|t| task_row(s, t, now, tz))
+        .collect()
 }
 
 /// How many open tasks a rule matches right now (the filter builder's live count).

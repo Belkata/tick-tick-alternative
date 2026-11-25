@@ -117,6 +117,8 @@ pub struct _TaskDetail {
     pub checklist: Vec<ChecklistRow>,
     pub subtasks: Vec<TaskRow>,
     pub reminders: Vec<ReminderRow>,
+    pub parent_title: Option<String>,
+    pub in_calendar: bool,
 }
 
 #[frb(mirror(CalendarItem))]
@@ -510,6 +512,22 @@ impl TaskDb {
     /// with no date.
     pub fn unscheduled(&self, filter_id: Option<String>) -> anyhow::Result<Vec<TaskRow>> {
         self.api.unscheduled(filter_id, now_ms(), local_tz())
+    }
+
+    /// Open tasks `id` can move under, by title (the detail's Parent picker).
+    pub fn parent_candidates(&self, id: String) -> anyhow::Result<Vec<TaskRow>> {
+        self.api.parent_candidates(id, now_ms(), local_tz())
+    }
+
+    /// Make a task a subtask of `parent_id`, or top-level with `None`.
+    pub fn set_parent(&self, id: String, parent_id: Option<String>) -> anyhow::Result<()> {
+        self.write(Request::SetParent { id, parent_id }).map(drop)
+    }
+
+    /// "Show in Calendar": keep a task on the calendar and its Unscheduled panel, or off.
+    pub fn set_in_calendar(&self, id: String, visible: bool) -> anyhow::Result<()> {
+        self.write(Request::SetInCalendar { id, show: visible })
+            .map(drop)
     }
 
     /// Drop, move or resize a block. `end_ms` `None` keeps the task's duration (else

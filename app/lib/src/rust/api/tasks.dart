@@ -90,6 +90,9 @@ abstract class TaskDb implements RustOpaqueInterface {
   static Future<TaskDb> open({required String path}) =>
       RustLib.instance.api.crateApiTasksTaskDbOpen(path: path);
 
+  /// Open tasks `id` can move under, by title (the detail's Parent picker).
+  Future<List<TaskRow>> parentCandidates({required String id});
+
   Future<List<Peer>> peers();
 
   /// Drop, move or resize a block. `end_ms` `None` keeps the task's duration (else
@@ -122,11 +125,17 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Set the due date from text like `fri`, `tomorrow 14:30` or `2026-12-01`, or clear it.
   Future<void> setDue({required String id, String? text});
 
+  /// "Show in Calendar": keep a task on the calendar and its Unscheduled panel, or off.
+  Future<void> setInCalendar({required String id, required bool visible});
+
   Future<void> setList({required String id, String? listId});
 
   Future<void> setListStyle({required String id, String? color, String? icon});
 
   Future<void> setNotes({required String id, required String notes});
+
+  /// Make a task a subtask of `parent_id`, or top-level with `None`.
+  Future<void> setParent({required String id, String? parentId});
 
   Future<void> setPriority({required String id, required int priority});
 
@@ -515,6 +524,8 @@ class TaskDetail {
   final List<ChecklistRow> checklist;
   final List<TaskRow> subtasks;
   final List<ReminderRow> reminders;
+  final String? parentTitle;
+  final bool inCalendar;
 
   const TaskDetail({
     required this.row,
@@ -526,6 +537,8 @@ class TaskDetail {
     required this.checklist,
     required this.subtasks,
     required this.reminders,
+    this.parentTitle,
+    required this.inCalendar,
   });
 
   @override
@@ -538,7 +551,9 @@ class TaskDetail {
       repeatAfterCompletion.hashCode ^
       checklist.hashCode ^
       subtasks.hashCode ^
-      reminders.hashCode;
+      reminders.hashCode ^
+      parentTitle.hashCode ^
+      inCalendar.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -553,7 +568,9 @@ class TaskDetail {
           repeatAfterCompletion == other.repeatAfterCompletion &&
           checklist == other.checklist &&
           subtasks == other.subtasks &&
-          reminders == other.reminders;
+          reminders == other.reminders &&
+          parentTitle == other.parentTitle &&
+          inCalendar == other.inCalendar;
 }
 
 /// A task as the M0 Inbox page sees it.
