@@ -3,6 +3,7 @@ package dev.tickalt.tick_alt
 import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -20,11 +21,21 @@ import kotlinx.coroutines.launch
 
 class MainActivity : FlutterActivity() {
     private val scope = MainScope()
+    private var channel: MethodChannel? = null
+    /** Text shared to the app before Flutter asked for it (plan/07: share target → Inbox). */
+    private var pendingShare: String? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "tick_alt/widget").setMethodCallHandler { call, result ->
+        val ch = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "tick_alt/widget")
+        channel = ch
+        ch.setMethodCallHandler { call, result ->
             when (call.method) {
+                // Text shared from another app while Flutter was starting.
+                "takeShared" -> {
+                    result.success(pendingShare)
+                    pendingShare = null
+                }
                 // The app changed tasks: redraw every placed widget.
                 "refresh" -> scope.launch {
                     TaskListWidget.refreshAll(applicationContext)
@@ -65,8 +76,25 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingShare = sharedText(intent)
         Reminders.ensureChannel(this)
         SyncWorker.enqueue(applicationContext)
+    }
+
+    // Shared again while the app is open: hand it straight to Flutter.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val text = sharedText(intent) ?: return
+        channel?.invokeMethod("shared", text) ?: run { pendingShare = text }
+    }
+
+    /** The text of an ACTION_SEND share (subject and text, e.g. a page title and its link). */
+    private fun sharedText(intent: Intent?): String? {
+        if (intent?.action != Intent.ACTION_SEND || intent.type?.startsWith("text/") != true) return null
+        return listOfNotNull(
+            intent.getStringExtra(Intent.EXTRA_SUBJECT),
+            intent.getStringExtra(Intent.EXTRA_TEXT),
+        ).distinct().joinToString(" ").trim().ifEmpty { null }
     }
 
     override fun onDestroy() {

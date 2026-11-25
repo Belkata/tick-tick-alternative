@@ -40,6 +40,19 @@ class WidgetBridge {
   /// Ask for notification permission once (Android 13+), for reminders.
   static Future<void> askNotifications() => _call<void>('askNotifications');
 
+  /// Text shared to the app from another app (Android share sheet): what arrived before
+  /// Flutter was ready, then each later share through [onShared].
+  static Future<String?> takeShared() => _call<String>('takeShared');
+
+  static void onShared(void Function(String text) handler) {
+    if (!supported) return;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'shared' && call.arguments is String) {
+        handler(call.arguments as String);
+      }
+    });
+  }
+
   static Future<T?> _call<T>(String method) async {
     if (!supported) return null;
     try {

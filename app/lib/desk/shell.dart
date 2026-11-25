@@ -50,6 +50,11 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     c.addListener(_onChange);
     c.reload();
+    // Android share sheet: shared text or links become Inbox tasks.
+    WidgetBridge.onShared(_addShared);
+    WidgetBridge.takeShared().then((t) {
+      if (t != null) _addShared(t);
+    });
   }
 
   @override
@@ -67,6 +72,20 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) c.reload();
+  }
+
+  Future<void> _addShared(String text) async {
+    final title = text.length > 300 ? '${text.substring(0, 300)}…' : text;
+    final id = await c.run(
+      () => c.db.addIn(
+        view: const TaskView(kind: ViewKind.inbox),
+        title: title,
+      ),
+    );
+    if (id != null && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Added to Inbox: $title')));
+    }
   }
 
   void _onChange() {
