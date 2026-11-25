@@ -198,13 +198,17 @@ async fn connection(
                 req @ (Request::SyncPair
                 | Request::SyncJoin { .. }
                 | Request::SyncNow
-                | Request::SyncStatus),
+                | Request::SyncStatus
+                | Request::GoogleStatus
+                | Request::GoogleSignIn
+                | Request::GoogleSignOut
+                | Request::GoogleSync),
             ) => match &sync {
                 Some(s) => match s.handle(req).await {
                     Ok(v) => Reply::Ok(v),
                     Err(e) => Reply::Err(e),
                 },
-                None => Reply::Err("this tt-daemon doesn't run sync".into()),
+                None => Reply::Err("this tt-daemon doesn't run sync or Google".into()),
             },
             Ok(req) => match db.call(req).await {
                 Ok(v) => Reply::Ok(v),

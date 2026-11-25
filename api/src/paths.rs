@@ -15,6 +15,19 @@ pub fn default_db() -> std::io::Result<PathBuf> {
     Ok(dir.join("tt.db"))
 }
 
+/// The Google OAuth client file (Google Cloud's "Desktop app" JSON): `$TT_GOOGLE_CLIENT`,
+/// else `<config dir>/utre/google-client.json` (`~/.config/utre/` on Linux). It is never
+/// kept in the repo.
+pub fn google_client() -> PathBuf {
+    if let Some(p) = std::env::var_os("TT_GOOGLE_CLIENT") {
+        return PathBuf::from(p);
+    }
+    dirs::config_dir()
+        .unwrap_or_else(std::env::temp_dir)
+        .join("utre")
+        .join("google-client.json")
+}
+
 /// The daemon's socket: `$TT_SOCKET`, else `$XDG_RUNTIME_DIR/tick-alt.sock`, else
 /// `tick-alt.sock` in the data dir (macOS has no runtime dir).
 pub fn socket() -> PathBuf {

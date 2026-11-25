@@ -18,8 +18,8 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tt_core::{
-    ChecklistItem, Completion, Filter, FilterRule, List, NewTask, Peer, Reminder, ReminderFire,
-    ReminderKind, Repeat, SavedFilter, Schedule, Store, Tag, Task,
+    ChecklistItem, Completion, Filter, FilterRule, GcalCalendar, GcalEvent, List, NewTask, Peer,
+    Reminder, ReminderFire, ReminderKind, Repeat, SavedFilter, Schedule, Store, Tag, Task,
 };
 
 use crate::views::{self, CalendarItem, Sidebar, TaskDetail, TaskRow, TaskView};
@@ -135,6 +135,16 @@ macro_rules! api {
             SyncNow,
             /// The sync node's state ([`SyncStatus`]).
             SyncStatus,
+            /// Google control, answered by the daemon's Google service: its state
+            /// ([`GoogleStatus`]).
+            GoogleStatus,
+            /// Start the browser sign-in; answers with the URL once the browser was asked to
+            /// open it ([`String`]). The sign-in finishes in the background.
+            GoogleSignIn,
+            /// Forget this device's Google tokens and cached events.
+            GoogleSignOut,
+            /// Fetch Google's calendars and events now.
+            GoogleSync,
             $( $variant { $($f: $w),* }, )*
         }
 
@@ -145,6 +155,7 @@ macro_rules! api {
                     Request::Hello | Request::Subscribe => false,
                     // Sync writes reach the file through the sync node's own connection.
                     Request::SyncPair | Request::SyncJoin { .. } | Request::SyncNow | Request::SyncStatus => false,
+                    Request::GoogleStatus | Request::GoogleSignIn | Request::GoogleSignOut | Request::GoogleSync => false,
                     $( Request::$variant { .. } => api!(@is_write $rw), )*
                 }
             }
@@ -158,6 +169,9 @@ macro_rules! api {
                 }
                 Request::SyncPair | Request::SyncJoin { .. } | Request::SyncNow | Request::SyncStatus => {
                     return Err(tt_core::Error::Invalid("sync runs in tt-daemon, which isn't serving this database".into()))
+                }
+                Request::GoogleStatus | Request::GoogleSignIn | Request::GoogleSignOut | Request::GoogleSync => {
+                    return Err(tt_core::Error::Invalid("Google runs in tt-daemon, which isn't serving this database".into()))
                 }
                 $( Request::$variant { $($f),* } => {
                     let $s = store;
@@ -270,6 +284,13 @@ api! {
     read Compact compact() -> usize => |s| s.compact();
     read OpCount op_count() -> usize => |s| s.op_count();
 
+    // ----- Google Calendar cache (per device; the fetching itself is Google* in the daemon) -----
+    read GcalCalendars gcal_calendars() -> Vec<GcalCalendar> => |s| s.gcal_calendars();
+    write GcalSelect gcal_select(calendar_id: String, selected: bool) -> ()
+        => |s| s.gcal_select(&calendar_id, selected);
+    read GcalEvents gcal_events(from: i64, until: i64, tz: TzName) -> Vec<GcalEvent>
+        => |s| s.gcal_events(from, until, tz.tz());
+
     // ----- Views (what the app shows) -----
     read Sidebar sidebar(now_ms: i64, tz: TzName) -> Sidebar => |s| views::sidebar(s, now_ms, tz.tz());
     read Tasks tasks(view: TaskView, now_ms: i64, tz: TzName) -> Vec<TaskRow>
@@ -349,5 +370,19 @@ pub struct SyncStatus {
     /// Epoch ms of the last round that reached at least one device.
     pub last_sync_ms: Option<i64>,
     /// Why the last round failed, if it reached nobody.
+    pub last_error: Option<String>,
+}
+
+/// What `google_status` answers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GoogleStatus {
+    /// The OAuth client file (`google-client.json`) was found, so signing in is possible.
+    pub configured: bool,
+    pub signed_in: bool,
+    /// The browser sign-in is open and waiting.
+    pub signing_in: bool,
+    /// Epoch ms of the last successful fetch.
+    pub last_sync_ms: Option<i64>,
+    /// Why the last attempt failed, if it did.
     pub last_error: Option<String>,
 }

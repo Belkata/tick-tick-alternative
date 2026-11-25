@@ -23,7 +23,7 @@ use serde::de::DeserializeOwned;
 use tt_core::Store;
 
 pub use client::{Client, Disconnected};
-pub use proto::{Event, Hello, Request, SyncOutcome, SyncStatus, TzName};
+pub use proto::{Event, GoogleStatus, Hello, Request, SyncOutcome, SyncStatus, TzName};
 pub use views::{
     CalendarItem, ChecklistRow, NavItem, ReminderRow, Sidebar, TagChip, TaskDetail, TaskRow,
     TaskView, ViewKind,
@@ -138,6 +138,26 @@ impl Api {
 
     pub fn sync_status(&self) -> anyhow::Result<SyncStatus> {
         self.call(Request::SyncStatus)
+    }
+
+    // ----- Google (answered by the daemon's Google service) -----
+
+    pub fn google_status(&self) -> anyhow::Result<GoogleStatus> {
+        self.call(Request::GoogleStatus)
+    }
+
+    /// Opens the browser sign-in; returns its URL (to show if the browser didn't open).
+    pub fn google_sign_in(&self) -> anyhow::Result<String> {
+        self.call(Request::GoogleSignIn)
+    }
+
+    pub fn google_sign_out(&self) -> anyhow::Result<()> {
+        self.call(Request::GoogleSignOut)
+    }
+
+    /// Fetch Google's calendars and events now.
+    pub fn google_sync(&self) -> anyhow::Result<()> {
+        self.call(Request::GoogleSync)
     }
 
     /// Opened directly but the daemon now serves this file: switch to it. True if it switched.
