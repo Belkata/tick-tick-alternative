@@ -189,6 +189,16 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 - Keep `plan/` updated as decisions are made: tick the roadmap and log spike results.
 - **After every feature request or batch of them (once it's finished, not after each step), without asking:** commit, push, rebuild and restart the Arch daemon and the release desktop app, bump `version:` in `app/pubspec.yaml`, build the release APK, tag it and upload it as a GitHub pre-release (the "Publish a test APK" row in Build and test). Said by the user on 2026-11-25.
 
+## Multi-agent workflow (decided 2026-11-26)
+
+Local for the inner loop, GitHub Actions as the merge gate.
+- **One worktree per agent**: `scripts/agent-worktree.sh new <name>` makes `../tick-alt-wt/<name>` on branch `agent/<name>`, with an `agent.env` to source. It gives the agent its own `$TT_DB`, `$TT_SOCKET` and `target/`. **Agents never touch the running daemon, its DB (`~/.local/share/tick-alt`) or the installed app.** `scripts/agent-worktree.sh rm <name>` removes it.
+- **Agents open PRs; CI must be green before merge.** `.github/workflows/ci.yml` runs clippy, `cargo test --workspace`, `flutter analyze` and `flutter test`. Only `main` writes the CI caches; PRs restore them. Agents run `cargo test -p <crate>`/`flutter analyze` locally before pushing, not the whole workspace.
+- **Only the integrating session (the one the user talks to) does the release step**: version bump in `app/pubspec.yaml`, tag, APK, rebuilding and restarting the Arch daemon and app. Agents don't, so the "After every feature request" rule above applies to the integrator after merging.
+- **Agents don't edit** `plan/` logs (they put notes in the PR description and the integrator updates the plan), `app/rust/src/frb_generated.rs`, or `version:`. A change to the `api!` table or the bridge types goes to one agent at a time, since it needs regenerated bindings.
+- **Split work by area** so two agents never share files: core, api/sync, Flutter UI, Android. One agent at a time uses the emulator, Gradle or the desktop app.
+- `network_sim` is skipped in CI until it's fixed; whoever fixes it removes the `--skip` in `ci.yml`.
+
 ## Plugins to use (installed on the account 2026-11-24, not loaded in the session that wrote this)
 
 - **Dart and Flutter** (official): Dart MCP server for analysis, tests and running the app; also Flutter skills such as `flutter-add-widget-test` and `flutter-add-integration-test`.
