@@ -529,8 +529,9 @@ pub fn calendar(s: &Store, from: i64, until: i64, tz: Tz) -> tt_core::Result<Vec
     Ok(out)
 }
 
-/// The calendar's Unscheduled panel: a saved filter's tasks, or by default every open
-/// task with no start or due.
+/// The calendar's Unscheduled panel: a saved filter's tasks (`filter_id` is the filter's
+/// id), a list's (`list:<id>`) or a tag's (`tag:<id>`), or by default every open task
+/// with no start or due.
 pub fn unscheduled(
     s: &Store,
     filter_id: Option<&str>,
@@ -538,6 +539,21 @@ pub fn unscheduled(
     tz: Tz,
 ) -> tt_core::Result<Vec<TaskRow>> {
     let tasks = match filter_id {
+        Some(id) if id.starts_with("list:") || id.starts_with("tag:") => {
+            let (kind, id) = id.split_once(':').unwrap_or_default();
+            let (field, op) = if kind == "list" {
+                ("list", "is")
+            } else {
+                ("tag", "has")
+            };
+            s.run_rule(
+                &rule(serde_json::json!({"field": field, "op": op, "value": id}))?,
+                &[],
+                false,
+                now,
+                tz,
+            )?
+        }
         Some(id) => s.run_filter(id, now, tz)?,
         None => s.run_rule(
             &rule(serde_json::json!({"all": [

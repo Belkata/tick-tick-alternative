@@ -253,6 +253,19 @@ fn calendar_calls_go_through_the_socket() {
         [t.id.as_str()]
     );
 
+    // A tag (`tag:<id>`) can feed the panel too; one with no tasks is empty.
+    assert_eq!(
+        ids(api
+            .unscheduled(Some(format!("tag:{}", tag.id)), now, tz)
+            .unwrap()),
+        [t.id.as_str()]
+    );
+    assert!(
+        api.unscheduled(Some("tag:nope".to_string()), now, tz)
+            .unwrap()
+            .is_empty()
+    );
+
     let start = now + 3_600_000;
     api.place_block(&t.id, start, Some(start + 90 * 60_000), false, tz)
         .unwrap();
