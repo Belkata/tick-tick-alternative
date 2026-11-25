@@ -1,7 +1,7 @@
 //! The daemon's side of Google Calendar (plan/06, plan/19): sign-in, and fetching the
 //! user's events into the local cache.
 //!
-//! `tt-google` does the network work. This file owns the state the app and `tt` ask about
+//! `utre-google` does the network work. This file owns the state the app and `tt` ask about
 //! (`GoogleStatus`), starts the browser sign-in, and polls every 5 minutes while signed in.
 //! Events land in the cache tables through the daemon's own connection to the database file;
 //! the DB thread notices those commits and tells subscribers, like any outside write.
@@ -10,9 +10,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use tt_api::GoogleStatus;
-use tt_core::Store;
-use tt_google::{ClientSecrets, FileTokenStore, Session, sync_calendars};
+use utre_api::GoogleStatus;
+use utre_core::Store;
+use utre_google::{ClientSecrets, FileTokenStore, Session, sync_calendars};
 
 /// How often events are fetched while signed in (plan/06: desktop polls every 5 minutes).
 const POLL: Duration = Duration::from_secs(5 * 60);
@@ -47,9 +47,9 @@ fn now_ms() -> i64 {
 
 impl GoogleService {
     /// Tokens live next to the database (`google-token.json`), so a test database never
-    /// touches the real sign-in. The OAuth client file is `tt_api::paths::google_client()`.
+    /// touches the real sign-in. The OAuth client file is `utre_api::paths::google_client()`.
     pub fn new(db_file: PathBuf) -> Arc<GoogleService> {
-        let client_file = tt_api::paths::google_client();
+        let client_file = utre_api::paths::google_client();
         let session = match ClientSecrets::load(&client_file) {
             Ok(secrets) => {
                 let tokens = FileTokenStore::new(db_file.with_file_name("google-token.json"));
@@ -117,11 +117,11 @@ impl GoogleService {
             this.state().signing_in = false;
             match result {
                 Ok(()) => {
-                    eprintln!("tt-daemon: signed in to Google");
+                    eprintln!("utre-daemon: signed in to Google");
                     let _ = this.sync_now().await;
                 }
                 Err(e) => {
-                    eprintln!("tt-daemon: Google sign-in: {e}");
+                    eprintln!("utre-daemon: Google sign-in: {e}");
                     this.state().last_error = Some(e.to_string());
                 }
             }
@@ -181,7 +181,7 @@ impl GoogleService {
                 if this.status().signed_in
                     && let Err(e) = this.sync_now().await
                 {
-                    eprintln!("tt-daemon: Google: {e}");
+                    eprintln!("utre-daemon: Google: {e}");
                 }
                 tokio::time::sleep(POLL).await;
             }
@@ -198,6 +198,6 @@ fn open_url(url: &str) {
     let opener = "xdg-open";
     match std::process::Command::new(opener).arg(url).spawn() {
         Ok(mut child) => drop(std::thread::spawn(move || child.wait())),
-        Err(e) => eprintln!("tt-daemon: could not open the browser ({e}); open this link:\n{url}"),
+        Err(e) => eprintln!("utre-daemon: could not open the browser ({e}); open this link:\n{url}"),
     }
 }

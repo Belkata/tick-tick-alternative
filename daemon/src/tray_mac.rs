@@ -19,7 +19,7 @@ use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
 use tokio::sync::mpsc;
 use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
 use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
-use tt_core::Task;
+use utre_core::Task;
 
 use crate::Cmd;
 
@@ -114,7 +114,7 @@ impl Tray {
             let icon = match icon {
                 Ok(i) => Some(i),
                 Err(e) => {
-                    eprintln!("tt-daemon: menu-bar icon: {e}");
+                    eprintln!("utre-daemon: menu-bar icon: {e}");
                     None
                 }
             };

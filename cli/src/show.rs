@@ -1,9 +1,9 @@
 //! How `tt` prints tasks, dates and tags.
 
 use chrono_tz::Tz;
-use tt_api::Api;
-use tt_core::Task;
-pub use tt_core::{offset_label, when_label as when};
+use utre_api::Api;
+use utre_core::Task;
+pub use utre_core::{offset_label, when_label as when};
 
 /// Characters of the task id that `tt` prints and accepts.
 pub const SHORT_ID_LEN: usize = 8;
@@ -36,7 +36,7 @@ pub fn line(store: &Api, t: &Task, now_ms: i64, tz: Tz, indent: usize) -> String
     let mut extras = Vec::new();
     if let Some(due) = t.due_at {
         let mut s = when(due, t.all_day, now_ms, tz);
-        if tt_core::is_overdue(due, t.all_day, now_ms, tz) && t.status == tt_core::Status::Open {
+        if utre_core::is_overdue(due, t.all_day, now_ms, tz) && t.status == utre_core::Status::Open {
             s = format!("{s} (overdue)");
         }
         if t.repeat_rule.is_some() {
@@ -57,9 +57,9 @@ pub fn line(store: &Api, t: &Task, now_ms: i64, tz: Tz, indent: usize) -> String
         extras.push(format!("#{}", tag.path));
     }
     let check = match t.status {
-        tt_core::Status::Done => "✓ ",
-        tt_core::Status::Deleted => "✗ ",
-        tt_core::Status::Open => "",
+        utre_core::Status::Done => "✓ ",
+        utre_core::Status::Deleted => "✗ ",
+        utre_core::Status::Open => "",
     };
     let extras = if extras.is_empty() {
         String::new()

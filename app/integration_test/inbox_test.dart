@@ -509,7 +509,7 @@ void main() {
     expect((await db.task(id: id))!.reminders, isEmpty);
   });
 
-  testWidgets('Devices page explains that sync needs tt-daemon', (
+  testWidgets('Devices page explains that sync needs utre-daemon', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1280, 800);

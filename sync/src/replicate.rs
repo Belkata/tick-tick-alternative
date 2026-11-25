@@ -22,9 +22,9 @@ use iroh::protocol::{AcceptError, ProtocolHandler};
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::sync::broadcast;
-use tt_core::hlc::Hlc;
-use tt_core::oplog::Op;
-use tt_core::{Peer, Store, TrustList, VersionVector};
+use utre_core::hlc::Hlc;
+use utre_core::oplog::Op;
+use utre_core::{Peer, Store, TrustList, VersionVector};
 
 /// Application protocol id for real sync. Bump it when the frames change incompatibly.
 pub const SYNC_ALPN: &[u8] = b"tickalt/sync/1";
@@ -124,7 +124,7 @@ impl FileReplica {
 
     async fn with<T: Send + 'static>(
         &self,
-        f: impl FnOnce(&Store) -> tt_core::Result<T> + Send + 'static,
+        f: impl FnOnce(&Store) -> utre_core::Result<T> + Send + 'static,
     ) -> Result<T> {
         let db = self.db.clone();
         tokio::task::spawn_blocking(move || {

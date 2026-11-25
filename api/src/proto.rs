@@ -17,7 +17,7 @@
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tt_core::{
+use utre_core::{
     ChecklistItem, Completion, Filter, FilterRule, GcalCalendar, GcalEvent, List, NewTask, Peer,
     Reminder, ReminderFire, ReminderKind, Repeat, SavedFilter, Schedule, Store, Tag, Task,
 };
@@ -162,16 +162,16 @@ macro_rules! api {
         }
 
         /// Run a request against the store. `Hello` and `Subscribe` belong to the server.
-        pub fn handle(store: &Store, req: Request) -> tt_core::Result<Value> {
+        pub fn handle(store: &Store, req: Request) -> utre_core::Result<Value> {
             Ok(match req {
                 Request::Hello | Request::Subscribe => {
-                    return Err(tt_core::Error::Invalid("only the daemon answers hello and subscribe".into()))
+                    return Err(utre_core::Error::Invalid("only the daemon answers hello and subscribe".into()))
                 }
                 Request::SyncPair | Request::SyncJoin { .. } | Request::SyncNow | Request::SyncStatus => {
-                    return Err(tt_core::Error::Invalid("sync runs in tt-daemon, which isn't serving this database".into()))
+                    return Err(utre_core::Error::Invalid("sync runs in utre-daemon, which isn't serving this database".into()))
                 }
                 Request::GoogleStatus | Request::GoogleSignIn | Request::GoogleSignOut | Request::GoogleSync => {
-                    return Err(tt_core::Error::Invalid("Google runs in tt-daemon, which isn't serving this database".into()))
+                    return Err(utre_core::Error::Invalid("Google runs in utre-daemon, which isn't serving this database".into()))
                 }
                 $( Request::$variant { $($f),* } => {
                     let $s = store;

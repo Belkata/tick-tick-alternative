@@ -1,4 +1,4 @@
-//! In-process sync for the phone app (M4, plan/16): Android has no tt-daemon, so the app
+//! In-process sync for the phone app (M4, plan/16): Android has no utre-daemon, so the app
 //! runs the sync node itself. One per process, shared by the Flutter side (`TaskDb`) and
 //! the Kotlin background job (`kotlin::background_sync`), so only one node ever uses the
 //! device key. Outside `api/` so flutter_rust_bridge doesn't scan it.
@@ -7,8 +7,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use tokio::sync::broadcast;
-use tt_sync::Relays;
-use tt_sync::service::SyncService;
+use utre_sync::Relays;
+use utre_sync::service::SyncService;
 
 pub struct Phone {
     pub rt: tokio::runtime::Runtime,

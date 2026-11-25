@@ -1,4 +1,4 @@
-//! tt-core: the shared Rust core of Tick Alt.
+//! utre-core: the shared Rust core of Tick Alt.
 //!
 //! Owns the data model and the SQLite database. UIs (Flutter, the Glance
 //! widget, the `tt` CLI) only call into this crate. Every write becomes ops in

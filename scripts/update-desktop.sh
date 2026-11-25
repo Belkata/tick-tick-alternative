@@ -45,8 +45,8 @@ app_paths=("${rust_paths[@]}" app/lib app/rust app/linux app/pubspec.yaml app/pu
 
 daemon_built=0
 if changed daemon "${rust_paths[@]}"; then
-  echo "== tt-daemon and tt (fast profile)"
-  cargo build --profile fast -p tt-daemon -p tt
+  echo "== utre-daemon and tt (fast profile)"
+  cargo build --profile fast -p utre-daemon -p tt
   done_part daemon
   daemon_built=1
 fi
@@ -70,7 +70,7 @@ if [[ $daemon_built == 1 || $force == 1 ]]; then
     mkdir -p "$backup_dir"
     [[ -f "$backup" ]] || { sqlite3 "$db" ".backup '$backup'"; echo "Backed up the database to $backup"; }
   fi
-  echo "== restarting tt-daemon"
+  echo "== restarting utre-daemon"
   "$repo/scripts/install-user-service.sh"
 fi
 

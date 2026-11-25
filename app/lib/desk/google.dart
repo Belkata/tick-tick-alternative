@@ -9,7 +9,7 @@ import 'filter_builder.dart' show confirm;
 import 'theme.dart';
 
 /// Google Calendar page (M5b, plan/06 and plan/19): sign in, pick which of your Google
-/// calendars show in Utre's calendar. The sign-in and the fetching run in tt-daemon, so
+/// calendars show in Utre's calendar. The sign-in and the fetching run in utre-daemon, so
 /// everything here goes through it; without a daemon the page says so.
 class GooglePage extends StatefulWidget {
   const GooglePage({super.key, required this.db});
@@ -128,7 +128,7 @@ class _GooglePageState extends State<GooglePage> {
             _error ??
                 (db.googleAvailable()
                     ? 'Loading…'
-                    : 'Google Calendar runs in tt-daemon, which isn\'t running for '
+                    : 'Google Calendar runs in utre-daemon, which isn\'t running for '
                           'this database (and isn\'t on the phone yet).\n'
                           'Start it with: systemctl --user start tick-alt'),
             style: manrope(13.5, FontWeight.w500, color: s.mute),
@@ -141,7 +141,7 @@ class _GooglePageState extends State<GooglePage> {
           child: Text(
             'Google isn\'t set up on this device. Save the OAuth client file '
             '(Google Cloud → Credentials → Desktop app → Download JSON) as '
-            '~/.config/utre/google-client.json and restart tt-daemon.',
+            '~/.config/utre/google-client.json and restart utre-daemon.',
             style: manrope(13.5, FontWeight.w500, color: s.mute),
           ),
         ),

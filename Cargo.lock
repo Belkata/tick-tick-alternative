@@ -5076,120 +5076,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
-name = "tt"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "chrono-tz",
- "clap",
- "dirs",
- "libc",
- "serde_json",
- "tokio",
- "tt-api",
- "tt-core",
- "tt-sync",
-]
-
-[[package]]
-name = "tt-api"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono-tz",
- "dirs",
- "libc",
- "serde",
- "serde_json",
- "tokio",
- "tt-core",
-]
-
-[[package]]
-name = "tt-core"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "chrono-tz",
- "proptest",
- "rrule",
- "rusqlite",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "uuid",
-]
-
-[[package]]
-name = "tt-daemon"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "dispatch2",
- "ksni",
- "mac-usernotifications",
- "notify-rust",
- "objc2",
- "objc2-app-kit",
- "serde_json",
- "tokio",
- "tray-icon",
- "tt-api",
- "tt-core",
- "tt-google",
- "tt-sync",
-]
-
-[[package]]
-name = "tt-google"
-version = "0.1.0"
-dependencies = [
- "base64 0.23.1",
- "chrono",
- "chrono-tz",
- "getrandom 0.4.3",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "thiserror 2.0.21",
- "tokio",
- "tt-core",
- "url",
-]
-
-[[package]]
-name = "tt-sync"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "getrandom 0.4.3",
- "iroh",
- "serde",
- "serde_json",
- "tokio",
- "tt-api",
- "tt-core",
-]
-
-[[package]]
-name = "tt_bridge"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono-tz",
- "flutter_rust_bridge",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tt-api",
- "tt-core",
- "tt-sync",
- "uniffi",
-]
-
-[[package]]
 name = "typenum"
 version = "1.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5413,6 +5299,120 @@ name = "utf_types"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a3b425286980a367278453f3b6d28cdcb134b574e5a35824a6ff5eebad50bb6"
+
+[[package]]
+name = "utre"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "chrono-tz",
+ "clap",
+ "dirs",
+ "libc",
+ "serde_json",
+ "tokio",
+ "utre-api",
+ "utre-core",
+ "utre-sync",
+]
+
+[[package]]
+name = "utre-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono-tz",
+ "dirs",
+ "libc",
+ "serde",
+ "serde_json",
+ "tokio",
+ "utre-core",
+]
+
+[[package]]
+name = "utre-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "proptest",
+ "rrule",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "uuid",
+]
+
+[[package]]
+name = "utre-daemon"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dispatch2",
+ "ksni",
+ "mac-usernotifications",
+ "notify-rust",
+ "objc2",
+ "objc2-app-kit",
+ "serde_json",
+ "tokio",
+ "tray-icon",
+ "utre-api",
+ "utre-core",
+ "utre-google",
+ "utre-sync",
+]
+
+[[package]]
+name = "utre-google"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "chrono",
+ "chrono-tz",
+ "getrandom 0.4.3",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.21",
+ "tokio",
+ "url",
+ "utre-core",
+]
+
+[[package]]
+name = "utre-sync"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "getrandom 0.4.3",
+ "iroh",
+ "serde",
+ "serde_json",
+ "tokio",
+ "utre-api",
+ "utre-core",
+]
+
+[[package]]
+name = "utre_bridge"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono-tz",
+ "flutter_rust_bridge",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "uniffi",
+ "utre-api",
+ "utre-core",
+ "utre-sync",
+]
 
 [[package]]
 name = "uuid"

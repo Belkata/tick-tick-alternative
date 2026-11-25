@@ -1,5 +1,5 @@
 //! Network simulation from plan/05 "Testing the sync engine": replicas edit and sync in
-//! random pairs the way `tt-sync` does (version vectors, then the missing ops in HLC
+//! random pairs the way `utre-sync` does (version vectors, then the missing ops in HLC
 //! order), with connections that drop mid-stream (only a prefix arrives), one-way syncs,
 //! duplicated deliveries, long partitions (some pairs just don't meet for a while) and
 //! op-log compaction at any moment.
@@ -9,7 +9,7 @@ mod common;
 
 use common::{Edit, edit, run, seed};
 use proptest::prelude::*;
-use tt_core::Store;
+use utre_core::Store;
 
 const REPLICAS: usize = 4;
 
@@ -46,7 +46,7 @@ fn step() -> impl Strategy<Value = Step> {
 }
 
 /// What `from` would stream to `to` in a session: the ops `to`'s vector lacks.
-fn missing(from: &Store, to: &Store) -> Vec<tt_core::oplog::Op> {
+fn missing(from: &Store, to: &Store) -> Vec<utre_core::oplog::Op> {
     from.ops_missing(&to.version_vector().unwrap()).unwrap()
 }
 

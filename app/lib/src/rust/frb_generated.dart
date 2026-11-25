@@ -74,7 +74,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
-        stem: 'tt_bridge',
+        stem: 'utre_bridge',
         ioDirectory: 'rust/target/release/',
         webPrefix: 'pkg/',
         wasmBindgenName: 'wasm_bindgen',
@@ -5408,7 +5408,7 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
     selected: selected,
   );
 
-  /// Whether the Google page can work: only through tt-daemon.
+  /// Whether the Google page can work: only through utre-daemon.
   bool googleAvailable() =>
       RustLib.instance.api.crateApiTasksTaskDbGoogleAvailable(that: this);
 
@@ -5429,7 +5429,7 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
   Future<List<TaskItem>> inbox() =>
       RustLib.instance.api.crateApiTasksTaskDbInbox(that: this);
 
-  /// True when calls go through `tt-daemon`.
+  /// True when calls go through `utre-daemon`.
   bool isRemote() =>
       RustLib.instance.api.crateApiTasksTaskDbIsRemote(that: this);
 
@@ -5604,7 +5604,7 @@ class TaskDbImpl extends RustOpaque implements TaskDb {
     device: device,
   );
 
-  /// Whether the Devices page can work: through tt-daemon, or the phone's own node.
+  /// Whether the Devices page can work: through utre-daemon, or the phone's own node.
   bool syncAvailable() =>
       RustLib.instance.api.crateApiTasksTaskDbSyncAvailable(that: this);
 

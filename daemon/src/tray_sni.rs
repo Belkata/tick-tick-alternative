@@ -7,7 +7,7 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use ksni::TrayMethods;
 use tokio::sync::mpsc;
-use tt_core::Task;
+use utre_core::Task;
 
 use crate::Cmd;
 

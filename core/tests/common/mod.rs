@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use proptest::prelude::*;
-use tt_core::Store;
+use utre_core::Store;
 
 #[derive(Debug, Clone)]
 pub enum Edit {

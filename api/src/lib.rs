@@ -1,4 +1,4 @@
-//! tt-api: the one way into a Tick Alt database, local or through the daemon.
+//! utre-api: the one way into a Tick Alt database, local or through the daemon.
 //!
 //! - [`views`]: what the UIs show (sidebar, task rows, detail), computed from the core.
 //! - [`proto`]: the request protocol and [`proto::handle`], which runs a request on a store.
@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 
 use serde::de::DeserializeOwned;
-use tt_core::Store;
+use utre_core::Store;
 
 pub use client::{Client, Disconnected};
 pub use proto::{Event, GoogleStatus, Hello, Request, SyncOutcome, SyncStatus, TzName};

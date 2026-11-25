@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use tokio::sync::mpsc;
-use tt_core::Task;
+use utre_core::Task;
 
 use crate::Cmd;
 
@@ -14,7 +14,7 @@ impl Tray {
         _sync_line: Option<String>,
         _tx: mpsc::UnboundedSender<Cmd>,
     ) -> Result<Tray> {
-        eprintln!("tt-daemon: no tray on this platform yet");
+        eprintln!("utre-daemon: no tray on this platform yet");
         Ok(Tray)
     }
 

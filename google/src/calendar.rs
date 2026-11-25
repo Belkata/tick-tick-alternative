@@ -5,7 +5,7 @@
 //! is no longer valid: the cache is dropped and refilled with a full fetch.
 
 use chrono::{DateTime, SecondsFormat};
-use tt_core::{GcalCalendar, GcalEventUpdate, Store};
+use utre_core::{GcalCalendar, GcalEventUpdate, Store};
 
 use crate::session::Session;
 use crate::{Error, Result};
@@ -183,7 +183,7 @@ mod tests {
     async fn rig(routes: Vec<Route>, expires_in_ms: i64) -> Rig {
         static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let dir = std::env::temp_dir().join(format!(
-            "tt-google-rig-{}-{}",
+            "utre-google-rig-{}-{}",
             std::process::id(),
             N.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
         ));

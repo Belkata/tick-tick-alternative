@@ -15,7 +15,7 @@ use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::{broadcast, oneshot};
-use tt_core::Store;
+use utre_core::Store;
 
 use crate::proto::{self, Event, Hello, Reply, Request};
 
@@ -156,7 +156,7 @@ pub fn bind(path: &Path) -> anyhow::Result<UnixListener> {
 }
 
 /// The daemon's sync node, for `SyncPair`, `SyncJoin`, `SyncNow` and `SyncStatus`.
-/// (tt-api stays free of iroh; the daemon implements this over tt-sync.)
+/// (utre-api stays free of iroh; the daemon implements this over utre-sync.)
 pub trait SyncControl: Send + Sync + 'static {
     fn handle(
         &self,
@@ -176,7 +176,7 @@ pub async fn serve(
         let (db, sync) = (db.clone(), sync.clone());
         tokio::spawn(async move {
             if let Err(e) = connection(stream, db, sync).await {
-                eprintln!("tt-daemon: connection: {e:#}");
+                eprintln!("utre-daemon: connection: {e:#}");
             }
         });
     }
@@ -208,7 +208,7 @@ async fn connection(
                     Ok(v) => Reply::Ok(v),
                     Err(e) => Reply::Err(e),
                 },
-                None => Reply::Err("this tt-daemon doesn't run sync or Google".into()),
+                None => Reply::Err("this utre-daemon doesn't run sync or Google".into()),
             },
             Ok(req) => match db.call(req).await {
                 Ok(v) => Reply::Ok(v),

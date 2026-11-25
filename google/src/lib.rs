@@ -2,7 +2,7 @@
 //!
 //! No backend: the desktop flow is OAuth 2.0 authorization code with PKCE and a loopback
 //! redirect. This crate is only the network side. The event cache and the mappings live in
-//! `tt-core`'s `gcal` module.
+//! `utre-core`'s `gcal` module.
 //!
 //! - [`oauth`]: client secrets, PKCE, the loopback listener, the token endpoint.
 //! - [`tokens`]: where a device keeps its tokens (never synced between devices).
@@ -31,7 +31,7 @@ pub enum Error {
     #[error("bad JSON: {0}")]
     Json(#[from] serde_json::Error),
     #[error(transparent)]
-    Core(#[from] tt_core::Error),
+    Core(#[from] utre_core::Error),
     /// No usable tokens: the user never signed in, or Google revoked the access.
     #[error("not signed in to Google")]
     SignedOut,

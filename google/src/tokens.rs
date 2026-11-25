@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn saves_loads_and_clears_with_private_permissions() {
-        let dir = std::env::temp_dir().join(format!("tt-google-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("utre-google-{}", std::process::id()));
         let store = FileTokenStore::new(dir.join("nested").join("token.json"));
         assert_eq!(store.load().unwrap(), None);
         let t = Tokens {

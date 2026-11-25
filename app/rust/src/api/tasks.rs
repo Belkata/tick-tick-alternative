@@ -1,6 +1,6 @@
-//! The Dart-facing API. Keep this thin: the views live in tt-api, the rules in tt-core.
+//! The Dart-facing API. Keep this thin: the views live in utre-api, the rules in utre-core.
 //!
-//! On desktop `TaskDb.connectOrOpen` talks to `tt-daemon` over its socket when it serves
+//! On desktop `TaskDb.connectOrOpen` talks to `utre-daemon` over its socket when it serves
 //! this database, and opens the file directly otherwise; Android always opens it in-process
 //! (plan/15 M2 Desktop Log). The Dart API is the same either way.
 
@@ -10,8 +10,8 @@ use std::sync::atomic::Ordering;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use flutter_rust_bridge::frb;
-use tt_api::{Api, Request};
-use tt_core::{
+use utre_api::{Api, Request};
+use utre_core::{
     Filter, FilterRule, NewTask, ReminderKind, Repeat, RepeatMode, SavedFilter, Store, Task,
     local_tz, parse_when,
 };
@@ -20,12 +20,12 @@ use crate::changes::Changes;
 use crate::phone::{self, Phone};
 use crate::frb_generated::StreamSink;
 
-pub use tt_api::{
+pub use utre_api::{
     CalendarItem, ChecklistRow, NavItem, ReminderRow, Sidebar, TagChip, TaskDetail, TaskRow,
     TaskView, ViewKind,
 };
 
-// Dart sees the tt-api view types through these mirrors (one definition, in tt-api).
+// Dart sees the utre-api view types through these mirrors (one definition, in utre-api).
 
 #[frb(mirror(ViewKind))]
 pub enum _ViewKind {
@@ -136,8 +136,8 @@ pub struct _CalendarItem {
     pub icon: Option<String>,
 }
 
-pub use tt_api::{GoogleStatus, SyncOutcome, SyncStatus};
-pub use tt_core::{GcalCalendar, GcalEvent, Peer};
+pub use utre_api::{GoogleStatus, SyncOutcome, SyncStatus};
+pub use utre_core::{GcalCalendar, GcalEvent, Peer};
 
 #[frb(mirror(GoogleStatus))]
 pub struct _GoogleStatus {
@@ -223,7 +223,7 @@ pub struct TaskDb {
     changes: Arc<Changes>,
     /// The database file, for the phone's in-process sync node.
     path: String,
-    /// Android: the in-process sync node (desktop syncs through tt-daemon instead).
+    /// Android: the in-process sync node (desktop syncs through utre-daemon instead).
     phone: OnceLock<Arc<Phone>>,
 }
 
@@ -257,13 +257,13 @@ impl TaskDb {
         Ok(())
     }
 
-    /// Whether the Devices page can work: through tt-daemon, or the phone's own node.
+    /// Whether the Devices page can work: through utre-daemon, or the phone's own node.
     #[frb(sync)]
     pub fn sync_available(&self) -> bool {
         self.api.is_remote() || self.phone.get().is_some()
     }
 
-    /// Desktop: use `tt-daemon` if it serves `path`, else open the file directly. A watcher
+    /// Desktop: use `utre-daemon` if it serves `path`, else open the file directly. A watcher
     /// thread keeps the change stream live either way and follows the daemon coming and
     /// going (systemd restarts it): its events while connected; while opened directly,
     /// a switch back as soon as it serves the file again, and other processes' commits.
@@ -282,7 +282,7 @@ impl TaskDb {
         })
     }
 
-    /// True when calls go through `tt-daemon`.
+    /// True when calls go through `utre-daemon`.
     #[frb(sync)]
     pub fn is_remote(&self) -> bool {
         self.api.is_remote()
@@ -526,7 +526,7 @@ impl TaskDb {
         self.write(Request::RemoveReminder { id }).map(drop)
     }
 
-    // ----- Filters: definitions cross as JSON (a recursive rule tree; see tt_core::Filter) -----
+    // ----- Filters: definitions cross as JSON (a recursive rule tree; see utre_core::Filter) -----
 
     /// A saved filter's definition as JSON (`name`, `icon`, `rule`, `sort`, `show_completed`).
     pub fn filter_json(&self, id: String) -> anyhow::Result<Option<String>> {
@@ -646,9 +646,9 @@ impl TaskDb {
         self.write(Request::DeleteTag { id }).map(drop)
     }
 
-    // ----- Google Calendar (M5b, plan/19). Fetching runs in tt-daemon; the cache is readable anywhere -----
+    // ----- Google Calendar (M5b, plan/19). Fetching runs in utre-daemon; the cache is readable anywhere -----
 
-    /// Whether the Google page can work: only through tt-daemon.
+    /// Whether the Google page can work: only through utre-daemon.
     #[frb(sync)]
     pub fn google_available(&self) -> bool {
         self.api.is_remote()
@@ -691,7 +691,7 @@ impl TaskDb {
         self.api.gcal_events(from_ms, until_ms, local_tz())
     }
 
-    // ----- Devices and sync (answered by tt-daemon's sync node; desktop only) -----
+    // ----- Devices and sync (answered by utre-daemon's sync node; desktop only) -----
 
     /// The daemon's sync node: this device's id, peer count, last sync. Errors without a daemon.
     pub fn sync_status(&self) -> anyhow::Result<SyncStatus> {
@@ -719,7 +719,7 @@ impl TaskDb {
             Some(p) => p.rt.block_on(async {
                 let r = p.svc.node.join(ticket.trim()).await?;
                 p.svc.refresh_peers().await;
-                Ok(tt_sync::service::outcome(r))
+                Ok(utre_sync::service::outcome(r))
             }),
             None => self.api.sync_join(ticket.trim()),
         }
@@ -733,7 +733,7 @@ impl TaskDb {
         }
     }
 
-    /// The phone's node, when calls don't go through tt-daemon.
+    /// The phone's node, when calls don't go through utre-daemon.
     fn local_phone(&self) -> Option<&Arc<Phone>> {
         if self.api.is_remote() {
             None
@@ -765,11 +765,11 @@ impl TaskDb {
 
 /// The desktop watcher loop (see `TaskDb::connect_or_open`). Runs for the app's lifetime.
 fn watch(api: &Api, changes: &Changes) {
-    let socket = tt_api::paths::socket();
+    let socket = utre_api::paths::socket();
     loop {
         if api.is_remote() {
             // Blocks while the daemon is up, relaying its change events.
-            let _ = tt_api::client::subscribe(&socket, |_| {
+            let _ = utre_api::client::subscribe(&socket, |_| {
                 changes.tick();
                 true
             });
@@ -783,8 +783,8 @@ fn watch(api: &Api, changes: &Changes) {
     }
 }
 
-fn tz_name() -> tt_api::TzName {
-    tt_api::TzName(local_tz().name().to_string())
+fn tz_name() -> utre_api::TzName {
+    utre_api::TzName(local_tz().name().to_string())
 }
 
 fn now_ms() -> i64 {
@@ -794,12 +794,12 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-/// The desktop database: the same file `tt` and `tt-daemon` use (`$TT_DB`, else
+/// The desktop database: the same file `tt` and `utre-daemon` use (`$TT_DB`, else
 /// `~/.local/share/tick-alt/tt.db` on Linux, `~/Library/Application Support/tick-alt/tt.db`
 /// on macOS).
 #[frb(sync)]
 pub fn desktop_db_path() -> anyhow::Result<String> {
-    Ok(tt_api::paths::default_db()?.to_string_lossy().into_owned())
+    Ok(utre_api::paths::default_db()?.to_string_lossy().into_owned())
 }
 
 /// Android: tell the core the device's IANA zone (e.g. `Europe/Sofia`). There's no

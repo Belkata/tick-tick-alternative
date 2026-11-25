@@ -1,5 +1,5 @@
 [package]
-name = "tt"
+name = "utre"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
@@ -10,9 +10,9 @@ anyhow = "1.0.105"
 clap = { version = "4.6.9", features = ["derive"] }
 dirs = "7.0.0"
 libc = "0.2"
-tt-api = { path = "../api" }
-tt-core = { version = "0.1.0", path = "../core" }
-tt-sync = { version = "0.1.0", path = "../sync" }
+utre-api = { path = "../api" }
+utre-core = { version = "0.1.0", path = "../core" }
+utre-sync = { version = "0.1.0", path = "../sync" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
 chrono = "0.4.45"
 chrono-tz = "0.10.4"

@@ -379,7 +379,7 @@ mod tests {
 
     #[test]
     fn migrations_are_idempotent_on_reopen() {
-        let dir = std::env::temp_dir().join(format!("tt-core-mig-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("utre-core-mig-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("tt.db");
