@@ -1,5 +1,5 @@
 //! The daemon's answers to control requests on the socket (`utre_api::server::SyncControl`):
-//! sync (`utre_sync::service::SyncService`, for `tt sync` and the app's Devices page) and
+//! sync (`utre_sync::service::SyncService`, for `utre sync` and the app's Devices page) and
 //! Google (`google.rs`). Either can be missing (`--no-sync`, `--no-google`).
 
 use std::future::Future;

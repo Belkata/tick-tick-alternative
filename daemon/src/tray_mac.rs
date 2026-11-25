@@ -107,9 +107,9 @@ impl Tray {
         }));
         DispatchQueue::main().exec_async(move || {
             let icon = TrayIconBuilder::new()
-                .with_id("tick-alt")
+                .with_id("utre")
                 .with_icon_templated(check_icon(36, !inbox.is_empty()))
-                .with_tooltip("Tick Alt")
+                .with_tooltip("Utre")
                 .build();
             let icon = match icon {
                 Ok(i) => Some(i),
@@ -185,7 +185,7 @@ impl State {
             ));
         }
         add(&PredefinedMenuItem::separator());
-        add(&MenuItem::with_id("open", "Open Tick Alt", true, None));
+        add(&MenuItem::with_id("open", "Open Utre", true, None));
         add(&MenuItem::with_id("refresh", "Refresh", true, None));
         add(&PredefinedMenuItem::separator());
         let sync_line = self.sync_line.clone();
@@ -203,7 +203,7 @@ impl State {
         add(&PredefinedMenuItem::separator());
         add(&MenuItem::with_id(
             "quit",
-            "Quit Tick Alt daemon",
+            "Quit Utre daemon",
             true,
             None,
         ));

@@ -1,12 +1,13 @@
-//! utre-core: the shared Rust core of Tick Alt.
+//! utre-core: the shared Rust core of Utre.
 //!
 //! Owns the data model and the SQLite database. UIs (Flutter, the Glance
-//! widget, the `tt` CLI) only call into this crate. Every write becomes ops in
+//! widget, the `utre` CLI) only call into this crate. Every write becomes ops in
 //! the op-log first (see `oplog`), so sync can replay them on other devices.
 
 mod calendar;
 mod checklist;
 mod dates;
+pub mod envvar;
 pub mod filter;
 mod gcal;
 pub mod hlc;

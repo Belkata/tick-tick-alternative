@@ -1,4 +1,4 @@
-//! utre-api: the one way into a Tick Alt database, local or through the daemon.
+//! utre-api: the one way into a Utre database, local or through the daemon.
 //!
 //! - [`views`]: what the UIs show (sidebar, task rows, detail), computed from the core.
 //! - [`proto`]: the request protocol and [`proto::handle`], which runs a request on a store.
@@ -7,7 +7,7 @@
 //! - `server` (feature `server`): the daemon side, a DB thread plus the socket listener.
 //!
 //! See plan/15 M2 Desktop Log for why: on desktop the daemon owns the database (plan/03
-//! rule 3); the app and `tt` are its clients and fall back to opening the file directly.
+//! rule 3); the app and `utre` are its clients and fall back to opening the file directly.
 
 pub mod client;
 pub mod paths;

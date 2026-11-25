@@ -21,7 +21,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("migrations/008_gcal.sql"),
 ];
 
-/// A handle to one Tick Alt database file.
+/// A handle to one Utre database file.
 ///
 /// Several handles may open the same file (the Android app and its widget do):
 /// every write runs in an IMMEDIATE transaction that reads and saves the clock,
@@ -100,7 +100,7 @@ impl Store {
 
     /// SQLite's `data_version`: it changes when *another* connection commits to this
     /// database, never for this one's own writes. The daemon polls it to notice writes
-    /// from processes that opened the file directly (e.g. `tt` with no daemon running).
+    /// from processes that opened the file directly (e.g. `utre` with no daemon running).
     pub fn data_version(&self) -> Result<i64> {
         Ok(self
             .conn
@@ -382,7 +382,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("utre-core-mig-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("tt.db");
+        let path = dir.join("utre.db");
         let id = {
             let s = Store::open(&path).unwrap();
             s.add_task("persist").unwrap().id
@@ -518,9 +518,9 @@ mod tests {
 
     #[test]
     fn data_version_moves_only_for_other_connections() {
-        let dir = std::env::temp_dir().join(format!("tt-dv-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("utre-dv-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("tt.db");
+        let path = dir.join("utre.db");
         let a = Store::open(&path).unwrap();
         let b = Store::open(&path).unwrap();
         let v0 = a.data_version().unwrap();

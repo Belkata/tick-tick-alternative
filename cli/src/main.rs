@@ -1,4 +1,4 @@
-//! `tt`: the Tick Alt command-line tool.
+//! `utre`: the Utre command-line tool.
 
 mod show;
 
@@ -18,9 +18,9 @@ use utre_sync::replicate::SyncEvent;
 use utre_sync::{Relays, SyncNode};
 
 #[derive(Parser)]
-#[command(name = "tt", version, about = "Tick Alt from the terminal")]
+#[command(name = "utre", version, about = "Utre from the terminal")]
 struct Cli {
-    /// Database file. Defaults to $TT_DB, then the platform data directory.
+    /// Database file. Defaults to $UTRE_DB, then the platform data directory.
     #[arg(long, global = true)]
     db: Option<PathBuf>,
 
@@ -244,7 +244,7 @@ struct LsArgs {
     done: bool,
 }
 
-/// Which view `tt order` acts on; the Inbox without a flag.
+/// Which view `utre order` acts on; the Inbox without a flag.
 #[derive(Args)]
 #[group(id = "sort_view", multiple = false)]
 struct ViewArgs {
@@ -321,7 +321,7 @@ enum ListsCmd {
 
 #[derive(Subcommand)]
 enum FilterCmd {
-    /// Save a filter: `tt filter add Today '{"field":"due","op":"on_or_before","value":"today"}'`.
+    /// Save a filter: `utre filter add Today '{"field":"due","op":"on_or_before","value":"today"}'`.
     Add {
         name: String,
         rule: String,
@@ -433,7 +433,7 @@ enum SyncCommand {
 }
 
 fn main() -> Result<()> {
-    // Rust ignores SIGPIPE, so printing into a closed pipe (`tt ls | head -1`) panics.
+    // Rust ignores SIGPIPE, so printing into a closed pipe (`utre ls | head -1`) panics.
     // A CLI should just stop quietly, like other Unix tools: restore the default.
     #[cfg(unix)]
     // SAFETY: first thing in main, before any threads; only resets a signal disposition.
@@ -793,7 +793,7 @@ impl Ctx {
         Ok(self
             .store
             .find_list(name)?
-            .with_context(|| format!("no list '{name}' (tt lists add …)"))?
+            .with_context(|| format!("no list '{name}' (utre lists add …)"))?
             .id)
     }
 
@@ -1073,10 +1073,10 @@ impl Ctx {
                             "Signed in. Last fetched {}.",
                             when(t, false, self.now, self.tz)
                         ),
-                        None => println!("Signed in. Nothing fetched yet (try `tt google sync`)."),
+                        None => println!("Signed in. Nothing fetched yet (try `utre google sync`)."),
                     }
                 } else {
-                    println!("Not signed in. Run `tt google sign-in`.");
+                    println!("Not signed in. Run `utre google sign-in`.");
                 }
                 if let Some(e) = st.last_error {
                     println!("Last error: {e}");
@@ -1085,7 +1085,7 @@ impl Ctx {
             GoogleCmd::SignIn => {
                 let url = s.google_sign_in()?;
                 println!(
-                    "Opened your browser to sign in. If nothing opened, visit:\n\n  {url}\n\nThen run `tt google status`."
+                    "Opened your browser to sign in. If nothing opened, visit:\n\n  {url}\n\nThen run `utre google status`."
                 );
             }
             GoogleCmd::SignOut => {
@@ -1099,7 +1099,7 @@ impl Ctx {
             GoogleCmd::Calendars => {
                 let all = s.gcal_calendars()?;
                 if all.is_empty() {
-                    println!("No calendars yet. Sign in and run `tt google sync`.");
+                    println!("No calendars yet. Sign in and run `utre google sync`.");
                 }
                 for c in all {
                     println!(
@@ -1119,7 +1119,7 @@ impl Ctx {
                     })
                     .collect();
                 match matches.as_slice() {
-                    [] => bail!("no Google calendar '{calendar}' (see `tt google calendars`)"),
+                    [] => bail!("no Google calendar '{calendar}' (see `utre google calendars`)"),
                     [c] => {
                         s.gcal_select(&c.id, !off)?;
                         println!(
@@ -1128,7 +1128,7 @@ impl Ctx {
                             c.summary
                         );
                         if !off {
-                            println!("Run `tt google sync` to fetch its events now.");
+                            println!("Run `utre google sync` to fetch its events now.");
                         }
                     }
                     _ => bail!("'{calendar}' matches several calendars; use more of the id"),
@@ -1161,7 +1161,7 @@ impl Ctx {
             None => {
                 let filters = s.filters()?;
                 if filters.is_empty() {
-                    println!("No filters. Add one with: tt filter add <name> '<rule JSON>'");
+                    println!("No filters. Add one with: utre filter add <name> '<rule JSON>'");
                 }
                 for f in filters {
                     let n = s.run_filter(&f.id, self.now, self.tz)?.len();
@@ -1217,23 +1217,16 @@ impl Ctx {
 
 fn db_path(flag: Option<PathBuf>) -> Result<PathBuf> {
     Ok(
-        match flag.or_else(|| std::env::var_os("TT_DB").map(PathBuf::from)) {
+        match flag.or_else(|| utre_core::envvar::var_os("DB").map(PathBuf::from)) {
             Some(p) => p,
-            None => {
-                let dir = dirs::data_dir()
-                    .context("no platform data directory; pass --db")?
-                    .join("tick-alt");
-                std::fs::create_dir_all(&dir)
-                    .with_context(|| format!("creating {}", dir.display()))?;
-                dir.join("tt.db")
-            }
+            None => utre_api::paths::default_db()?,
         },
     )
 }
 
 #[tokio::main]
 async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
-    // The node key lives next to the database: tt.db -> tt.key.
+    // The node key lives next to the database: utre.db -> utre.key.
     let key = db.with_extension("key");
     let device = hostname();
     match cmd {
@@ -1244,7 +1237,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
             }
             let mut events = node.subscribe_sync();
             println!(
-                "On the other device run:\n\n  tt sync join {}\n\nWaiting up to 5 minutes. Ctrl-C to cancel.",
+                "On the other device run:\n\n  utre sync join {}\n\nWaiting up to 5 minutes. Ctrl-C to cancel.",
                 node.pairing_ticket()?
             );
             let deadline = tokio::time::sleep(utre_sync::replicate::PAIR_TTL);
@@ -1274,7 +1267,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
             let node = SyncNode::start(db, &key, device, relays(no_relay)).await?;
             let results = node.sync_all().await;
             if results.is_empty() {
-                println!("No paired devices. Pair one with `tt sync pair`.");
+                println!("No paired devices. Pair one with `utre sync pair`.");
             }
             for (peer, r) in results {
                 match r {
@@ -1378,7 +1371,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
     Ok(())
 }
 
-/// `tt sync` while the daemon runs: the same commands, carried out by its sync node.
+/// `utre sync` while the daemon runs: the same commands, carried out by its sync node.
 fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
     let outcome = |o: &utre_api::SyncOutcome| match &o.error {
         None => println!(
@@ -1390,7 +1383,7 @@ fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
     match cmd {
         SyncCommand::Pair { .. } => {
             println!(
-                "On the other device run:\n\n  tt sync join {}\n\nThe ticket works once, for 5 minutes; utre-daemon answers it.",
+                "On the other device run:\n\n  utre sync join {}\n\nThe ticket works once, for 5 minutes; utre-daemon answers it.",
                 api.sync_pair()?
             );
         }
@@ -1402,7 +1395,7 @@ fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
         SyncCommand::Now { .. } => {
             let all = api.sync_now()?;
             if all.is_empty() {
-                println!("No paired devices. Pair one with `tt sync pair`.");
+                println!("No paired devices. Pair one with `utre sync pair`.");
             }
             all.iter().for_each(outcome);
         }
@@ -1439,7 +1432,7 @@ fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
         SyncCommand::Compact => compact(&api)?,
         SyncCommand::Serve { .. } => bail!("utre-daemon already serves sync for this database"),
         SyncCommand::Pull { .. } => bail!(
-            "stop utre-daemon to use the Spike 2 pull (it holds this device's key): systemctl --user stop tick-alt"
+            "stop utre-daemon to use the Spike 2 pull (it holds this device's key): systemctl --user stop utre"
         ),
     }
     Ok(())

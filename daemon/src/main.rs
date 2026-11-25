@@ -1,16 +1,16 @@
-//! utre-daemon: owns the desktop database and serves it to the app and `tt` (M2, plan/15).
+//! utre-daemon: owns the desktop database and serves it to the app and `utre` (M2, plan/15).
 //!
 //! - **Socket:** `utre_api::server` runs one DB thread and answers JSON-line requests on
-//!   `$XDG_RUNTIME_DIR/tick-alt.sock` (macOS: the data dir), with change events for subscribers.
-//!   Commits other processes make to the file (e.g. `tt` while no daemon ran) are noticed and broadcast.
+//!   `$XDG_RUNTIME_DIR/utre.sock` (macOS: the data dir), with change events for subscribers.
+//!   Commits other processes make to the file (e.g. `utre` while no daemon ran) are noticed and broadcast.
 //! - **Tray**: the Inbox count and sync status, refreshed on every change. Linux: a
 //!   StatusNotifierItem (`tray_sni.rs`). macOS: a menu-bar icon (`tray_mac.rs`), which owns the
 //!   main thread for AppKit, so the tokio runtime runs on a second thread there.
 //! - **Sync** (M3, `sync.rs`): the iroh sync node serves paired devices and syncs with them
-//!   every 90 s and a few seconds after local edits; `tt sync` and the app reach it via the socket.
+//!   every 90 s and a few seconds after local edits; `utre sync` and the app reach it via the socket.
 //! - **Reminders:** every 5 s the core is asked for reminders due since the last check;
 //!   each becomes a notification (notify-rust) with Done and Snooze actions. On macOS that's
-//!   `UNUserNotificationCenter`, which only works from an app bundle (`Tick Alt Daemon.app`,
+//!   `UNUserNotificationCenter`, which only works from an app bundle (`Utre Daemon.app`,
 //!   built by scripts/build-macos.sh); run bare, the daemon logs reminders instead.
 //!
 //! - **Google** (M5b, `google.rs`): sign-in through the browser and a fetch of the selected
@@ -19,7 +19,7 @@
 //!
 //! Flags: `--db <path>`, `--socket <path>`, `--no-tray`, `--no-sync`, `--no-google`, `--no-relay` (sync on
 //! direct addresses only); `utre-daemon notify <id>` sends one
-//! reminder right away. `$TT_SNOOZE_SECS` shortens Snooze for testing; `$TT_APP` is what Open starts.
+//! reminder right away. `$UTRE_SNOOZE_SECS` shortens Snooze for testing; `$UTRE_APP` is what Open starts.
 
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -81,7 +81,7 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-/// `--db <path>` if given, else `$TT_DB`, else the platform data directory (as `tt`).
+/// `--db <path>` if given, else `$UTRE_DB`, else the platform data directory (as `utre`).
 fn db_path() -> Result<PathBuf> {
     match flag("--db") {
         Some(p) => Ok(PathBuf::from(p)),
@@ -195,7 +195,7 @@ fn notify(tx: mpsc::UnboundedSender<Cmd>, task_id: String, title: String) {
 fn notify(tx: mpsc::UnboundedSender<Cmd>, task_id: String, title: String) {
     tokio::task::spawn_blocking(move || {
         let shown = notify_rust::Notification::new()
-            .appname("Tick Alt")
+            .appname("Utre")
             .summary(&title)
             .body("Reminder")
             .icon("appointment-soon")
@@ -223,18 +223,17 @@ fn notify(tx: mpsc::UnboundedSender<Cmd>, task_id: String, title: String) {
 }
 
 fn snooze_delay() -> Duration {
-    std::env::var("TT_SNOOZE_SECS")
-        .ok()
+    utre_core::envvar::var("SNOOZE_SECS")
         .and_then(|s| s.parse().ok())
         .map(Duration::from_secs)
         .unwrap_or(Duration::from_secs(600))
 }
 
-/// Start the Flutter app (`$TT_APP`, else `tick_alt` on PATH). A release build is single
+/// Start the Flutter app (`$UTRE_APP`, else `utre-app` on PATH). A release build is single
 /// instance, so if it's already open this raises its window. The token lets Wayland focus it.
 #[cfg(not(target_os = "macos"))]
 fn open_app(token: Option<String>) {
-    let app = std::env::var("TT_APP").unwrap_or_else(|_| "tick_alt".into());
+    let app = utre_core::envvar::var("APP").unwrap_or_else(|| "utre-app".into());
     let mut cmd = std::process::Command::new(&app);
     if let Some(t) = &token {
         cmd.env("XDG_ACTIVATION_TOKEN", t)
@@ -247,13 +246,13 @@ fn open_app(token: Option<String>) {
     }
 }
 
-/// Start or raise the app with `open`: `$TT_APP` (a path to the .app), else by bundle id.
+/// Start or raise the app with `open`: `$UTRE_APP` (a path to the .app), else by bundle id.
 #[cfg(target_os = "macos")]
 fn open_app(_token: Option<String>) {
     let mut cmd = std::process::Command::new("/usr/bin/open");
-    match std::env::var("TT_APP") {
-        Ok(app) => cmd.arg(app),
-        Err(_) => cmd.args(["-b", "dev.tickalt.tickAlt"]),
+    match utre_core::envvar::var("APP") {
+        Some(app) => cmd.arg(app),
+        None => cmd.args(["-b", "dev.utre.utre"]),
     };
     match cmd.status() {
         Ok(s) if s.success() => {}
@@ -388,7 +387,7 @@ async fn run() -> Result<()> {
         }
     });
 
-    // Refresh the tray on every change, wherever it came from (app, `tt`, an outside write).
+    // Refresh the tray on every change, wherever it came from (app, `utre`, an outside write).
     let mut changes = db.subscribe();
     let tz = TzName(local_tz().name().to_string());
     let mut last_check = now_ms();

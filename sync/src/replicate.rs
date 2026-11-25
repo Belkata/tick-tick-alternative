@@ -480,7 +480,7 @@ pub(crate) fn decode_pair_ticket(ticket: &str) -> Result<PairTicket> {
     let hex = ticket
         .trim()
         .strip_prefix(PAIR_PREFIX)
-        .context("not a Tick Alt pairing ticket (expected tt2…)")?;
+        .context("not a Utre pairing ticket (expected tt2…)")?;
     serde_json::from_slice(&unhex(hex)?).context("pairing ticket is damaged")
 }
 

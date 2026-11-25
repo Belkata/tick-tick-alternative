@@ -1,11 +1,11 @@
-//! How `tt` prints tasks, dates and tags.
+//! How `utre` prints tasks, dates and tags.
 
 use chrono_tz::Tz;
 use utre_api::Api;
 use utre_core::Task;
 pub use utre_core::{offset_label, when_label as when};
 
-/// Characters of the task id that `tt` prints and accepts.
+/// Characters of the task id that `utre` prints and accepts.
 pub const SHORT_ID_LEN: usize = 8;
 
 /// UUIDv7 starts with a timestamp, so the random tail is the part that tells tasks apart.

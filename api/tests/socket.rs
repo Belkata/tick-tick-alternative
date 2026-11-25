@@ -17,8 +17,8 @@ fn temp_dir(name: &str) -> PathBuf {
 
 /// Start a daemon on its own runtime thread; returns the socket path.
 fn start_daemon(dir: &std::path::Path) -> (PathBuf, PathBuf) {
-    let db = dir.join("tt.db");
-    let sock = dir.join("tt.sock");
+    let db = dir.join("utre.db");
+    let sock = dir.join("utre.sock");
     let (ready_tx, ready_rx) = mpsc::channel();
     let (db2, sock2) = (db.clone(), sock.clone());
     std::thread::spawn(move || {
@@ -173,9 +173,9 @@ impl Daemon {
 #[test]
 fn clients_survive_the_daemon_restarting() {
     let dir = temp_dir("restart");
-    let (db, sock) = (dir.join("tt.db"), dir.join("tt.sock"));
-    // SAFETY: only this test reads TT_SOCKET (the others connect to explicit paths).
-    unsafe { std::env::set_var("TT_SOCKET", &sock) };
+    let (db, sock) = (dir.join("utre.db"), dir.join("utre.sock"));
+    // SAFETY: only this test reads UTRE_SOCKET (the others connect to explicit paths).
+    unsafe { std::env::set_var("UTRE_SOCKET", &sock) };
 
     let daemon = Daemon::start(&db, &sock);
     let api = Api::connect_or_open(&db).unwrap();
