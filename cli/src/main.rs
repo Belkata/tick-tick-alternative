@@ -310,6 +310,10 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     let db = db_path(cli.db)?;
     if let Command::Sync(cmd) = cli.command {
+        // While tt-daemon serves this database it owns the device key: ask it to sync.
+        if let Some(client) = tt_api::Client::for_db(&db) {
+            return sync_via_daemon(Api::remote(client), cmd);
+        }
         return run_sync(db, cmd);
     }
     // Through tt-daemon when it serves this database; else open the file directly
@@ -1070,6 +1074,72 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
             }
             node.shutdown().await;
         }
+    }
+    Ok(())
+}
+
+/// `tt sync` while the daemon runs: the same commands, carried out by its sync node.
+fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
+    let outcome = |o: &tt_api::SyncOutcome| match &o.error {
+        None => println!(
+            "Synced with {}: sent {}, received {} ({} applied).",
+            o.peer_name, o.sent, o.received, o.applied
+        ),
+        Some(e) => println!("{}: {e}", o.peer_name),
+    };
+    match cmd {
+        SyncCommand::Pair { .. } => {
+            println!(
+                "On the other device run:\n\n  tt sync join {}\n\nThe ticket works once, for 5 minutes; tt-daemon answers it.",
+                api.sync_pair()?
+            );
+        }
+        SyncCommand::Join { ticket, .. } => {
+            let o = api.sync_join(ticket)?;
+            println!("Paired with {}.", o.peer_name);
+            outcome(&o);
+        }
+        SyncCommand::Now { .. } => {
+            let all = api.sync_now()?;
+            if all.is_empty() {
+                println!("No paired devices. Pair one with `tt sync pair`.");
+            }
+            all.iter().for_each(outcome);
+        }
+        SyncCommand::Peers => {
+            let (now, tz) = (now_ms(), local_tz());
+            let status = api.sync_status()?;
+            println!("This device: {} (tt-daemon)", &status.node_id[..10]);
+            let peers = api.peers()?;
+            if peers.is_empty() {
+                println!("No paired devices.");
+            }
+            for p in peers {
+                let seen = p.last_seen.map_or("never synced".into(), |t| {
+                    format!("synced {}", when(t, false, now, tz))
+                });
+                println!("{}  {}  ({seen})", &p.node_id[..10], p.name);
+            }
+        }
+        SyncCommand::Forget { device: who } => {
+            let matches: Vec<_> = api
+                .peers()?
+                .into_iter()
+                .filter(|p| p.name.eq_ignore_ascii_case(&who) || p.node_id.starts_with(&who))
+                .collect();
+            match matches.as_slice() {
+                [] => bail!("no paired device '{who}'"),
+                [p] => {
+                    api.remove_peer(&p.node_id)?;
+                    println!("Forgot {}.", p.name);
+                }
+                _ => bail!("'{who}' matches several devices; use more of the node id"),
+            }
+        }
+        SyncCommand::Serve { .. } => bail!("tt-daemon already serves sync for this database"),
+        SyncCommand::Pull { .. } => bail!(
+            "stop tt-daemon to use the Spike 2 pull (it holds this device's key): systemctl --user stop tick-alt"
+        ),
     }
     Ok(())
 }
