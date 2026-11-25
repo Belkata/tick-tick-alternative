@@ -7,12 +7,12 @@ import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:tick_alt/desk/detail.dart';
-import 'package:tick_alt/desk/task_list.dart';
-import 'package:tick_alt/main.dart';
-import 'package:tick_alt/src/rust/api/sync.dart';
-import 'package:tick_alt/src/rust/api/tasks.dart';
-import 'package:tick_alt/src/rust/frb_generated.dart';
+import 'package:utre/desk/detail.dart';
+import 'package:utre/desk/task_list.dart';
+import 'package:utre/main.dart';
+import 'package:utre/src/rust/api/sync.dart';
+import 'package:utre/src/rust/api/tasks.dart';
+import 'package:utre/src/rust/frb_generated.dart';
 
 /// Runs on a real device, emulator or desktop: Dart -> Rust core -> SQLite through the M2 shell.
 void main() {
@@ -35,14 +35,14 @@ void main() {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    final dir = await Directory.systemTemp.createTemp('tt');
-    final db = await TaskDb.open(path: '${dir.path}/tt.db');
+    final dir = await Directory.systemTemp.createTemp('utre');
+    final db = await TaskDb.open(path: '${dir.path}/utre.db');
     final peer = SyncPeer.start(
-      dbPath: '${dir.path}/tt.db',
-      keyPath: '${dir.path}/tt.key',
+      dbPath: '${dir.path}/utre.db',
+      keyPath: '${dir.path}/utre.key',
       device: 'test',
     );
-    await tester.pumpWidget(TickAltApp(db: db, peer: peer));
+    await tester.pumpWidget(UtreApp(db: db, peer: peer));
     await settle(tester);
     return db;
   }
@@ -515,10 +515,10 @@ void main() {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    final dir = await Directory.systemTemp.createTemp('tt');
-    final db = await TaskDb.open(path: '${dir.path}/tt.db');
+    final dir = await Directory.systemTemp.createTemp('utre');
+    final db = await TaskDb.open(path: '${dir.path}/utre.db');
     // Desktop: no spike sync node, so the sidebar offers Devices.
-    await tester.pumpWidget(TickAltApp(db: db));
+    await tester.pumpWidget(UtreApp(db: db));
     await settle(tester);
     await tester.tap(find.text('Devices'));
     await settle(tester);

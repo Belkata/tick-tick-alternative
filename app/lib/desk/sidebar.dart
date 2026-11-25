@@ -99,7 +99,7 @@ class DeskSidebar extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Tick Alt',
+                    'Utre',
                     style: manrope(17, FontWeight.w800, color: s.fg),
                   ),
                 ),

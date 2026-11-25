@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tick_alt/desk/filter_rule.dart';
+import 'package:utre/desk/filter_rule.dart';
 
 void main() {
   test('the core\'s documented example round-trips', () {

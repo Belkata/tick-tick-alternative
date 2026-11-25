@@ -130,7 +130,7 @@ class _GooglePageState extends State<GooglePage> {
                     ? 'Loading…'
                     : 'Google Calendar runs in utre-daemon, which isn\'t running for '
                           'this database (and isn\'t on the phone yet).\n'
-                          'Start it with: systemctl --user start tick-alt'),
+                          'Start it with: systemctl --user start utre'),
             style: manrope(13.5, FontWeight.w500, color: s.mute),
           ),
         ),

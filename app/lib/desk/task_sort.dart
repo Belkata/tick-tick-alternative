@@ -9,7 +9,7 @@ class SortChoice {
   final List<String> keys;
 }
 
-/// The sort menu, matching `tt sort`'s names. Ties fall back to creation order.
+/// The sort menu, matching `utre sort`'s names. Ties fall back to creation order.
 const sortChoices = [
   SortChoice('due', 'Due date', ['due_asc', 'priority_desc']),
   SortChoice('priority', 'Priority', ['priority_desc', 'due_asc']),

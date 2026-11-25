@@ -39,7 +39,7 @@ class DeskController extends ChangeNotifier {
   }
 
   /// Re-query everything the panes show. Results of an older reload are dropped.
-  /// If the open list, tag or filter is gone (deleted here, by `tt` or elsewhere),
+  /// If the open list, tag or filter is gone (deleted here, by `utre` or elsewhere),
   /// fall back to Inbox; other failures become [error] instead of exceptions.
   Future<void> reload() async {
     final gen = ++_generation;

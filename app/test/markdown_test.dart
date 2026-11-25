@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tick_alt/desk/markdown.dart';
+import 'package:utre/desk/markdown.dart';
 
 void main() {
   test('parses headings, lists, tasks, code and quotes', () {

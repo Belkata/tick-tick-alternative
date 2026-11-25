@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tick_alt/desk/task_sort.dart';
-import 'package:tick_alt/src/rust/api/tasks.dart';
+import 'package:utre/desk/task_sort.dart';
+import 'package:utre/src/rust/api/tasks.dart';
 
 TaskRow row(String id) => TaskRow(
   id: id,

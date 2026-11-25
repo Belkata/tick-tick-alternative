@@ -75,7 +75,7 @@ class _SyncPageState extends State<SyncPage> {
     final addrs = await peer.addrs();
     // Logged so the ticket can be read with `adb logcat` during the spike.
     // ignore: avoid_print
-    print('TT_TICKET $ticket');
+    print('UTRE_TICKET $ticket');
     if (mounted) {
       setState(() {
         _ticket = ticket;
@@ -104,13 +104,13 @@ class _SyncPageState extends State<SyncPage> {
       final r = await peer.pull(ticket: ticket);
       // ignore: avoid_print
       print(
-        'TT_PULL ${r.titles.length} tasks from ${r.peerDevice} '
+        'UTRE_PULL ${r.titles.length} tasks from ${r.peerDevice} '
         '${r.firstPath}->${r.finalPath} rtt=${r.rttMs} ms in ${r.elapsedMs} ms',
       );
       if (mounted) setState(() => _result = r);
     } catch (e) {
       // ignore: avoid_print
-      print('TT_PULL_ERROR $e');
+      print('UTRE_PULL_ERROR $e');
       if (mounted) setState(() => _error = '$e');
     } finally {
       if (mounted) setState(() => _pulling = false);

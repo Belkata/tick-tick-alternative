@@ -3,7 +3,7 @@
 //
 // The core decides where blocks go (`TaskDb.calendar`); this page only draws them and
 // turns drags into `placeBlock` / `unschedule`. Every write ticks the change stream, which
-// reloads the visible range, so `tt`, the phone and other windows show up live too.
+// reloads the visible range, so `utre`, the phone and other windows show up live too.
 
 import 'dart:async';
 
