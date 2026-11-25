@@ -142,6 +142,11 @@ enum Command {
         #[arg(short, default_value_t = 20)]
         n: usize,
     },
+    /// Import data from another app (one time, safe to repeat).
+    Import {
+        #[command(subcommand)]
+        cmd: ImportCmd,
+    },
     /// Spike 2: talk to another device over iroh.
     #[command(subcommand)]
     Sync(SyncCommand),
@@ -262,6 +267,56 @@ enum FilterCmd {
 }
 
 #[derive(Subcommand)]
+enum ImportCmd {
+    /// Import a TickTick export file (JSON from the export step).
+    Ticktick {
+        file: PathBuf,
+        /// Count and report what would happen, without touching the database.
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
+
+fn run_import(db: &std::path::Path, cmd: ImportCmd) -> Result<()> {
+    let ImportCmd::Ticktick { file, dry_run } = cmd;
+    let text =
+        std::fs::read_to_string(&file).with_context(|| format!("reading {}", file.display()))?;
+    let export = tt_core::parse_export(&text)?;
+    // A dry run imports into a throwaway in-memory database.
+    let store = if dry_run {
+        tt_core::Store::open_in_memory()?
+    } else {
+        tt_core::Store::open(db).with_context(|| format!("opening {}", db.display()))?
+    };
+    let r = store.import_ticktick(&export)?;
+    println!(
+        "{}",
+        if dry_run {
+            "Dry run (nothing written):"
+        } else {
+            "Imported:"
+        }
+    );
+    println!("  lists {}, tags {}", r.lists, r.tags);
+    println!(
+        "  open tasks {}, done tasks {}, subtasks {}",
+        r.open_tasks, r.done_tasks, r.subtasks
+    );
+    println!(
+        "  checklist items {}, repeats {}, reminders {}",
+        r.checklist_items, r.repeats, r.reminders
+    );
+    println!(
+        "  already there (skipped) {}, kanban columns dropped {}",
+        r.already_there, r.dropped_columns
+    );
+    for n in &r.notes {
+        println!("  note: {n}");
+    }
+    Ok(())
+}
+
+#[derive(Subcommand)]
 enum SyncCommand {
     /// Pair a new device: print a one-time ticket (valid 5 minutes), wait for it to join, sync.
     Pair {
@@ -311,6 +366,9 @@ fn main() -> Result<()> {
     }
     let cli = Cli::parse();
     let db = db_path(cli.db)?;
+    if let Command::Import { cmd } = cli.command {
+        return run_import(&db, cmd);
+    }
     if let Command::Sync(cmd) = cli.command {
         // While tt-daemon serves this database it owns the device key: ask it to sync.
         if let Some(client) = tt_api::Client::for_db(&db) {
@@ -598,7 +656,7 @@ impl Ctx {
                     );
                 }
             }
-            Command::Sync(_) => unreachable!("handled in main"),
+            Command::Sync(_) | Command::Import { .. } => unreachable!("handled in main"),
         }
         Ok(())
     }

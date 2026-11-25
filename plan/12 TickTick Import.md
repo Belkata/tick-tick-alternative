@@ -52,3 +52,10 @@ Back to [[00 Overview]].
 2. Run it for real. The import becomes normal ops, so it syncs to the other devices.
 3. Manually recreate the 4 filters in the builder.
 4. Spot-check: counts per tag and list match TickTick.
+
+## Done (2026-11-25): importer and first import
+- **Source used:** not the CSV. The TickTick connector gave JSON in TickTick's own field names (open tasks of the Inbox and both lists, the 200 newest completed tasks, 24 tags). Saved as the backup `~/ticktick-backup/ticktick-export-2026-11-25.json` (outside the repo: it's personal data and the repo is public). A snapshot of the Tick Alt database from just before the import sits beside it.
+- **Command:** `tt import ticktick <file> [--dry-run]` (`core/src/import.rs`). A dry run imports into a throwaway in-memory database. Re-running is safe: a task with the same title and creation time is skipped.
+- **Result:** 453 open + 200 done tasks, 29 subtasks, 32 checklist items, 11 repeats, 167 reminders, 24 tags (Via-Verde under theater), lists No Calendar and Work (emoji became the icon). Kanban columns dropped.
+- **Mapping choices:** `repeatFrom` `1` means after completion, anything else fixed. All-day reminders (`TRIGGER:PT9H`) become offset 0, since Tick Alt fires all-day reminders at 09:00. A start equal to the due date is stored as due only. Priorities 1/3/5 become 1/2/3.
+- **Known gaps:** the API caps completed tasks at 200, so older history is missing (about half are occurrences of repeating tasks). Images in notes (`![image](…)`) point at TickTick attachments and are not copied. The 4 filters are still to be recreated by hand.
