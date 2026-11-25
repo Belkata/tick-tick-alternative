@@ -43,7 +43,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [ ] Device identity, QR / text pairing, trusted peers. 🟡 Text pairing (`tt2` tickets) and trusted peers done; QR waits for M4. See [[16 M3 Sync Log]].
 - [ ] Sync protocol: version vectors and op streaming. Compaction and snapshots. 🟡 Version vectors and op streaming done; compaction and snapshots to do.
 - [ ] Property-based convergence tests and a network simulation.
-- [ ] Tray sync status.
+- [x] Tray sync status. ✅ Tooltip line plus a working Sync now in the menu (M3 slice 2).
 
 **Exit:** Mac ↔ Arch stay in sync.
 

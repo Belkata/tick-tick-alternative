@@ -52,8 +52,9 @@ M2 (desktop app) has started; see `plan/15 M2 Desktop Log.md`:
 
 - ✅ Slice 5: `packaging/arch/PKGBUILD` (builds from GitHub; test-built, 33 MB; not installed).
 - M3 slice 1 ✅: sync protocol, pairing and `tt sync` (see `plan/16 M3 Sync Log.md`). Schema v3.
+- M3 slice 2 ✅: `tt-daemon` runs the sync node (auto sync, tray status, Sync now). `tt sync` and the app's **Devices** page go through it; desktop no longer starts the spike `SyncPeer`. The installed service runs it on the real DB (no peers yet; UDP 41824).
 
-**Next:** M3 slice 2, the daemon runs sync, with tray status and a Devices page (see plan/16). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+**Next:** have the user check the Devices page and the tray line, then pair a real second device. Remaining M3: compaction and snapshots, trust sharing, a network simulation. Then ask the user: the Android catch-up (needs the SDK on this laptop, plus M4) or M5 (calendar and Google). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
 ## Continuing on the Arch laptop (handoff 2026-11-24)
 
@@ -105,7 +106,7 @@ core/                 tt-core: domain + SQLite. Every write is an op (oplog.rs, 
                       recur (rrule), filter (JSON AST -> SQL), dates. tests/convergence.rs = proptest
 api/                  tt-api: views (sidebar/rows/detail), request protocol (proto.rs table → Request + handle + Api), socket server (feature server) and client
 daemon/               tt-daemon: owns the desktop DB, serves the socket; tray (ksni) + reminder notifications (notify-rust) with Done/Snooze
-sync/                 tt-sync: Spike 2 iroh node (key file, ticket, pull open tasks). M3 replaces the protocol
+sync/                 tt-sync: iroh node. replicate.rs = M3 sync (pairing tt2 tickets, trusted peers, op streaming); Spike 2 pull still served
 cli/                  `tt` CLI (`tt --help`). Short ids = LAST 8 hex chars of the UUIDv7. $TT_DB, $TT_TZ
 app/                  Flutter app (android, linux, macos). lib/desk/ = M2 shell (theme, controller, sidebar, task_list, detail, shell)
   linux/packaging/    dev.tickalt.tick_alt.desktop + .svg icon (named after the Wayland app id)
