@@ -32,6 +32,8 @@ use crate::organize::{find_list, find_tag, tag_subtree};
 use crate::task::{TASK_COLUMNS, Task, query_tasks};
 use crate::{Error, Result, Store};
 
+mod seed;
+
 /// A node of the rule tree.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
