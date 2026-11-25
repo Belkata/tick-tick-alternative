@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendar Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Tick Alt, M5a slice 2: the calendar in the Soft style (plan/18 M5 Calendar Log).
+   Tokens are the app's SoftColors (app/lib/desk/theme.dart). Static sample data. */
+:root{
+  --bg:#f7f8fb; --side:#eef1f7; --panel:#ffffff; --fg:#1f2433; --mute:#7a8197; --line:#e3e7ef;
+  --grid:#edf0f5; --sel-fg:#0f8b7d; --accent:#12a594; --accent-fg:#ffffff; --today:#0f8b7d; --late:#e2525c;
+  --p1:#4c8df6; --p2:#eb9b2c; --p3:#e2525c; --mix:22%; --weekend:rgba(31,36,51,.025);
+  --shadow:0 1px 2px rgba(20,30,60,.06); --lift:0 10px 28px rgba(20,30,60,.18);
+  --page:#e9ecf2;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151821; --side:#11141b; --panel:#1b1f2a; --fg:#e6e9f2; --mute:#8f97ad; --line:#262b38;
+    --grid:#1f2330; --sel-fg:#5fd4c4; --accent:#3cc9b5; --accent-fg:#06221e; --today:#5fd4c4; --late:#ff7880;
+    --p3:#ff7880; --mix:30%; --weekend:rgba(255,255,255,.015); --shadow:none; --lift:0 12px 30px rgba(0,0,0,.5);
+    --page:#0e1016;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151821; --side:#11141b; --panel:#1b1f2a; --fg:#e6e9f2; --mute:#8f97ad; --line:#262b38;
+  --grid:#1f2330; --sel-fg:#5fd4c4; --accent:#3cc9b5; --accent-fg:#06221e; --today:#5fd4c4; --late:#ff7880;
+  --p3:#ff7880; --mix:30%; --weekend:rgba(255,255,255,.015); --shadow:none; --lift:0 12px 30px rgba(0,0,0,.5);
+  --page:#0e1016;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--fg);font-family:"Manrope",system-ui,sans-serif;font-size:13px;line-height:1.35;
+  padding:28px 16px 64px}
+.wrap{max-width:1320px;margin:0 auto;display:grid;gap:18px}
+header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between}
+header.top h1{margin:0;font-weight:800;font-size:22px;letter-spacing:-.01em}
+header.top p{margin:4px 0 0;color:var(--mute);max-width:70ch}
+.seg{display:inline-flex;background:var(--side);border-radius:10px;padding:3px;gap:2px}
+.seg button{font:inherit;font-weight:600;border:0;background:none;color:var(--mute);padding:5px 12px;border-radius:8px;cursor:pointer}
+.seg button.on{background:var(--panel);color:var(--fg);box-shadow:var(--shadow);font-weight:700}
+.tabs{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.notes{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;max-width:900px}
+.notes h2{margin:0 0 6px;font-size:14px;font-weight:800}
+.notes ul{margin:0;padding-left:18px;color:var(--fg)}
+.notes li{margin:3px 0}
+.notes li b{font-weight:700}
+.scroller{overflow-x:auto;border-radius:16px;border:1px solid var(--line);box-shadow:0 2px 12px rgba(20,30,60,.06)}
+.hidden{display:none!important}
+
+/* ---------- desktop shell ---------- */
+.desk{display:grid;grid-template-columns:60px minmax(0,1fr) 250px;min-width:1100px;height:760px;background:var(--bg)}
+.rail{background:var(--side);display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0}
+.rail .logo{width:34px;height:34px;border-radius:11px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-weight:800;margin-bottom:10px}
+.rail .ri{width:40px;height:36px;border-radius:11px;display:grid;place-items:center;color:var(--mute);font-size:16px;position:relative}
+.rail .ri.on{background:var(--panel);color:var(--sel-fg);box-shadow:var(--shadow)}
+.rail .ri b{position:absolute;right:2px;top:2px;font-size:9px;background:var(--accent);color:var(--accent-fg);border-radius:6px;padding:0 4px;line-height:13px}
+.rail .sep{width:28px;border-top:1px solid var(--line);margin:6px 0}
+.side{background:var(--side);padding:14px 10px;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.side .app{font-weight:800;font-size:15px;padding:2px 8px 12px}
+.side .sec{color:var(--mute);font-size:11px;font-weight:600;padding:12px 8px 4px}
+.nav{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:10px;white-space:nowrap}
+.nav .n{margin-left:auto;color:var(--mute);font-size:11px}
+.nav.on{background:var(--panel);color:var(--sel-fg);font-weight:700;box-shadow:var(--shadow)}
+.nav i{width:16px;text-align:center;font-style:normal;color:var(--mute)}
+.nav.on i{color:var(--sel-fg)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--tc);flex:none;margin:0 4px}
+.nav.child{padding-left:26px}
+
+.main{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:10px;padding:14px 18px 12px}
+.bar h2{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em}
+.bar h2 span{color:var(--mute);font-weight:600}
+.btn{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:10px;padding:5px 12px;cursor:default}
+.iconbtn{width:30px;height:30px;display:grid;place-items:center;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font-size:15px}
+.grow{flex:1}
+
+/* ---------- week grid ---------- */
+.week{--h:46px;--cols:7;display:grid;grid-template-columns:52px repeat(var(--cols),minmax(0,1fr));flex:1;min-height:0;overflow:hidden;position:relative}
+.dh{padding:6px 8px 8px;display:flex;align-items:baseline;gap:6px;color:var(--mute);font-weight:600;border-bottom:1px solid var(--line)}
+.dh b{font-size:17px;font-weight:800;color:var(--fg)}
+.dh.today{color:var(--today)}
+.dh.today b{background:var(--accent);color:var(--accent-fg);border-radius:9px;padding:0 7px;font-size:15px;line-height:24px}
+.corner{border-bottom:1px solid var(--line)}
+.adlbl{color:var(--mute);font-size:10.5px;text-align:right;padding:8px 6px 0 0;border-bottom:1px solid var(--line)}
+.adcell{border-bottom:1px solid var(--line);border-left:1px solid var(--grid);padding:4px 4px 5px;display:flex;flex-direction:column;gap:3px;min-height:32px}
+.adchip{border-radius:8px;padding:3px 8px;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:color-mix(in srgb,var(--tc) var(--mix),var(--panel));border-left:3px solid var(--tc)}
+.body{grid-column:1 / -1;display:grid;grid-template-columns:52px repeat(var(--cols),minmax(0,1fr));overflow:hidden;position:relative}
+.axis{position:relative}
+.axis span{position:absolute;right:8px;transform:translateY(-50%);color:var(--mute);font-size:10.5px;font-variant-numeric:tabular-nums}
+.col{position:relative;border-left:1px solid var(--grid)}
+.col.we{background:var(--weekend)}
+.hl{position:absolute;left:0;right:0;border-top:1px solid var(--grid)}
+.hl.half{border-top-style:dashed;opacity:.55}
+
+.blk{position:absolute;border-radius:10px;padding:4px 7px 4px 9px;overflow:hidden;line-height:1.25;
+  background:color-mix(in srgb,var(--tc) var(--mix),var(--panel));box-shadow:inset 3px 0 0 var(--tc);
+  color:var(--fg)}
+.blk .t{font-weight:700;font-size:12px;display:block;overflow:hidden;text-overflow:ellipsis}
+.blk .tm{font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums}
+.blk.short{display:flex;align-items:center;gap:6px;padding-top:0;padding-bottom:0;white-space:nowrap}
+.blk.short .t{flex:0 1 auto}
+.blk.done{opacity:.42}
+.blk.sel{outline:2px solid var(--accent);outline-offset:-1px;box-shadow:inset 3px 0 0 var(--tc),0 4px 14px rgba(20,30,60,.14)}
+.blk .rep{position:absolute;right:6px;top:4px;font-size:11px;color:var(--mute)}
+.blk.short .rep{position:static;margin-left:auto}
+.blk .grip{position:absolute;left:50%;bottom:2px;width:18px;height:3px;margin-left:-9px;border-radius:2px;background:color-mix(in srgb,var(--fg) 30%,transparent)}
+.ghost{position:absolute;border-radius:10px;border:2px dashed var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);
+  padding:3px 8px;color:var(--sel-fg);font-weight:700;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now{position:absolute;left:0;right:0;border-top:2px solid var(--late);z-index:3}
+.now::before{content:"";position:absolute;left:-5px;top:-6px;width:10px;height:10px;border-radius:50%;background:var(--late)}
+.nowlbl{position:absolute;right:4px;transform:translateY(-50%);background:var(--late);color:#fff;font-size:10px;font-weight:700;border-radius:6px;padding:1px 5px;z-index:4}
+
+/* ---------- unscheduled panel ---------- */
+.uns{display:flex;flex-direction:column;background:var(--bg);min-width:0}
+.uns .hd{padding:16px 14px 10px;display:flex;align-items:center;gap:8px}
+.uns .hd h3{margin:0;font-size:15px;font-weight:800}
+.uns .hd .n{color:var(--mute);font-weight:600}
+.src{margin:0 14px 10px;display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-weight:600}
+.src small{color:var(--mute);font-weight:600}
+.src .chev{margin-left:auto;color:var(--mute)}
+.cards{display:flex;flex-direction:column;gap:6px;padding:0 12px;overflow:hidden}
+.card{background:var(--panel);border-radius:12px;box-shadow:var(--shadow);padding:9px 10px;display:flex;gap:9px;align-items:flex-start;border:1px solid transparent}
+.card .cb{width:16px;height:16px;border-radius:6px;border:1.6px solid var(--pc,var(--mute));flex:none;margin-top:1px}
+.card .tt{font-weight:600}
+.card .meta{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.card.lifted{transform:rotate(-1.5deg) translate(-26px,4px);box-shadow:var(--lift);border-color:var(--accent);opacity:.96}
+.card.placeholder{background:none;box-shadow:none;border:1.5px dashed var(--line);height:38px}
+.tag{display:inline-flex;align-items:center;gap:5px;border:1px solid color-mix(in srgb,var(--tc) 60%,var(--line));border-radius:8px;padding:0 7px;font-size:11px;font-weight:500}
+.tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--tc)}
+.hint{margin:auto 14px 14px;color:var(--mute);font-size:11.5px;border-top:1px solid var(--line);padding-top:10px}
+
+/* ---------- month ---------- */
+.month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:auto repeat(5,minmax(0,1fr));flex:1;min-height:0;border-top:1px solid var(--line)}
+.mh{color:var(--mute);font-weight:600;font-size:11.5px;padding:6px 10px;border-bottom:1px solid var(--line)}
+.mc{border-left:1px solid var(--grid);border-bottom:1px solid var(--grid);padding:6px 6px 4px;display:flex;flex-direction:column;gap:3px;min-height:0;overflow:hidden}
+.mc:nth-child(7n+1){border-left:0}
+.mc.out{opacity:.45}
+.mc.we{background:var(--weekend)}
+.mc .d{font-weight:700;font-size:12.5px;padding:0 4px;align-self:flex-start;line-height:22px}
+.mc.today .d{background:var(--accent);color:var(--accent-fg);border-radius:8px;padding:0 7px}
+.mi{display:flex;align-items:center;gap:6px;font-size:11.5px;white-space:nowrap;overflow:hidden;border-radius:6px;padding:1px 4px}
+.mi .dot{margin:0;width:7px;height:7px}
+.mi .tm{color:var(--mute);font-variant-numeric:tabular-nums;font-size:10.5px}
+.mi .t{overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.mi.ad{background:color-mix(in srgb,var(--tc) var(--mix),var(--panel));font-weight:700}
+.mi.done{opacity:.42}
+.more{color:var(--mute);font-size:11px;font-weight:600;padding-left:4px}
+
+/* ---------- phones ---------- */
+.phones{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;padding:8px 0}
+.pwrap{display:grid;gap:8px;justify-items:center}
+.pwrap .cap{color:var(--mute);font-weight:600;font-size:12px}
+.phone{width:344px;max-width:100%;border-radius:40px;padding:10px;background:#0b0d12;box-shadow:0 8px 30px rgba(10,15,30,.25)}
+.screen{border-radius:31px;overflow:hidden;height:720px;background:var(--bg);display:flex;flex-direction:column;position:relative}
+.status{display:flex;justify-content:space-between;padding:10px 22px 4px;font-size:12px;font-weight:700}
+.pbar{display:flex;align-items:center;gap:10px;padding:6px 14px 8px}
+.pbar .ttl{display:flex;flex-direction:column;line-height:1.15}
+.pbar .ttl b{font-size:19px;font-weight:800}
+.pbar .ttl small{color:var(--mute);font-weight:600}
+.pill{font:inherit;font-size:12px;font-weight:700;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 10px}
+.strip{display:grid;grid-template-columns:repeat(7,1fr);padding:0 10px 8px;gap:2px}
+.sd{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 0 6px;border-radius:12px;color:var(--mute);font-weight:600;font-size:11px}
+.sd b{color:var(--fg);font-size:15px;font-weight:800}
+.sd i{width:4px;height:4px;border-radius:50%;background:var(--mute);opacity:.6}
+.sd.on{background:var(--accent);color:var(--accent-fg)}
+.sd.on b{color:var(--accent-fg)}
+.sd.on i{background:var(--accent-fg)}
+.pad{display:flex;gap:6px;padding:6px 12px 8px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden}
+.pad .lbl{color:var(--mute);font-size:10.5px;padding-top:4px;width:34px;flex:none}
+.pad .adchip{flex:0 1 auto}
+.ptl{position:relative;flex:1;overflow:hidden;--h:52px}
+.ptl .axis{position:absolute;left:0;top:0;bottom:0;width:46px}
+.ptl .col{position:absolute;left:46px;right:10px;top:0;bottom:0;border-left:1px solid var(--grid)}
+.drawer{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-radius:22px 22px 0 0;box-shadow:0 -6px 24px rgba(20,30,60,.14);padding:8px 14px 16px;z-index:6}
+.drawer .handle{width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+.drawer .row{display:flex;align-items:center;gap:8px}
+.drawer .row h3{margin:0;font-size:15px;font-weight:800}
+.drawer .row .n{color:var(--mute);font-weight:600}
+.drawer .cards{padding:10px 0 0}
+.drawer .card{background:var(--bg);box-shadow:none}
+.fab{position:absolute;right:16px;bottom:86px;width:52px;height:52px;border-radius:16px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-size:26px;font-weight:600;box-shadow:0 6px 16px rgba(18,165,148,.35);z-index:5}
+.dragcard{position:absolute;z-index:8;left:84px;width:220px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Calendar mockup</h1>
+      <p>M5a slice 2, in the Soft style. Static sample data for the week of 23 November 2026; "now" is Wednesday 11:40.</p>
+    </div>
+    <div class="tabs">
+      <div class="seg" id="views">
+        <button class="on" data-v="week">Desktop · Week</button>
+        <button data-v="month">Desktop · Month</button>
+        <button data-v="phone">Phone · Day</button>
+      </div>
+      <div class="seg" id="theme">
+        <button data-t="light">Light</button>
+        <button data-t="dark">Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="notes">
+    <h2>What to look at</h2>
+    <ul>
+      <li><b>Blocks</b> are tinted with the first coloured tag (else the list, else teal) and have a coloured edge. Short blocks collapse to one line.</li>
+      <li><b>Completed</b> blocks are faded, with no strike-through. Future <b>repeat</b> occurrences carry ↻ and can't be dragged; only the current one has a resize grip.</li>
+      <li><b>Overlaps</b> sit side by side (Wednesday 11:00). The selected block has a teal outline and its detail opens on the right, replacing the Unscheduled panel.</li>
+      <li><b>Dragging in:</b> "Plan the trip" is being dragged from Unscheduled; the dashed box shows where it lands (30 min).</li>
+      <li><b>Month</b> shows every repeat occurrence too, so a daily task (Stretch) takes a line in every cell. Worth deciding whether Month should hide daily repeats.</li>
+      <li><b>Room for the grid:</b> in calendar mode the sidebar folds to an icon rail (» brings it back), so seven days fit next to the Unscheduled panel on a laptop screen.</li>
+      <li><b>Phone:</b> Day view with a week strip (swipe between days); Unscheduled is a bottom drawer. The second phone shows a long-press drag out of the open drawer.</li>
+    </ul>
+  </section>
+
+  <div class="scroller" id="v-week"></div>
+  <div class="scroller hidden" id="v-month"></div>
+  <div class="phones hidden" id="v-phone"></div>
+</div>
+
+<script>
+const TAG = {
+  errands:'#eb9b2c', health:'#e2525c', home:'#4c8df6', garden:'#3fae5a',
+  theater:'#9b6cf0', 'via-verde':'#c25bd6', travel:'#2bb3c0', work:'var(--accent)'
+};
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DATES = [23,24,25,26,27,28,29];
+const TODAY = 2, NOW = 11 + 40/60;
+
+// Week blocks: day index, start hour, end hour, title, tag, flags.
+const BLOCKS = [
+  ...[0,1,2,3,4,5,6].map(d => ({d, s:7.5, e:7.75, t:'Stretch', tag:'health', rep:d>2, done:d<2, cur:d===2})),
+  {d:0, s:9, e:12, t:'Rust core: calendar API', tag:'work', done:true},
+  {d:0, s:14, e:15, t:'Weekly planning', tag:'work', done:true},
+  {d:1, s:10, e:11.5, t:'Call the plumber', tag:'home', done:true},
+  {d:1, s:13, e:14, t:'Lunch with Ana', tag:'errands', done:true},
+  {d:1, s:18.5, e:20, t:'Theater rehearsal', tag:'theater', done:true},
+  {d:3, s:18.5, e:20, t:'Theater rehearsal', tag:'theater', rep:true},
+  {d:2, s:9, e:10.5, t:'Write the calendar mockup', tag:'work', done:true},
+  {d:2, s:11, e:12.5, t:'Review the sync PR', tag:'work', sel:true},
+  {d:2, s:11.5, e:12, t:'Pay electricity bill', tag:'errands'},
+  {d:2, s:16, e:16.5, t:'Water the plants', tag:'garden', cur:true},
+  {d:4, s:16, e:16.5, t:'Water the plants', tag:'garden', rep:true},
+  {d:6, s:16, e:16.5, t:'Water the plants', tag:'garden', rep:true},
+  {d:3, s:10, e:11, t:'Dentist', tag:'health'},
+  {d:3, s:13, e:13.5, t:'Return the parcel', tag:'errands'},
+  {d:4, s:9, e:12, t:'Deep work: calendar UI', tag:'work'},
+  {d:4, s:13, e:14.5, t:'Read the Rust async book', tag:'work'},
+  {d:5, s:10, e:12, t:'Via Verde workshop', tag:'via-verde'},
+  {d:5, s:15, e:16, t:'Plant the bulbs', tag:'garden'},
+];
+const ALLDAY = [
+  {d:2, t:'Renew passport', tag:'errands'},
+  {d:3, t:'Take out the bins', tag:'home'},
+  {d:4, t:"Mum's birthday", tag:'health'},
+  {d:0, t:'Pay rent', tag:'home', done:true},
+];
+const UNSCHEDULED = [
+  {t:'Plan the trip', tags:['travel'], p:2, lifted:true},
+  {t:'Buy a new kettle', tags:['errands']},
+  {t:'Fix the bike light', tags:['home'], p:1},
+  {t:'Book flights to Lisbon', tags:['travel'], p:3},
+  {t:'Idea: weekly review template', tags:[]},
+  {t:'Sort the photo backup', tags:['home']},
+];
+
+const fmt = h => { const m = Math.round((h % 1) * 60); return String(Math.floor(h)).padStart(2,'0') + ':' + String(m).padStart(2,'0'); };
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const tc = tag => `--tc:${TAG[tag] || 'var(--accent)'}`;
+
+/** Side-by-side columns for overlapping blocks of one day. */
+function layout(list){
+  const items = list.slice().sort((a,b) => a.s - b.s || b.e - a.e);
+  let cluster = [], end = -1;
+  const flush = () => { const n = Math.max(...cluster.map(x => x.col)) + 1; cluster.forEach(x => x.n = n); cluster = []; };
+  for (const it of items){
+    if (it.s >= end && cluster.length) flush();
+    const used = new Set(cluster.filter(x => x.e > it.s).map(x => x.col));
+    let c = 0; while (used.has(c)) c++;
+    it.col = c; cluster.push(it); end = Math.max(end, it.e);
+  }
+  if (cluster.length) flush();
+  return items;
+}
+
+function blockHtml(b, top, h, gap){
+  const short = (b.e - b.s) <= 0.5;
+  const left = `calc(${(b.col / b.n) * 100}% + ${gap}px)`;
+  const width = `calc(${100 / b.n}% - ${gap * 2}px)`;
+  const cls = ['blk', short && 'short', b.done && 'done', b.sel && 'sel'].filter(Boolean).join(' ');
+  const time = `${fmt(b.s)}–${fmt(b.e)}`;
+  return `<div class="${cls}" style="${tc(b.tag)};top:${top + 1}px;height:${h - 2}px;left:${left};width:${width}">
+    <span class="t">${esc(b.t)}</span>${short ? `<span class="tm">${fmt(b.s)}</span>` : `<span class="tm">${time}</span>`}
+    ${b.rep ? '<span class="rep" title="Repeats">↻</span>' : ''}
+    ${!b.done && !b.rep && !short ? '<span class="grip"></span>' : ''}
+  </div>`;
+}
+
+function rail(){
+  const ri = (icon, title, on, n) => `<span class="ri${on ? ' on' : ''}" title="${title}">${icon}${n ? `<b>${n}</b>` : ''}</span>`;
+  return `<aside class="rail">
+    <span class="logo">T</span>
+    ${ri('▤','Inbox',false,6)}${ri('▦','Calendar',true)}
+    <span class="sep"></span>${ri('≡','Lists')}${ri('⚲','Filters')}${ri('#','Tags')}
+    <span class="sep"></span>${ri('✓','Completed')}${ri('🗑','Trash')}
+    <span style="flex:1"></span>${ri('»','Show the sidebar')}
+  </aside>`;
+}
+
+function sidebar(active){
+  const nav = (icon, label, n, on) => `<div class="nav${on ? ' on' : ''}"><i>${icon}</i>${label}${n ? `<span class="n">${n}</span>` : ''}</div>`;
+  const tag = (name, n, child) => `<div class="nav${child ? ' child' : ''}" style="${tc(name)}"><span class="dot"></span>${name}<span class="n">${n}</span></div>`;
+  return `<aside class="side">
+    <div class="app">Tick Alt</div>
+    ${nav('▤','Inbox',6)}
+    ${nav('▦','Calendar','',active)}
+    <div class="sec">Lists</div>${nav('≡','Personal',4)}${nav('≡','Work',7)}
+    <div class="sec">Filters</div>${nav('⚲','Today',5)}
+    <div class="sec">Tags</div>
+    ${tag('errands',4)}${tag('health',3)}${tag('home',5)}${tag('garden',2,true)}${tag('theater',2)}${tag('via-verde',1,true)}${tag('travel',2)}
+    <div class="sec"></div>${nav('✓','Completed')}${nav('🗑','Trash')}
+  </aside>`;
+}
+
+function unscheduledPanel(){
+  const cards = UNSCHEDULED.map(c => {
+    const pc = c.p ? `--pc:var(--p${c.p})` : '';
+    const tags = c.tags.map(t => `<span class="tag" style="${tc(t)}">${t}</span>`).join('');
+    return (c.lifted ? '<div class="card placeholder"></div>' : '') +
+      `<div class="card${c.lifted ? ' lifted' : ''}" style="${c.lifted ? 'position:absolute;width:226px;top:136px;z-index:9' : ''}"><span class="cb" style="${pc}"></span>
+        <div><div class="tt">${esc(c.t)}</div>${tags ? `<div class="meta">${tags}</div>` : ''}</div></div>`;
+  }).join('');
+  return `<aside class="uns" style="position:relative">
+    <div class="hd"><h3>Unscheduled</h3><span class="n">${UNSCHEDULED.length}</span></div>
+    <div class="src"><small>From</small> No date <span class="chev">▾</span></div>
+    <div class="cards">${cards}</div>
+    <div class="hint">Drag a task onto the grid to time-block it. Drop a block back here to unschedule it.</div>
+  </aside>`;
+}
+
+function weekView(){
+  const H0 = 7, H1 = 21, PX = 46;
+  const head = `<div class="corner"></div>` + DAYS.map((d,i) =>
+    `<div class="dh${i === TODAY ? ' today' : ''}">${d} <b>${DATES[i]}</b></div>`).join('');
+  const ad = `<div class="adlbl">all-day</div>` + DAYS.map((_,i) =>
+    `<div class="adcell">${ALLDAY.filter(a => a.d === i).map(a =>
+      `<div class="adchip" style="${tc(a.tag)}${a.done ? ';opacity:.42' : ''}">${esc(a.t)}</div>`).join('')}</div>`).join('');
+  let axis = '<div class="axis">';
+  for (let h = H0 + 1; h < H1; h++) axis += `<span style="top:${(h - H0) * PX}px">${fmt(h)}</span>`;
+  axis += '</div>';
+  const lines = () => { let s = ''; for (let h = H0; h < H1; h++){ s += `<div class="hl" style="top:${(h - H0) * PX}px"></div><div class="hl half" style="top:${(h - H0 + .5) * PX}px"></div>`; } return s; };
+  const cols = DAYS.map((_, i) => {
+    const blocks = layout(BLOCKS.filter(b => b.d === i)).map(b => blockHtml(b, (b.s - H0) * PX, (b.e - b.s) * PX, 3)).join('');
+    const now = i === TODAY ? `<div class="now" style="top:${(NOW - H0) * PX}px"></div>` : '';
+    const ghost = i === 3 ? `<div class="ghost" style="top:${(15 - H0) * PX + 1}px;height:${PX / 2 - 2}px;left:3px;right:3px">Plan the trip · 15:00</div>` : '';
+    return `<div class="col${i > 4 ? ' we' : ''}">${lines()}${blocks}${ghost}${now}</div>`;
+  }).join('');
+  const bodyH = (H1 - H0) * PX;
+  return `<div class="desk">
+    ${rail()}
+    <main class="main">
+      <div class="bar">
+        <h2>November <span>2026</span></h2><span class="grow"></span>
+        <span class="iconbtn">‹</span><span class="btn">Today</span><span class="iconbtn">›</span>
+        <div class="seg"><button>Day</button><button class="on">Week</button><button>Month</button></div>
+      </div>
+      <div class="week">${head}${ad}
+        <div class="body" style="height:${bodyH}px">${axis}${cols}
+          <span class="nowlbl" style="top:${(NOW - H0) * PX}px;left:4px;right:auto">${fmt(NOW)}</span>
+        </div>
+      </div>
+    </main>
+    ${unscheduledPanel()}
+  </div>`;
+}
+
+function monthView(){
+  // 26 Oct – 29 Nov 2026 as five weeks. Earlier weeks come from the same rules as the
+  // current one, so every repeat occurrence shows (and past ones are done).
+  const start = new Date(2026, 9, 26);
+  const oneOffs = {
+    3:[{tm:'10:00',t:'Haircut',tag:'errands'}],
+    6:[{t:'Via Verde show',tag:'via-verde',ad:true}],
+    10:[{tm:'09:00',t:'Sprint start',tag:'work'}],
+    13:[{t:'Car service',tag:'errands',ad:true},{tm:'15:00',t:'Physio',tag:'health'}],
+    17:[{tm:'11:00',t:'1:1 with Maria',tag:'work'}],
+    20:[{tm:'20:00',t:'Concert',tag:'theater'}],
+    25:[{tm:'13:00',t:'Dentist check',tag:'health'}],
+  };
+  const pastItems = i => {
+    const wd = i % 7, list = [{tm:'07:30',t:'Stretch',tag:'health',rep:true}];
+    if (wd === 0) list.push({tm:'14:00',t:'Weekly planning',tag:'work'});
+    if (wd === 1 || wd === 3) list.push({tm:'18:30',t:'Theater rehearsal',tag:'theater',rep:true});
+    if (i % 2 === 1) list.push({tm:'16:00',t:'Water the plants',tag:'garden',rep:true});
+    return [...(oneOffs[i] || []), ...list].map(x => ({...x, done:true}));
+  };
+  let cells = DAYS.map(d => `<div class="mh">${d}</div>`).join('');
+  for (let i = 0; i < 35; i++){
+    const dt = new Date(start); dt.setDate(start.getDate() + i);
+    const out = dt.getMonth() !== 10, wk = i % 7 > 4, wi = i - 28;
+    let items = [];
+    if (wi >= 0){
+      items = [
+        ...ALLDAY.filter(a => a.d === wi).map(a => ({t:a.t, tag:a.tag, ad:true, done:a.done})),
+        ...BLOCKS.filter(b => b.d === wi).sort((a,b) => a.s - b.s).map(b => ({tm:fmt(b.s), t:b.t, tag:b.tag, done:b.done, rep:b.rep || b.cur || b.t === 'Stretch'})),
+      ];
+    } else items = pastItems(i);
+    const shown = items.slice(0, 4);
+    const more = items.length - shown.length;
+    cells += `<div class="mc${out ? ' out' : ''}${wk ? ' we' : ''}${wi === TODAY ? ' today' : ''}">
+      <span class="d">${dt.getDate() === 1 ? 'Nov 1' : dt.getDate()}</span>
+      ${shown.map(x => `<div class="mi${x.ad ? ' ad' : ''}${x.done ? ' done' : ''}" style="${tc(x.tag)}">${x.ad ? '' : '<span class="dot"></span>'}${x.tm ? `<span class="tm">${x.tm}</span>` : ''}<span class="t">${esc(x.t)}${x.rep ? ' ↻' : ''}</span></div>`).join('')}
+      ${more > 0 ? `<span class="more">+${more} more</span>` : ''}
+    </div>`;
+  }
+  return `<div class="desk">
+    ${rail()}
+    <main class="main">
+      <div class="bar">
+        <h2>November <span>2026</span></h2><span class="grow"></span>
+        <span class="iconbtn">‹</span><span class="btn">Today</span><span class="iconbtn">›</span>
+        <div class="seg"><button>Day</button><button>Week</button><button class="on">Month</button></div>
+      </div>
+      <div class="month">${cells}</div>
+    </main>
+    ${unscheduledPanel().replace(' lifted', '').replace('<div class="card placeholder"></div>', '').replace('position:absolute;width:226px;top:136px;z-index:9', '')}
+  </div>`;
+}
+
+function phone(drawerOpen){
+  const H0 = 8, H1 = 21, PX = 52;
+  const day = BLOCKS.filter(b => b.d === TODAY);
+  const top = drawerOpen ? 10.5 : 7.5, drop = 13;
+  let axis = '<div class="axis">', lines = '';
+  for (let h = Math.ceil(top); h < H1; h++){
+    axis += `<span style="top:${(h - top) * PX}px">${fmt(h)}</span>`;
+    lines += `<div class="hl" style="top:${(h - top) * PX}px"></div><div class="hl half" style="top:${(h - top + .5) * PX}px"></div>`;
+  }
+  axis += '</div>';
+  const blocks = layout(day).map(b => blockHtml(b, (b.s - top) * PX, (b.e - b.s) * PX, 3)).join('');
+  const now = `<div class="now" style="top:${(NOW - top) * PX}px"></div>`;
+  const ghost = drawerOpen ? `<div class="ghost" style="top:${(drop - top) * PX + 1}px;height:${PX / 2 - 2}px;left:3px;right:3px">Plan the trip · 13:00</div>` : '';
+  const dragged = drawerOpen ? `<div class="card lifted dragcard" style="top:${(drop - top) * PX + 30}px"><span class="cb" style="--pc:var(--p2)"></span><div><div class="tt">Plan the trip</div><div class="meta"><span class="tag" style="${tc('travel')}">travel</span></div></div></div>` : '';
+  const strip = DAYS.map((d,i) => `<div class="sd${i === TODAY ? ' on' : ''}">${d[0]}<b>${DATES[i]}</b><i style="${[0,1,2,3,4,5].includes(i) ? '' : 'visibility:hidden'}"></i></div>`).join('');
+  const ad = ALLDAY.filter(a => a.d === TODAY).map(a => `<div class="adchip" style="${tc(a.tag)}">${esc(a.t)}</div>`).join('');
+  const cards = UNSCHEDULED.slice(1, 4).map(c => `<div class="card"><span class="cb" style="${c.p ? `--pc:var(--p${c.p})` : ''}"></span><div><div class="tt">${esc(c.t)}</div>${c.tags.length ? `<div class="meta">${c.tags.map(t => `<span class="tag" style="${tc(t)}">${t}</span>`).join('')}</div>` : ''}</div></div>`).join('');
+  const drawer = drawerOpen
+    ? `<div class="drawer"><div class="handle"></div>
+        <div class="row"><h3>Unscheduled</h3><span class="n">6</span><span class="grow"></span><span class="pill">No date ▾</span></div>
+        <div class="cards"><div class="card placeholder"></div>${cards}</div></div>`
+    : `<div class="fab">+</div><div class="drawer"><div class="handle"></div>
+        <div class="row"><h3>Unscheduled</h3><span class="n">6</span><span class="grow"></span><span class="pill">No date ▾</span></div></div>`;
+  return `<div class="pwrap"><div class="phone"><div class="screen">
+    <div class="status"><span>11:40</span><span>▾ ◢ ▮</span></div>
+    <div class="pbar"><span class="iconbtn" style="border:0;background:none">☰</span>
+      <div class="ttl"><b>Wednesday</b><small>25 November</small></div><span class="grow"></span>
+      <span class="pill">Today</span><span class="pill">Day ▾</span></div>
+    <div class="strip">${strip}</div>
+    <div class="pad"><span class="lbl">all-day</span>${ad}</div>
+    <div class="ptl">${axis}<div class="col">${lines}${blocks}${ghost}${now}</div>${dragged}</div>
+    ${drawer}
+  </div></div><span class="cap">${drawerOpen ? 'Drawer open, dragging a task in' : 'Day view (default on the phone)'}</span></div>`;
+}
+
+document.getElementById('v-week').innerHTML = weekView();
+document.getElementById('v-month').innerHTML = monthView();
+document.getElementById('v-phone').innerHTML = phone(false) + phone(true);
+
+// View tabs.
+document.querySelectorAll('#views button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#views button').forEach(x => x.classList.toggle('on', x === b));
+  for (const v of ['week','month','phone']) document.getElementById('v-' + v).classList.toggle('hidden', v !== b.dataset.v);
+  try { localStorage.setItem('cal-view', b.dataset.v); } catch (e) {}
+}));
+// Theme toggle (defaults to the system setting).
+const root = document.documentElement;
+const themeButtons = document.querySelectorAll('#theme button');
+function setTheme(t){
+  root.dataset.theme = t;
+  themeButtons.forEach(x => x.classList.toggle('on', x.dataset.t === t));
+  try { localStorage.setItem('cal-theme', t); } catch (e) {}
+}
+themeButtons.forEach(b => b.addEventListener('click', () => setTheme(b.dataset.t)));
+let saved = null, savedView = null;
+try { saved = localStorage.getItem('cal-theme'); savedView = localStorage.getItem('cal-view'); } catch (e) {}
+setTheme(saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+if (savedView) document.querySelector(`#views button[data-v="${savedView}"]`)?.click();
+</script>
+</body>
+</html>

@@ -40,7 +40,7 @@ Today's calendar is still the M0 spike (`app/lib/calendar/spike_calendar.dart`):
    - Expanding occurrences in `core/src/recur.rs` (fixed-mode RRULEs inside the window; past occurrences come from the completion history and show as done).
    - The Unscheduled source: the no-date default plus any saved filter, through the existing filter compiler.
    - Moves and resizes go through `set_schedule` (start + duration). Rust tests for expansion, DST days and the edit paths.
-2. **Look first: a static mockup** of the desktop Week view and the phone Day view in the Soft style, for the user's OK before wiring (added to `plan/ui-styles/`). This is the step that fixes "looks very bad".
+2. 🟡 **Look first: a static mockup** (built 2026-11-25, `plan/ui-styles/calendar.html`; waiting for the user's OK) of the desktop Week view and the phone Day view in the Soft style, for the user's OK before wiring (added to `plan/ui-styles/`). This is the step that fixes "looks very bad".
 3. **Desktop calendar.** Replace the spike: Week, Day and Month on kalender, Soft tiles, the all-day row, the current-time line, side-by-side overlaps, the Today button, the Unscheduled panel on the right with its source picker, drag in, move, resize, click for detail, live updates from the change stream. Integration tests, then visual checks in the real app.
 4. **Phone calendar.** Day by default with swipe between days, the Unscheduled panel as a bottom drawer, long-press drag, tap for the detail sheet. Checked on a release build on the emulator, then on the phone.
 
@@ -55,3 +55,18 @@ Today's calendar is still the M0 spike (`app/lib/calendar/spike_calendar.dart`):
 - Bridge: `TaskDb.calendar`, `unscheduled`, `placeBlock`, `unschedule` (bindings regenerated).
 - Tests: 12 new core tests (start + duration, due-only and all-day, done, weekly repeats, DST, COUNT and after-completion, history, placing, resizing, kind switches, refusals, unscheduling) and a socket round trip. `cargo test --workspace`, clippy, `flutter analyze` and `flutter test` are clean.
 - Known approximation: a past occurrence's block uses the task's *current* start-to-due gap and duration.
+
+## Slice 2: the mockup 🟡 (2026-11-25)
+`plan/ui-styles/calendar.html`: desktop Week, desktop Month and two phone Day screens, light and dark, built from the app's `SoftColors` tokens.
+
+![[m5-calendar-mockup.jpg]]
+
+What it proposes beyond the decisions above:
+- **Tiles:** a tint of the tag colour (22% light, 30% dark) with a 3 px coloured edge, a 10 px radius, the title in bold and the time in grey. Blocks of 30 min or less collapse to one line. Only movable blocks have a resize grip.
+- **The sidebar folds to an icon rail in calendar mode** (» brings it back), so seven columns fit beside the Unscheduled panel on a laptop screen.
+- **Selecting a block** outlines it in teal and opens its detail on the right, in place of the Unscheduled panel.
+- **Drag feedback:** a dashed teal box where the task will land, labelled with the time; the card lifts and leaves a dashed placeholder in the panel.
+- **Phone:** a week strip under the title (tap or swipe to change day); Unscheduled is a bottom drawer with the source picker; a **+** button for quick add.
+
+Open for the user:
+- Month shows every repeat occurrence too, so a daily task takes a line in every cell. Hide daily repeats in Month?
