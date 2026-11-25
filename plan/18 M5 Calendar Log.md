@@ -40,8 +40,8 @@ Today's calendar is still the M0 spike (`app/lib/calendar/spike_calendar.dart`):
    - Expanding occurrences in `core/src/recur.rs` (fixed-mode RRULEs inside the window; past occurrences come from the completion history and show as done).
    - The Unscheduled source: the no-date default plus any saved filter, through the existing filter compiler.
    - Moves and resizes go through `set_schedule` (start + duration). Rust tests for expansion, DST days and the edit paths.
-2. 🟡 **Look first: a static mockup** (built 2026-11-25, `plan/ui-styles/calendar.html`; waiting for the user's OK) of the desktop Week view and the phone Day view in the Soft style, for the user's OK before wiring (added to `plan/ui-styles/`). This is the step that fixes "looks very bad".
-3. **Desktop calendar.** Replace the spike: Week, Day and Month on kalender, Soft tiles, the all-day row, the current-time line, side-by-side overlaps, the Today button, the Unscheduled panel on the right with its source picker, drag in, move, resize, click for detail, live updates from the change stream. Integration tests, then visual checks in the real app.
+2. ✅ **Look first: a static mockup** (2026-11-25, `plan/ui-styles/calendar.html`; approved) of the desktop Week view and the phone Day view in the Soft style, for the user's OK before wiring (added to `plan/ui-styles/`). This is the step that fixes "looks very bad".
+3. ✅ **Desktop calendar.** (2026-11-25, see below) Replace the spike: Week, Day and Month on kalender, Soft tiles, the all-day row, the current-time line, side-by-side overlaps, the Today button, the Unscheduled panel on the right with its source picker, drag in, move, resize, click for detail, live updates from the change stream. Integration tests, then visual checks in the real app.
 4. **Phone calendar.** Day by default with swipe between days, the Unscheduled panel as a bottom drawer, long-press drag, tap for the detail sheet. Checked on a release build on the emulator, then on the phone.
 
 ## Before starting
@@ -56,7 +56,7 @@ Today's calendar is still the M0 spike (`app/lib/calendar/spike_calendar.dart`):
 - Tests: 12 new core tests (start + duration, due-only and all-day, done, weekly repeats, DST, COUNT and after-completion, history, placing, resizing, kind switches, refusals, unscheduling) and a socket round trip. `cargo test --workspace`, clippy, `flutter analyze` and `flutter test` are clean.
 - Known approximation: a past occurrence's block uses the task's *current* start-to-due gap and duration.
 
-## Slice 2: the mockup 🟡 (2026-11-25)
+## Slice 2: the mockup ✅ (2026-11-25, approved)
 `plan/ui-styles/calendar.html`: desktop Week, desktop Month and two phone Day screens, light and dark, built from the app's `SoftColors` tokens.
 
 ![[m5-calendar-mockup.jpg]]
@@ -70,3 +70,22 @@ What it proposes beyond the decisions above:
 
 Open for the user:
 - Month shows every repeat occurrence too, so a daily task takes a line in every cell. Hide daily repeats in Month?
+
+## Slice 3: desktop calendar ✅ (2026-11-25, on the Arch laptop)
+`app/lib/calendar/calendar_page.dart` replaces the spike as the Calendar page (the spike file stays until the phone slice reuses its long-press test).
+
+![[m5-calendar-week.jpg]]
+
+- **Data:** the visible range ± 7 days comes from `TaskDb.calendar`; the change stream reloads it, so `tt`, the phone and other windows show up live. `TaskEvent` (a `KalenderEvent`) carries the `CalendarItem`; its id is task + occurrence start.
+- **Views:** Day, Week (default on desktop) and Month on kalender 0.34.0 (still the latest), Monday first. The last view and the Unscheduled source are remembered per device in `calendar.json` next to the app's support files (`CalendarPrefs`), never synced.
+- **Look:** tiles as in the mockup (tint + 3 px edge, faded when done, ↻ on later repeats, teal outline when selected); hour-only labels; red now-line; month items in time order with all-day first (a custom `MultiDayLayoutStrategy`); the day header stacks in Day view's narrow gutter.
+- **Editing:** moves and resizes (15-minute snapping) call `placeBlock`; a card dragged from the panel lands as a timed block with the task's own duration (else 30 min) and opens in the detail pane; a block dropped on the panel is unscheduled (refused with a message for repeats). Event creation by dragging on empty grid is off.
+- **Shell:** `ShellPage` builders get the `DeskController`; `railSidebar` folds the sidebar to an icon rail (» unfolds it; picking Calendar again folds it).
+- **Tests:** `integration_test/calendar_test.dart` (3 tests: blocks and rail, drag in and back, selection and Month). The inbox shell tests, `flutter test` and `flutter analyze` pass. Integration tests ran under `Xvfb :78` with `GDK_BACKEND=x11`, so no window opened on the desktop.
+- **Checked by eye** in a debug build on a hidden X display against a seeded demo DB: Week, Day, Month, selection, drag in, drop back (dark theme).
+
+Limits and follow-ups:
+- kalender keeps all-day items in the all-day row and timed ones in the grid, so **switching kind by dragging isn't possible**; use the detail pane's dates. Panel drops are always timed.
+- Light theme wasn't checked in the real app (the tokens are the same as the mockup's, which was checked in both).
+- The installed release app is still the old build; rebuild it (`flutter build linux --release`) to use the calendar day to day.
+- Month still shows daily repeats in every cell (the open question above).

@@ -59,8 +59,8 @@ Each milestone ends with something usable. Building the core first means the CLI
 ## M5: Calendar and Google
 Split into **M5a** (local calendar on real tasks) and **M5b** (Google). Plan and decisions in [[18 M5 Calendar Log]].
 
-- [ ] Week, Day and Month views (desktop and Android). All-day row, current-time line, overlap layout.
-- [ ] Drag to schedule and resize. Unscheduled sidebar from a filter.
+- [ ] Week, Day and Month views (desktop and Android). All-day row, current-time line, overlap layout. 🟡 Desktop done (slice 3); Android is slice 4.
+- [ ] Drag to schedule and resize. Unscheduled sidebar from a filter. 🟡 Desktop done (slice 3).
 - [ ] Google OAuth (desktop loopback PKCE, Android AuthorizationClient). Keychain storage.
 - [ ] Events in: calendar picker, incremental `syncToken` polling, cache.
 - [ ] Tasks out: "Tasks" calendar, deterministic event ids, idempotent push and reconcile.
