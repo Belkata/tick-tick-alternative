@@ -7,8 +7,8 @@
 mod calendar;
 mod checklist;
 mod dates;
-mod gcal;
 pub mod filter;
+mod gcal;
 pub mod hlc;
 mod import;
 mod inbox;

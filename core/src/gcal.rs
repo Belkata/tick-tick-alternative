@@ -43,7 +43,9 @@ pub fn task_event_id(task_id: &str) -> Result<String> {
 /// no place on the calendar (deleted, hidden from it, or without a date). Done tasks stay
 /// on Google with a `✓` prefix (decided 2026-11-24). Repeats are not expanded here yet.
 pub fn task_event_body(t: &Task) -> Result<Option<Value>> {
-    let Some(start) = t.anchor() else { return Ok(None) };
+    let Some(start) = t.anchor() else {
+        return Ok(None);
+    };
     if t.status == Status::Deleted || !t.in_calendar {
         return Ok(None);
     }
@@ -55,7 +57,10 @@ pub fn task_event_body(t: &Task) -> Result<Option<Value>> {
     let (start_v, end_v) = if t.all_day {
         let day = floating_day(start);
         let next = day.succ_opt().unwrap_or(day);
-        (json!({ "date": date_str(day) }), json!({ "date": date_str(next) }))
+        (
+            json!({ "date": date_str(day) }),
+            json!({ "date": date_str(next) }),
+        )
     } else {
         let zone = task_zone(t).name();
         let end = start + t.duration_min.unwrap_or(DEFAULT_BLOCK_MIN) * 60_000;
@@ -112,7 +117,9 @@ pub struct GcalEvent {
 pub enum GcalEventUpdate {
     Upsert(GcalEvent),
     /// Cancelled, or not something we show: drop it.
-    Remove { id: String },
+    Remove {
+        id: String,
+    },
 }
 
 impl GcalEventUpdate {
@@ -162,8 +169,8 @@ fn when(v: &Value) -> Option<(i64, bool)> {
 
 impl Store {
     /// Replaces the list of Google calendars, keeping each one's selection and token.
-    pub fn gcal_set_calendars(&mut self, calendars: &[GcalCalendar]) -> Result<()> {
-        let tx = self.conn.transaction()?;
+    pub fn gcal_set_calendars(&self, calendars: &[GcalCalendar]) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
         for c in calendars {
             tx.execute(
                 "INSERT INTO gcal_calendar (id, summary, color) VALUES (?1, ?2, ?3)
@@ -190,7 +197,7 @@ impl Store {
     }
 
     /// Chooses whether a calendar's events show. Hiding drops its cache and token.
-    pub fn gcal_select(&mut self, calendar_id: &str, selected: bool) -> Result<()> {
+    pub fn gcal_select(&self, calendar_id: &str, selected: bool) -> Result<()> {
         let n = self.conn.execute(
             "UPDATE gcal_calendar SET selected = ?2,
                     sync_token = CASE WHEN ?2 = 0 THEN NULL ELSE sync_token END
@@ -201,9 +208,20 @@ impl Store {
             return Err(Error::NotFound(calendar_id.to_string()));
         }
         if !selected {
-            self.conn
-                .execute("DELETE FROM gcal_event WHERE calendar_id = ?1", [calendar_id])?;
+            self.conn.execute(
+                "DELETE FROM gcal_event WHERE calendar_id = ?1",
+                [calendar_id],
+            )?;
         }
+        Ok(())
+    }
+
+    /// Drops every cached Google calendar and event (signing out of Google).
+    pub fn gcal_forget(&self) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM gcal_event", [])?;
+        tx.execute("DELETE FROM gcal_calendar", [])?;
+        tx.commit()?;
         Ok(())
     }
 
@@ -238,15 +256,18 @@ impl Store {
     /// the calendar's cached events first. The new token is saved with the changes, so a
     /// crash never keeps a token whose events were lost.
     pub fn gcal_apply(
-        &mut self,
+        &self,
         calendar_id: &str,
         full: bool,
         updates: &[GcalEventUpdate],
         next_sync_token: Option<&str>,
     ) -> Result<()> {
-        let tx = self.conn.transaction()?;
+        let tx = self.conn.unchecked_transaction()?;
         if full {
-            tx.execute("DELETE FROM gcal_event WHERE calendar_id = ?1", [calendar_id])?;
+            tx.execute(
+                "DELETE FROM gcal_event WHERE calendar_id = ?1",
+                [calendar_id],
+            )?;
         }
         for u in updates {
             match u {
@@ -338,10 +359,19 @@ mod tests {
     fn event_id_is_valid_and_stable() {
         let id = task_event_id("0190f3a4-7b2c-7d11-9e55-3c1f0a8b2d44").unwrap();
         assert_eq!(id.len(), 26);
-        assert!(id.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'v').contains(&b)));
-        assert_eq!(id, task_event_id("0190F3A4-7B2C-7D11-9E55-3C1F0A8B2D44").unwrap());
+        assert!(
+            id.bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'v').contains(&b))
+        );
+        assert_eq!(
+            id,
+            task_event_id("0190F3A4-7B2C-7D11-9E55-3C1F0A8B2D44").unwrap()
+        );
         assert!(task_event_id("nope").is_err());
-        assert_eq!(task_event_id("00000000-0000-0000-0000-000000000000").unwrap(), "0".repeat(26));
+        assert_eq!(
+            task_event_id("00000000-0000-0000-0000-000000000000").unwrap(),
+            "0".repeat(26)
+        );
         assert_eq!(
             task_event_id("ffffffff-ffff-ffff-ffff-ffffffffffff").unwrap(),
             format!("{}s", "v".repeat(25))
@@ -359,7 +389,10 @@ mod tests {
         let seven_utc = chrono::DateTime::parse_from_rfc3339("2026-12-01T07:00:00Z")
             .unwrap()
             .timestamp_millis();
-        assert_eq!((e.start_at, e.end_at - e.start_at, e.all_day), (seven_utc, 3_600_000, false));
+        assert_eq!(
+            (e.start_at, e.end_at - e.start_at, e.all_day),
+            (seven_utc, 3_600_000, false)
+        );
         let day = json!({"id":"b","start":{"date":"2026-12-24"},"end":{"date":"2026-12-25"}});
         let GcalEventUpdate::Upsert(e) = GcalEventUpdate::parse("c", &day).unwrap() else {
             panic!()
@@ -383,7 +416,7 @@ mod tests {
 
     #[test]
     fn cache_sync_token_and_selection() {
-        let mut s = Store::open_in_memory().unwrap();
+        let s = Store::open_in_memory().unwrap();
         s.gcal_set_calendars(&[cal("a"), cal("b")]).unwrap();
         s.gcal_select("a", true).unwrap();
         let ev = |id: &str, day: &str, next: &str| {
@@ -399,7 +432,10 @@ mod tests {
         s.gcal_apply(
             "a",
             true,
-            &[ev("x", "2026-12-02", "2026-12-03"), ev("y", "2026-12-20", "2026-12-21")],
+            &[
+                ev("x", "2026-12-02", "2026-12-03"),
+                ev("y", "2026-12-20", "2026-12-21"),
+            ],
             Some("T1"),
         )
         .unwrap();
@@ -410,13 +446,24 @@ mod tests {
         assert_eq!(got[0].start_at, day(2));
         assert_eq!(got[0].color.as_deref(), Some("#0b8043"));
         // Incremental removal, then a full resync (410) clears what is left first.
-        s.gcal_apply("a", false, &[GcalEventUpdate::Remove { id: "x".into() }], Some("T2"))
-            .unwrap();
+        s.gcal_apply(
+            "a",
+            false,
+            &[GcalEventUpdate::Remove { id: "x".into() }],
+            Some("T2"),
+        )
+        .unwrap();
         assert!(s.gcal_events(from, until, tz).unwrap().is_empty());
         s.gcal_apply("a", true, &[], None).unwrap();
         assert_eq!(s.gcal_sync_token("a").unwrap(), None);
         // Hiding a calendar drops its events and token; unknown calendars are refused.
-        s.gcal_apply("a", false, &[ev("z", "2026-12-02", "2026-12-03")], Some("T3")).unwrap();
+        s.gcal_apply(
+            "a",
+            false,
+            &[ev("z", "2026-12-02", "2026-12-03")],
+            Some("T3"),
+        )
+        .unwrap();
         s.gcal_select("a", false).unwrap();
         assert!(s.gcal_events(from, until, tz).unwrap().is_empty());
         assert_eq!(s.gcal_sync_token("a").unwrap(), None);
@@ -424,5 +471,8 @@ mod tests {
         // Dropping a calendar from the list removes it.
         s.gcal_set_calendars(&[cal("b")]).unwrap();
         assert_eq!(s.gcal_calendars().unwrap().len(), 1);
+        // Signing out forgets everything.
+        s.gcal_forget().unwrap();
+        assert!(s.gcal_calendars().unwrap().is_empty());
     }
 }
