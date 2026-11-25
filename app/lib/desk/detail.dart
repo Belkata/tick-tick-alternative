@@ -239,31 +239,33 @@ class DetailPane extends StatelessWidget {
               ],
             ),
           ),
-          prop(
-            'Calendar',
-            Row(
-              children: [
-                Transform.scale(
-                  scale: 0.8,
-                  alignment: Alignment.centerLeft,
-                  child: Switch(
-                    key: const Key('detail-in-calendar'),
-                    value: d.inCalendar,
-                    onChanged: (v) =>
-                        c.run(() => db.setInCalendar(id: id, visible: v)),
+          // Only a task with a date can be on the calendar, so only then the switch.
+          if (r.dueAt != null || d.startLabel != null)
+            prop(
+              'Calendar',
+              Row(
+                children: [
+                  Transform.scale(
+                    scale: 0.8,
+                    alignment: Alignment.centerLeft,
+                    child: Switch(
+                      key: const Key('detail-in-calendar'),
+                      value: d.inCalendar,
+                      onChanged: (v) =>
+                          c.run(() => db.setInCalendar(id: id, visible: v)),
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: Text(
-                    d.inCalendar
-                        ? 'Shown in Calendar'
-                        : 'Kept off the calendar',
-                    style: manrope(12.5, FontWeight.w500, color: s.mute),
+                  Expanded(
+                    child: Text(
+                      d.inCalendar
+                          ? 'Shown in Calendar'
+                          : 'Kept off the calendar',
+                      style: manrope(12.5, FontWeight.w500, color: s.mute),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           heading('Checklist'),
           for (final item in d.checklist)
             Row(

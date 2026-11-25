@@ -111,6 +111,6 @@ The same `CalendarPage`, with a phone layout below 760 px wide (phones, and narr
 - Published as pre-release **v0.3.0** (`tick-alt-0.3.0-arm64.apk`, same debug key as v0.2.0, SHA-256 `c097ae43…476b`). Not tried yet on the real phone (Xiaomi): the drawer, long-press drags and quick add by hand.
 
 ## Show in Calendar (2026-11-25, on the Arch laptop, at the user's request)
-- Every task has **Show in Calendar** (`task.in_calendar`, schema **v6**, on by default). Off keeps it out of `Store::calendar` (blocks and past occurrences) and the Unscheduled panel, whatever its source filter. A switch in the detail pane; `tt edit <id> --calendar false`; `tt show` says "calendar hidden".
+- Every task has **Show in Calendar** (`task.in_calendar`, schema **v6**, on by default). Off keeps it out of `Store::calendar` (blocks and past occurrences) and the Unscheduled panel, whatever its source filter. A switch in the detail pane, shown only once the task has a start or due date (user's request); `tt edit <id> --calendar false`; `tt show` says "calendar hidden".
 - A build before v6 logs `in_calendar` ops it receives but rejects them (unknown field). The v6 migration replays those ops (`oplog::replay_field`), so the Mac on 0.3.0 catches up once it's updated. Until then it shows hidden tasks on its calendar.
 - `Task` deserialises a missing `in_calendar` as true, so an app talking to an older daemon still works (though it can't hide anything).

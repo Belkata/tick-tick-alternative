@@ -355,13 +355,25 @@ void main() {
     final db = await pumpApp(tester);
     await addTask(tester, 'Secret plan');
     final id = (await db.inbox()).single.id;
-    expect((await db.unscheduled()).map((t) => t.id), [id]);
     await tester.tap(find.text('Secret plan'));
     await settle(tester);
+    // No date, so it can't be on the calendar: no switch yet.
+    expect(find.byKey(const Key('detail-in-calendar')), findsNothing);
+
+    await tester.enterText(find.byKey(const Key('detail-due')), 'tomorrow');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    final now = DateTime.now();
+    Future<int> blocks() async => (await db.calendar(
+      fromMs: now.millisecondsSinceEpoch,
+      untilMs: now.add(const Duration(days: 3)).millisecondsSinceEpoch,
+    )).where((b) => b.taskId == id).length;
+    expect(await blocks(), 1);
+
     await tester.tap(find.byKey(const Key('detail-in-calendar')));
     await settle(tester);
     expect((await db.task(id: id))!.inCalendar, isFalse);
-    expect(await db.unscheduled(), isEmpty);
+    expect(await blocks(), 0);
     expect(find.text('Kept off the calendar'), findsOneWidget);
   });
 
