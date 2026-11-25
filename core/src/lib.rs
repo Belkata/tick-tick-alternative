@@ -4,6 +4,7 @@
 //! widget, the `tt` CLI) only call into this crate. Every write becomes ops in
 //! the op-log first (see `oplog`), so sync can replay them on other devices.
 
+mod calendar;
 mod checklist;
 mod dates;
 pub mod filter;
@@ -17,6 +18,7 @@ mod replica;
 mod store;
 mod task;
 
+pub use calendar::{Block, DEFAULT_BLOCK_MIN};
 pub use checklist::ChecklistItem;
 pub use dates::{Day, is_overdue, local_day, local_tz, offset_label, parse_when, when_label};
 pub use filter::{Cond, Filter, FilterRule, SavedFilter};

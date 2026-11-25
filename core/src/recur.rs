@@ -37,7 +37,7 @@ pub struct Completion {
 }
 
 /// The zone a task's dates are evaluated in.
-fn task_zone(t: &Task) -> chrono_tz::Tz {
+pub(crate) fn task_zone(t: &Task) -> chrono_tz::Tz {
     if t.all_day {
         chrono_tz::Tz::UTC
     } else {
@@ -47,7 +47,7 @@ fn task_zone(t: &Task) -> chrono_tz::Tz {
     }
 }
 
-fn to_local(t: &Task, ms: i64) -> NaiveDateTime {
+pub(crate) fn to_local(t: &Task, ms: i64) -> NaiveDateTime {
     if t.all_day {
         floating_day(ms).and_time(chrono::NaiveTime::MIN)
     } else {
@@ -55,7 +55,7 @@ fn to_local(t: &Task, ms: i64) -> NaiveDateTime {
     }
 }
 
-fn from_local(t: &Task, dt: NaiveDateTime) -> i64 {
+pub(crate) fn from_local(t: &Task, dt: NaiveDateTime) -> i64 {
     if t.all_day {
         floating_ms(dt.date())
     } else {
@@ -83,6 +83,45 @@ fn next_after(
         .take(10_000)
         .find(|d| *d > start)
         .map(|d| d.with_timezone(&tz).naive_local()))
+}
+
+/// Every occurrence of `rule` strictly after `anchor` and no later than `until` (both in
+/// the task's local time), for the calendar. The anchor itself is the current occurrence,
+/// so a COUNT left of `n` allows `n - 1` more. Capped, so a bad rule can't spin.
+pub(crate) fn occurrences_after(
+    rule: &str,
+    anchor: NaiveDateTime,
+    until: NaiveDateTime,
+    tz: chrono_tz::Tz,
+) -> Result<Vec<NaiveDateTime>> {
+    let more = match count(rule) {
+        Some(n) => n.saturating_sub(1) as usize,
+        None => usize::MAX,
+    };
+    if more == 0 || until <= anchor {
+        return Ok(Vec::new());
+    }
+    let without_count: String = rule
+        .split(';')
+        .filter(|p| !p.trim().starts_with("COUNT="))
+        .collect::<Vec<_>>()
+        .join(";");
+    let bad = |e: rrule::RRuleError| Error::Invalid(format!("repeat rule '{rule}': {e}"));
+    let parsed: rrule::RRule<rrule::Unvalidated> = without_count.parse().map_err(bad)?;
+    let rtz = rrule::Tz::Tz(tz);
+    let start = rtz
+        .from_local_datetime(&anchor)
+        .earliest()
+        .ok_or_else(|| Error::Invalid("start time doesn't exist in its zone".into()))?;
+    let set = parsed.build(start).map_err(bad)?;
+    Ok(set
+        .into_iter()
+        .take(20_000)
+        .filter(|d| *d > start)
+        .map(|d| d.with_timezone(&tz).naive_local())
+        .take_while(|d| *d <= until)
+        .take(more)
+        .collect())
 }
 
 /// The COUNT left in a rule, if it has one.
