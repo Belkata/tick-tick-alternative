@@ -31,7 +31,7 @@ erDiagram
 | `parent_id` | UUID? | Subtask. Max depth 3 (TickTick allows 5, which is more than needed). |
 | `priority` | 0–3 | none, low, med, high |
 | `start_at`, `due_at` | timestamp? | With `all_day` bool and `tz` (IANA, or `floating` for all-day). |
-| `duration_min` | int? | For calendar blocks. Defaults to 30 or 60 when dropped on the grid. |
+| `duration_min` | int? | For calendar blocks. Defaults to 30 when dropped on the grid (decided 2026-11-25, [[18 M5 Calendar Log]]). |
 | `status` | enum | `open`, `done`, `deleted` (Trash). |
 | `completed_at` | timestamp? | |
 | `sort_key` | text | Fractional index, for manual ordering inside a list or tag. |

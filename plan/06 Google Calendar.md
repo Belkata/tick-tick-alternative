@@ -34,7 +34,7 @@ Back to [[00 Overview]].
   - Event title = task title. A `✓` prefix is added when the task is done, if that option is on.
   - Description = notes plus an app deep-link.
   - Start, end, all-day and the tag colour are mapped onto the closest of Google's 11 event colours.
-  - Repeating tasks are pushed **only as the next occurrence**, not as a Google recurring event. That avoids drift between the two different recurrence engines.
+  - ~~Repeating tasks are pushed **only as the next occurrence**, not as a Google recurring event.~~ **Changed (2026-11-25):** every occurrence shows on Google too, as in the app's calendar. How (a recurring Google event, or pushing a window of occurrences) is decided in M5b, keeping drift between the two recurrence engines in mind. See [[18 M5 Calendar Log]].
 - **Deterministic event ids**
   - `event.id = base32hex(task_uuid)`. Google lets the client choose ids with the characters a–v and 0–9, 5–1024 characters long.
   - So **any device can push the same task without creating duplicates**:

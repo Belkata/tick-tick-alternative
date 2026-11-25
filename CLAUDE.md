@@ -20,6 +20,7 @@ A personal, local-first TickTick replacement. The pieces:
 | `plan/14 M1 Core Log.md` | How the core is built (op-log, HLC, filters, recurrence) and where it differs from plan/04 and plan/05 |
 | `plan/16 M3 Sync Log.md` | M3 sync protocol, pairing, what's next |
 | `plan/17 M4 Android Log.md` | M4: phone sync, reminders, background sync, CI release, emulator results |
+| `plan/18 M5 Calendar Log.md` | M5 plan: M5a local calendar (decisions from the 2026-11-25 interview, slices), then M5b Google |
 | `plan/15 M2 Desktop Log.md` | **M2 plan, slices and the bridge contract.** The socket API must copy the bridge API |
 
 The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manrope headings) **with Material outlined tag chips**. The mockups are in `plan/ui-styles/styles.html`.

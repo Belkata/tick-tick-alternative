@@ -57,6 +57,8 @@ Each milestone ends with something usable. Building the core first means the CLI
 **Exit:** phone ↔ desktop sync, and the widget is on the home screen.
 
 ## M5: Calendar and Google
+Split into **M5a** (local calendar on real tasks) and **M5b** (Google). Plan and decisions in [[18 M5 Calendar Log]].
+
 - [ ] Week, Day and Month views (desktop and Android). All-day row, current-time line, overlap layout.
 - [ ] Drag to schedule and resize. Unscheduled sidebar from a filter.
 - [ ] Google OAuth (desktop loopback PKCE, Android AuthorizationClient). Keychain storage.
