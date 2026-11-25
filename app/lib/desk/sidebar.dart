@@ -184,7 +184,7 @@ class DeskSidebar extends StatelessWidget {
             'Trash',
             lead: icon(Icons.delete_outline),
           ),
-          if (extras.isNotEmpty) ...[section('Spikes'), ...extras],
+          if (extras.isNotEmpty) ...[section('More'), ...extras],
         ],
       ),
     );

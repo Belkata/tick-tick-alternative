@@ -276,6 +276,22 @@ void main() {
     expect((await db.task(id: id))!.reminders, isEmpty);
   });
 
+  testWidgets('Devices page explains that sync needs tt-daemon', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final dir = await Directory.systemTemp.createTemp('tt');
+    final db = await TaskDb.open(path: '${dir.path}/tt.db');
+    // Desktop: no spike sync node, so the sidebar offers Devices.
+    await tester.pumpWidget(TickAltApp(db: db));
+    await settle(tester);
+    await tester.tap(find.text('Devices'));
+    await settle(tester);
+    expect(find.textContaining("isn't running"), findsOneWidget);
+  });
+
   testWidgets('narrow windows: drawer sidebar and a pushed detail', (
     tester,
   ) async {
