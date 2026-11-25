@@ -68,3 +68,22 @@ Back to [[00 Overview]].
 
 ## Distribution
 - A signed release APK built by CI (GitHub Actions) and installed manually, or through Obtainium from GitHub releases for auto-updates.
+
+## Release signing (M4)
+A phone only accepts an update signed with the same key as the installed app, so every build that should update the phone (this laptop, the Mac, CI) must sign with one **release key**. Debug keys differ per machine.
+
+- `app/android/app/build.gradle.kts` signs release builds with the key named in `app/android/key.properties` when that file exists, and with the debug key otherwise. The file and any `*.jks` are git-ignored: **never commit them**, the repo is public.
+- Making the key (the user does this once and keeps the `.jks` and passwords safe, e.g. in a password manager):
+  ```bash
+  keytool -genkeypair -v -keystore ~/tick-alt-release.jks -alias tick-alt \
+    -keyalg RSA -keysize 4096 -validity 36500
+  ```
+- Local release builds: create `app/android/key.properties`:
+  ```properties
+  storeFile=/home/<you>/tick-alt-release.jks
+  storePassword=…
+  keyAlias=tick-alt
+  keyPassword=…
+  ```
+- CI (`.github/workflows/android-release.yml`, on `v*` tags): set the repository secrets `ANDROID_KEYSTORE_BASE64` (`base64 -w0 ~/tick-alt-release.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. Without them the workflow fails instead of publishing an APK signed with a throwaway key.
+- Switching an installed phone from a debug-signed APK to the release key needs one uninstall (local data is lost; sync brings it back from a paired device).

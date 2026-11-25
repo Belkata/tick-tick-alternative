@@ -1,0 +1,80 @@
+# Builds the Android APK on version tags and attaches it to a GitHub pre-release
+# (plan/10 M4 "APK release via CI"). Tag with: git tag v0.2.0 && git push origin v0.2.0
+#
+# Signing: a phone only accepts updates signed with the same key, so CI signs with the
+# release keystore from these repository secrets (see plan/07 "Release signing"):
+#   ANDROID_KEYSTORE_BASE64   the .jks file, base64-encoded
+#   ANDROID_KEYSTORE_PASSWORD its store password
+#   ANDROID_KEY_ALIAS         the key alias
+#   ANDROID_KEY_PASSWORD      the key password
+# Without them the build fails rather than publishing an APK signed with a throwaway key.
+name: Android release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Rust 1.100 with the Android targets
+        run: |
+          rustup toolchain install 1.100.0 --profile minimal
+          rustup default 1.100.0
+          rustup target add aarch64-linux-android
+
+      - name: Flutter 3.50.1
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.50.1"
+          channel: stable
+
+      - name: Android NDK 28.2
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358" "platforms;android-36" > /dev/null
+
+      - name: Release keystore from secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::The ANDROID_KEYSTORE_* secrets aren't set; see the top of this workflow."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          cat > app/android/key.properties <<EOF
+          storeFile=$RUNNER_TEMP/release.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Build the APK
+        working-directory: app
+        run: flutter build apk --release --target-platform android-arm64
+
+      - name: Publish a pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          cp app/build/app/outputs/flutter-apk/app-release.apk "tick-alt-${tag}.apk"
+          gh release create "$tag" "tick-alt-${tag}.apk" --prerelease --generate-notes \
+            || gh release upload "$tag" "tick-alt-${tag}.apk" --clobber

@@ -18,11 +18,14 @@ build/
 
 # Android / Gradle
 .gradle/
+.kotlin/
 local.properties
 *.apk
 *.aab
 *.keystore
 *.jks
+# Release signing (app/android/key.properties points at the keystore; never commit either)
+key.properties
 
 # Secrets
 .env
