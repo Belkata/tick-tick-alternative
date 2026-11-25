@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Utre</title>
+<meta name="description" content="Utre is a personal, local-first task manager with a calendar. Stop planning. Do it.">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#f7f8fb; --fg:#1f2433; --mute:#7a8197; --line:#e3e7ef; --card:#fff; --accent:#12a594; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171f; --fg:#eef0f6; --mute:#9aa1b5; --line:#2a2f3d; --card:#1b1f2a; --accent:#2cc4b1; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 56px 16px 40px; }
+  img.logo { width: 88px; height: 88px; border-radius: 22px; display:block; }
+  h1 { font-size: 2.6rem; margin: 20px 0 4px; letter-spacing: -0.02em; }
+  .tag { color: var(--mute); font-size: 1.15rem; margin: 0 0 32px; }
+  h2 { font-size: 1.15rem; margin: 36px 0 8px; }
+  ul { padding-left: 1.2rem; } li { margin: 6px 0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:4px 22px 18px; }
+  a { color: var(--accent); }
+  footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line);
+           color: var(--mute); font-size: .92rem; }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="/logo.png" alt="Utre logo: a sunrise with a check mark">
+  <h1>Utre</h1>
+  <p class="tag">Stop planning. Do it. <span lang="bg">(утре means “tomorrow”)</span></p>
+
+  <p>Utre is a personal task manager for Android, Linux and macOS. Your tasks live on your own
+  devices, sync directly between them, and show up on a calendar next to your Google Calendar
+  events.</p>
+
+  <div class="card">
+    <h2>What it does</h2>
+    <ul>
+      <li><strong>Local-first:</strong> tasks, lists and nested tags are stored on your devices. There is no Utre server and no account.</li>
+      <li><strong>Peer-to-peer sync:</strong> your phone and computers sync directly with each other.</li>
+      <li><strong>Calendar:</strong> day, week and month views with drag-to-schedule.</li>
+      <li><strong>Google Calendar (optional):</strong> see your Google events read-only, and show your scheduled tasks on a separate calendar that Utre creates.</li>
+    </ul>
+    <h2>Google data</h2>
+    <p>If you sign in with Google, Utre reads your calendar events and manages only its own
+    calendar. The data stays on your devices and is never sent to the developer. Details are in the
+    <a href="/privacy/">privacy policy</a>.</p>
+  </div>
+
+  <footer>
+    <a href="/privacy/">Privacy policy</a> ·
+    <a href="https://github.com/Belkata/tick-tick-alternative">Source code on GitHub</a>
+  </footer>
+</main>
+</body>
+</html>

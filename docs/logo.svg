@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Utre</title>
+  <!-- Utre (утре, "tomorrow"): a sunrise whose sun carries the check mark. -->
+  <rect width="512" height="512" rx="112" fill="#12A594"/>
+  <g stroke="#FFF7E6" stroke-width="22" stroke-linecap="round" fill="none">
+    <line x1="124.4" y1="254" x2="91.5" y2="235"/>
+    <line x1="180" y1="198.4" x2="161" y2="165.5"/>
+    <line x1="256" y1="178" x2="256" y2="140"/>
+    <line x1="332" y1="198.4" x2="351" y2="165.5"/>
+    <line x1="387.6" y1="254" x2="420.5" y2="235"/>
+    <line x1="96" y1="342" x2="416" y2="342"/>
+  </g>
+  <path d="M136 330 A120 120 0 0 1 376 330 Z" fill="#FFF7E6"/>
+  <path d="M206 284 L242 314 L310 246" fill="none" stroke="#12A594"
+        stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

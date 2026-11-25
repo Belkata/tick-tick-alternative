@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Utre privacy policy</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#f7f8fb; --fg:#1f2433; --mute:#7a8197; --line:#e3e7ef; --accent:#12a594; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171f; --fg:#eef0f6; --mute:#9aa1b5; --line:#2a2f3d; --accent:#2cc4b1; }
+  }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 40px 16px; }
+  h1 { font-size: 2rem; margin: 0 0 4px; }
+  h2 { font-size: 1.2rem; margin: 32px 0 8px; }
+  .date { color: var(--mute); margin: 0 0 24px; }
+  li { margin: 6px 0; }
+  a { color: var(--accent); }
+  footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: .92rem; }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="/">← Utre</a></p>
+  <h1>Utre privacy policy</h1>
+  <p class="date">Last updated: 2026-11-25</p>
+
+  <p>Utre is a personal, local-first task manager. It has no server and no accounts of its own.
+  This page explains what happens to your data, including data from your Google account.</p>
+
+  <h2>What Utre stores, and where</h2>
+  <ul>
+    <li>Your tasks, lists, tags and settings are stored in a database <strong>on your own devices</strong>.</li>
+    <li>If you pair two devices, they sync <strong>directly with each other</strong> (peer to peer, encrypted). The data does not pass through a server run by the developer.</li>
+    <li>The developer receives no data from the app: there is no analytics, no tracking and no advertising.</li>
+  </ul>
+
+  <h2>Google Calendar (optional)</h2>
+  <p>If you sign in with Google, Utre asks for these permissions:</p>
+  <ul>
+    <li><strong>Read your calendars and events</strong> (<code>calendar.readonly</code>), to show your Google events in Utre’s calendar, read-only.</li>
+    <li><strong>Create and manage only the calendar Utre creates</strong> (<code>calendar.app.created</code>), to show your scheduled tasks on Google Calendar.</li>
+  </ul>
+  <p>How that data is handled:</p>
+  <ul>
+    <li>Events are downloaded to the device that fetched them and kept in its local database. They are <strong>not</strong> sent to other devices by Utre’s sync, and not sent to the developer or anyone else.</li>
+    <li>Task titles, notes and times are sent <strong>to Google</strong> only to create events in the calendar Utre manages.</li>
+    <li>Sign-in tokens are stored on the device, in the operating system’s secure storage. They are not synced between devices.</li>
+    <li>Utre uses Google data only to provide these features. It does not sell it, share it, use it for advertising, or use it to train AI models.</li>
+  </ul>
+  <p>Utre’s use of information received from Google APIs follows the
+  <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+  including the Limited Use requirements.</p>
+
+  <h2>Your control</h2>
+  <ul>
+    <li><strong>Sign out</strong> in Utre’s settings to delete the cached Google events and the stored tokens from that device.</li>
+    <li><strong>Revoke access</strong> at any time at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+    <li><strong>Delete everything</strong> by uninstalling the app or deleting its database file.</li>
+  </ul>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, the new version will be published here with a new date.</p>
+
+  <h2>Contact</h2>
+  <p><a href="mailto:belkata.okfo+utre@gmail.com">belkata.okfo+utre@gmail.com</a></p>
+
+  <footer><a href="/">Utre</a></footer>
+</main>
+</body>
+</html>
