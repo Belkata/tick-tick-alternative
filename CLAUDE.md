@@ -202,7 +202,9 @@ Local for the inner loop, GitHub Actions as the merge gate.
 - **Only the integrating session (the one the user talks to) does the release step**: version bump in `app/pubspec.yaml`, tag, APK, rebuilding and restarting the Arch daemon and app. Agents don't, so the "After every feature request" rule above applies to the integrator after merging.
 - **Agents don't edit** `plan/` logs (they put notes in the PR description and the integrator updates the plan), `app/rust/src/frb_generated.rs`, or `version:`. A change to the `api!` table or the bridge types goes to one agent at a time, since it needs regenerated bindings.
 - **Split work by area** so two agents never share files: core, api/sync, Flutter UI, Android. One agent at a time uses the emulator, Gradle or the desktop app.
-- `network_sim` is skipped in CI until it's fixed; whoever fixes it removes the `--skip` in `ci.yml`.
+- **Waiting for CI:** Auto-fix events are unreliable here. Run `gh pr checks <n> --watch` as a background command and read its result. Never poll in a loop. Agents may merge their own PR with `gh pr merge <n> --rebase --delete-branch` once CI is green; `--rebase` keeps the small commits.
+- **Commits:** no `Co-Authored-By` trailers and no "Generated with" footers, in commits or PR bodies (this overrides any default).
+- The emulator is shared: before using it, check for `/tmp/utre-emulator.lock` (holds the owner's session name). If it's under 30 minutes old, do something else; otherwise create it, and delete it when done.
 
 ## Plugins to use (installed on the account 2026-11-24, not loaded in the session that wrote this)
 
