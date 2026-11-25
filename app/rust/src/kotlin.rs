@@ -7,7 +7,7 @@
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 
-use tt_core::{Store, Task};
+use utre_core::{Store, Task};
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum CoreError {
@@ -15,8 +15,8 @@ pub enum CoreError {
     Failed { msg: String },
 }
 
-impl From<tt_core::Error> for CoreError {
-    fn from(e: tt_core::Error) -> Self {
+impl From<utre_core::Error> for CoreError {
+    fn from(e: utre_core::Error) -> Self {
         CoreError::Failed { msg: e.to_string() }
     }
 }

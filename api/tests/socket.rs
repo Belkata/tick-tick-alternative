@@ -4,12 +4,12 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::Duration;
 
-use tt_api::server::{self, Db};
-use tt_api::{Api, Client, Event, TaskView, ViewKind};
-use tt_core::{Store, local_tz};
+use utre_api::server::{self, Db};
+use utre_api::{Api, Client, Event, TaskView, ViewKind};
+use utre_core::{Store, local_tz};
 
 fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("tt-api-{name}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("utre-api-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -39,7 +39,7 @@ fn remote_calls_match_local_ones() {
     let dir = temp_dir("calls");
     let (db, sock) = start_daemon(&dir);
     let client = Client::connect(&sock).unwrap();
-    assert!(tt_api::paths::same_file(
+    assert!(utre_api::paths::same_file(
         std::path::Path::new(&client.hello().db),
         &db
     ));
@@ -93,7 +93,7 @@ fn subscribers_hear_writes_and_outside_commits() {
     let (tx, rx) = mpsc::channel();
     let sub_sock = sock.clone();
     std::thread::spawn(move || {
-        tt_api::client::subscribe(&sub_sock, |Event::Changed { version }| {
+        utre_api::client::subscribe(&sub_sock, |Event::Changed { version }| {
             tx.send(version).is_ok()
         })
         .unwrap();
@@ -230,7 +230,7 @@ fn sync_requests_need_a_sync_node_and_peers_go_through_the_table() {
             .sync_status()
             .unwrap_err()
             .to_string()
-            .contains("tt-daemon")
+            .contains("utre-daemon")
     );
 }
 
@@ -247,7 +247,7 @@ fn calendar_calls_go_through_the_socket() {
     let tag = api.find_tag("travel").unwrap().unwrap();
     api.set_tag_style(&tag.id, Some("#aa5500"), None::<&str>)
         .unwrap();
-    let ids = |rows: Vec<tt_api::TaskRow>| rows.into_iter().map(|r| r.id).collect::<Vec<_>>();
+    let ids = |rows: Vec<utre_api::TaskRow>| rows.into_iter().map(|r| r.id).collect::<Vec<_>>();
     assert_eq!(
         ids(api.unscheduled(None::<&str>, now, tz).unwrap()),
         [t.id.as_str()]

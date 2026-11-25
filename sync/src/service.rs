@@ -1,5 +1,5 @@
 //! A running sync node with its status and auto-sync (plan/16): serves paired devices and
-//! syncs with them periodically and soon after local edits. Used by `tt-daemon` on desktop
+//! syncs with them periodically and soon after local edits. Used by `utre-daemon` on desktop
 //! and in-process by the phone app (no daemon there). One per device key at a time.
 
 use std::path::Path;
@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
 use tokio::sync::broadcast;
-use tt_api::{SyncOutcome, SyncStatus};
+use utre_api::{SyncOutcome, SyncStatus};
 
 use crate::replicate::{SyncEvent, SyncReport};
 use crate::{Relays, SyncNode};
@@ -65,23 +65,23 @@ impl SyncService {
                     SyncEvent::Synced(r) => {
                         svc.note_success();
                         eprintln!(
-                            "tt-daemon: synced with {}: sent {}, received {}",
+                            "utre-daemon: synced with {}: sent {}, received {}",
                             r.peer_name, r.sent, r.received
                         );
                     }
                     SyncEvent::Paired { name, .. } => {
                         svc.refresh_peers().await;
-                        eprintln!("tt-daemon: paired with {name}");
+                        eprintln!("utre-daemon: paired with {name}");
                     }
                     SyncEvent::TrustChanged { added, removed } => {
                         svc.refresh_peers().await;
                         eprintln!(
-                            "tt-daemon: trust shared by a peer: added {added:?}, removed {removed:?}"
+                            "utre-daemon: trust shared by a peer: added {added:?}, removed {removed:?}"
                         );
                     }
                     SyncEvent::Refused { peer_id, reason } => {
                         eprintln!(
-                            "tt-daemon: refused {}: {reason}",
+                            "utre-daemon: refused {}: {reason}",
                             &peer_id[..peer_id.len().min(10)]
                         );
                     }

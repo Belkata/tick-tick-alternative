@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  macOS LaunchAgent for tt-daemon (plan/08, the counterpart of tick-alt.service).
+  macOS LaunchAgent for utre-daemon (plan/08, the counterpart of tick-alt.service).
   scripts/install-launch-agent.sh fills in the @...@ paths and installs it to
   ~/Library/LaunchAgents/, pointing at this checkout's build.
   It starts at login and again if the daemon crashes; Quit in the menu-bar icon stops it

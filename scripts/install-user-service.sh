@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install a dev copy of daemon/tick-alt.service into ~/.config/systemd/user/, pointing at
-# this checkout's release builds (target/release/tt-daemon and the Flutter bundle).
+# this checkout's release builds (target/release/utre-daemon and the Flutter bundle).
 #   scripts/install-user-service.sh            install and (re)start it, enabled at login
 #   scripts/install-user-service.sh --remove   stop, disable and delete it
 set -euo pipefail
@@ -18,11 +18,11 @@ fi
 
 # The daily-driver build (`cargo build --profile fast`) wins when it's newer than the
 # release one; scripts/update-desktop.sh builds it.
-daemon="$repo/target/release/tt-daemon"
-fast="$repo/target/fast/tt-daemon"
+daemon="$repo/target/release/utre-daemon"
+fast="$repo/target/fast/utre-daemon"
 if [[ -x "$fast" && ( ! -x "$daemon" || "$fast" -nt "$daemon" ) ]]; then daemon="$fast"; fi
 app="$repo/app/build/linux/x64/release/bundle/tick_alt"
-[[ -x "$daemon" ]] || { echo "Build it first: cargo build --profile fast -p tt-daemon" >&2; exit 1; }
+[[ -x "$daemon" ]] || { echo "Build it first: cargo build --profile fast -p utre-daemon" >&2; exit 1; }
 [[ -x "$app" ]] || echo "Note: $app isn't built yet; the tray's Open won't work until it is." >&2
 
 mkdir -p "$unit_dir"

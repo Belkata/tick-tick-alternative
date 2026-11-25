@@ -9,13 +9,13 @@ use anyhow::{Context, Result, bail};
 use chrono_tz::Tz;
 use clap::{Args, Parser, Subcommand};
 use show::{SHORT_ID_LEN, line, offset_label, parse_offset, priority_name, short_id, when};
-use tt_api::{Api, TaskView, ViewKind};
-use tt_core::{
+use utre_api::{Api, TaskView, ViewKind};
+use utre_core::{
     Filter, FilterRule, NewTask, ReminderKind, Repeat, RepeatMode, Schedule, Task, local_tz,
     parse_when,
 };
-use tt_sync::replicate::SyncEvent;
-use tt_sync::{Relays, SyncNode};
+use utre_sync::replicate::SyncEvent;
+use utre_sync::{Relays, SyncNode};
 
 #[derive(Parser)]
 #[command(name = "tt", version, about = "Tick Alt from the terminal")]
@@ -164,7 +164,7 @@ enum Command {
     /// Spike 2: talk to another device over iroh.
     #[command(subcommand)]
     Sync(SyncCommand),
-    /// Google Calendar: sign in, pick calendars, fetch events (needs tt-daemon).
+    /// Google Calendar: sign in, pick calendars, fetch events (needs utre-daemon).
     #[command(subcommand)]
     Google(GoogleCmd),
 }
@@ -177,7 +177,7 @@ enum GoogleCmd {
     SignIn,
     /// Forget this device's Google tokens and cached events.
     SignOut,
-    /// Fetch calendars and events now (tt-daemon also does this every 5 minutes).
+    /// Fetch calendars and events now (utre-daemon also does this every 5 minutes).
     Sync,
     /// List your Google calendars; `*` marks the ones shown in Utre.
     Calendars,
@@ -357,12 +357,12 @@ fn run_import(db: &std::path::Path, cmd: ImportCmd) -> Result<()> {
     let ImportCmd::Ticktick { file, dry_run } = cmd;
     let text =
         std::fs::read_to_string(&file).with_context(|| format!("reading {}", file.display()))?;
-    let export = tt_core::parse_export(&text)?;
+    let export = utre_core::parse_export(&text)?;
     // A dry run imports into a throwaway in-memory database.
     let store = if dry_run {
-        tt_core::Store::open_in_memory()?
+        utre_core::Store::open_in_memory()?
     } else {
-        tt_core::Store::open(db).with_context(|| format!("opening {}", db.display()))?
+        utre_core::Store::open(db).with_context(|| format!("opening {}", db.display()))?
     };
     let r = store.import_ticktick(&export)?;
     println!(
@@ -415,7 +415,7 @@ enum SyncCommand {
     Peers,
     /// Unpair a device (by name or the start of its node id).
     Forget { device: String },
-    /// Drop superseded ops from the op log (tt-daemon also does this daily).
+    /// Drop superseded ops from the op log (utre-daemon also does this daily).
     Compact,
     /// Serve paired devices (and Spike 2 pulls) until Ctrl-C.
     Serve {
@@ -446,13 +446,13 @@ fn main() -> Result<()> {
         return run_import(&db, cmd);
     }
     if let Command::Sync(cmd) = cli.command {
-        // While tt-daemon serves this database it owns the device key: ask it to sync.
-        if let Some(client) = tt_api::Client::for_db(&db) {
+        // While utre-daemon serves this database it owns the device key: ask it to sync.
+        if let Some(client) = utre_api::Client::for_db(&db) {
             return sync_via_daemon(Api::remote(client), cmd);
         }
         return run_sync(db, cmd);
     }
-    // Through tt-daemon when it serves this database; else open the file directly
+    // Through utre-daemon when it serves this database; else open the file directly
     // (the daemon notices those writes and tells the app).
     let store = Api::connect_or_open(&db).with_context(|| format!("opening {}", db.display()))?;
     let ctx = Ctx {
@@ -585,7 +585,7 @@ impl Ctx {
                 }
                 let t = s.get_task(&id)?.context("task vanished")?;
                 match (t.status, t.due_at) {
-                    (tt_core::Status::Open, Some(next)) => {
+                    (utre_core::Status::Open, Some(next)) => {
                         println!("Done. Next: {}", when(next, t.all_day, self.now, self.tz))
                     }
                     _ => println!("Done."),
@@ -1062,8 +1062,8 @@ impl Ctx {
                 let st = s.google_status()?;
                 if !st.configured {
                     println!(
-                        "Not set up: save the OAuth client file as {} and restart tt-daemon.",
-                        tt_api::paths::google_client().display()
+                        "Not set up: save the OAuth client file as {} and restart utre-daemon.",
+                        utre_api::paths::google_client().display()
                     );
                 } else if st.signing_in {
                     println!("Waiting for you to finish signing in, in the browser.");
@@ -1153,7 +1153,7 @@ impl Ctx {
 
     fn filters(&self, cmd: Option<FilterCmd>) -> Result<()> {
         let s = &self.store;
-        let find = |n: &str| -> Result<tt_core::SavedFilter> {
+        let find = |n: &str| -> Result<utre_core::SavedFilter> {
             s.find_filter(n)?
                 .with_context(|| format!("no filter '{n}'"))
         };
@@ -1247,7 +1247,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
                 "On the other device run:\n\n  tt sync join {}\n\nWaiting up to 5 minutes. Ctrl-C to cancel.",
                 node.pairing_ticket()?
             );
-            let deadline = tokio::time::sleep(tt_sync::replicate::PAIR_TTL);
+            let deadline = tokio::time::sleep(utre_sync::replicate::PAIR_TTL);
             tokio::pin!(deadline);
             loop {
                 tokio::select! {
@@ -1284,9 +1284,9 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
             }
             node.shutdown().await;
         }
-        SyncCommand::Compact => compact(&Api::local(tt_core::Store::open(&db)?))?,
+        SyncCommand::Compact => compact(&Api::local(utre_core::Store::open(&db)?))?,
         SyncCommand::Peers => {
-            let store = tt_core::Store::open(&db)?;
+            let store = utre_core::Store::open(&db)?;
             let (now, tz) = (now_ms(), local_tz());
             let peers = store.peers()?;
             if peers.is_empty() {
@@ -1300,7 +1300,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
             }
         }
         SyncCommand::Forget { device: who } => {
-            let store = tt_core::Store::open(&db)?;
+            let store = utre_core::Store::open(&db)?;
             let matches: Vec<_> = store
                 .peers()?
                 .into_iter()
@@ -1380,7 +1380,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
 
 /// `tt sync` while the daemon runs: the same commands, carried out by its sync node.
 fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
-    let outcome = |o: &tt_api::SyncOutcome| match &o.error {
+    let outcome = |o: &utre_api::SyncOutcome| match &o.error {
         None => println!(
             "Synced with {}: sent {}, received {} ({} applied).",
             o.peer_name, o.sent, o.received, o.applied
@@ -1390,7 +1390,7 @@ fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
     match cmd {
         SyncCommand::Pair { .. } => {
             println!(
-                "On the other device run:\n\n  tt sync join {}\n\nThe ticket works once, for 5 minutes; tt-daemon answers it.",
+                "On the other device run:\n\n  tt sync join {}\n\nThe ticket works once, for 5 minutes; utre-daemon answers it.",
                 api.sync_pair()?
             );
         }
@@ -1409,7 +1409,7 @@ fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
         SyncCommand::Peers => {
             let (now, tz) = (now_ms(), local_tz());
             let status = api.sync_status()?;
-            println!("This device: {} (tt-daemon)", &status.node_id[..10]);
+            println!("This device: {} (utre-daemon)", &status.node_id[..10]);
             let peers = api.peers()?;
             if peers.is_empty() {
                 println!("No paired devices.");
@@ -1437,9 +1437,9 @@ fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
             }
         }
         SyncCommand::Compact => compact(&api)?,
-        SyncCommand::Serve { .. } => bail!("tt-daemon already serves sync for this database"),
+        SyncCommand::Serve { .. } => bail!("utre-daemon already serves sync for this database"),
         SyncCommand::Pull { .. } => bail!(
-            "stop tt-daemon to use the Spike 2 pull (it holds this device's key): systemctl --user stop tick-alt"
+            "stop utre-daemon to use the Spike 2 pull (it holds this device's key): systemctl --user stop tick-alt"
         ),
     }
     Ok(())
@@ -1455,7 +1455,7 @@ fn compact(api: &Api) -> Result<()> {
     Ok(())
 }
 
-fn print_report(r: &tt_sync::replicate::SyncReport) {
+fn print_report(r: &utre_sync::replicate::SyncReport) {
     println!(
         "Synced with {}: sent {}, received {} ({} applied).",
         r.peer_name, r.sent, r.received, r.applied

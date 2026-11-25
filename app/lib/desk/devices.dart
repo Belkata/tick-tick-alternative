@@ -13,7 +13,7 @@ import 'sidebar.dart' show askText;
 import 'theme.dart';
 
 /// Desktop Devices page (M3, plan/16): pairing, paired devices and sync status. Sync runs in
-/// tt-daemon, so everything here goes through it; without a daemon the page says so.
+/// utre-daemon, so everything here goes through it; without a daemon the page says so.
 class DevicesPage extends StatefulWidget {
   const DevicesPage({super.key, required this.db});
 
@@ -248,7 +248,7 @@ class _DevicesPageState extends State<DevicesPage> {
             _error ??
                 (Platform.isAndroid
                     ? 'Starting sync…'
-                    : 'Sync runs in tt-daemon, which isn\'t running for this database.\n'
+                    : 'Sync runs in utre-daemon, which isn\'t running for this database.\n'
                           'Start it with: systemctl --user start tick-alt'),
             style: manrope(13.5, FontWeight.w500, color: s.mute),
           ),

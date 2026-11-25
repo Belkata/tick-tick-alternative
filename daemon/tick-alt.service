@@ -1,4 +1,4 @@
-# systemd user unit for tt-daemon (plan/08, plan/15 slice 3).
+# systemd user unit for utre-daemon (plan/08, plan/15 slice 3).
 # Packages install it to /usr/lib/systemd/user/; scripts/install-user-service.sh installs a
 # dev copy pointing at this checkout's build. Enable with:
 #   systemctl --user enable --now tick-alt.service
@@ -11,7 +11,7 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/tt-daemon
+ExecStart=/usr/bin/utre-daemon
 # What the tray's Open starts.
 Environment=TT_APP=/usr/bin/tick-alt
 Restart=on-failure

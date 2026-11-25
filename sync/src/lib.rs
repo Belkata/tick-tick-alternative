@@ -17,7 +17,7 @@ use iroh::protocol::{AcceptError, ProtocolHandler, Router};
 use iroh::{Endpoint, EndpointAddr, RelayMode, SecretKey, TransportAddr};
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
-use tt_core::Store;
+use utre_core::Store;
 
 /// Application protocol id. Bump it whenever the wire format changes.
 pub const ALPN: &[u8] = b"tickalt/spike/0";
@@ -286,7 +286,7 @@ impl SyncNode {
     }
 
     /// Sync with one trusted peer (by node id).
-    pub async fn sync_with(&self, peer: &tt_core::Peer) -> Result<replicate::SyncReport> {
+    pub async fn sync_with(&self, peer: &utre_core::Peer) -> Result<replicate::SyncReport> {
         let addr: EndpointAddr = match &peer.last_addr {
             Some(json) => serde_json::from_str(json).context("stored peer address")?,
             None => EndpointAddr::new(peer.node_id.parse().context("peer id")?),
@@ -304,7 +304,7 @@ impl SyncNode {
     }
 
     /// Sync with every trusted peer, one after another.
-    pub async fn sync_all(&self) -> Vec<(tt_core::Peer, Result<replicate::SyncReport>)> {
+    pub async fn sync_all(&self) -> Vec<(utre_core::Peer, Result<replicate::SyncReport>)> {
         let peers = match self.replicator.replica.peers().await {
             Ok(p) => p,
             Err(_) => return Vec::new(),
@@ -317,7 +317,7 @@ impl SyncNode {
         out
     }
 
-    pub async fn peers(&self) -> Result<Vec<tt_core::Peer>> {
+    pub async fn peers(&self) -> Result<Vec<utre_core::Peer>> {
         self.replicator.replica.peers().await
     }
 
@@ -508,7 +508,7 @@ mod tests {
     use super::*;
 
     fn temp_dir(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("tt-sync-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("utre-sync-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
@@ -660,7 +660,7 @@ mod tests {
         let (mac, stranger) = (node(&dir, "mac").await, node(&dir, "stranger").await);
         store(&dir, "mac").add_task("private").unwrap();
         let mut events = mac.subscribe_sync();
-        let fake = tt_core::Peer {
+        let fake = utre_core::Peer {
             node_id: mac.id(),
             name: "mac".into(),
             added_at: 0,

@@ -3,7 +3,7 @@
 
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
-use tt_core::{
+use utre_core::{
     FilterRule, NewTask, ReminderKind, Schedule, Status, Store, Task, is_overdue, local_day,
     offset_label, parse_when, when_label,
 };
@@ -29,10 +29,10 @@ pub struct TaskView {
 }
 
 impl TaskView {
-    fn id(&self) -> tt_core::Result<&str> {
+    fn id(&self) -> utre_core::Result<&str> {
         self.id
             .as_deref()
-            .ok_or_else(|| tt_core::Error::Invalid(format!("{:?} view needs an id", self.kind)))
+            .ok_or_else(|| utre_core::Error::Invalid(format!("{:?} view needs an id", self.kind)))
     }
 }
 
@@ -108,7 +108,7 @@ pub struct ReminderRow {
     pub label: String,
 }
 
-/// One block on the calendar (see `tt_core::Block`), with what its tile shows.
+/// One block on the calendar (see `utre_core::Block`), with what its tile shows.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CalendarItem {
     pub task_id: String,
@@ -148,12 +148,12 @@ pub struct TaskDetail {
     pub in_calendar: bool,
 }
 
-fn rule(v: serde_json::Value) -> tt_core::Result<FilterRule> {
+fn rule(v: serde_json::Value) -> utre_core::Result<FilterRule> {
     Ok(serde_json::from_value(v)?)
 }
 
-pub fn sidebar(s: &Store, now: i64, tz: Tz) -> tt_core::Result<Sidebar> {
-    let count = |r: serde_json::Value| -> tt_core::Result<u32> {
+pub fn sidebar(s: &Store, now: i64, tz: Tz) -> utre_core::Result<Sidebar> {
+    let count = |r: serde_json::Value| -> utre_core::Result<u32> {
         Ok(s.run_rule(&rule(r)?, &[], false, now, tz)?.len() as u32)
     };
     let lists = s
@@ -170,7 +170,7 @@ pub fn sidebar(s: &Store, now: i64, tz: Tz) -> tt_core::Result<Sidebar> {
                 parent_id: None,
             })
         })
-        .collect::<tt_core::Result<_>>()?;
+        .collect::<utre_core::Result<_>>()?;
     let filters = s
         .filters()?
         .into_iter()
@@ -185,7 +185,7 @@ pub fn sidebar(s: &Store, now: i64, tz: Tz) -> tt_core::Result<Sidebar> {
                 parent_id: None,
             })
         })
-        .collect::<tt_core::Result<_>>()?;
+        .collect::<utre_core::Result<_>>()?;
     let tags = s
         .tags()?
         .into_iter()
@@ -200,7 +200,7 @@ pub fn sidebar(s: &Store, now: i64, tz: Tz) -> tt_core::Result<Sidebar> {
                 parent_id: t.parent_id,
             })
         })
-        .collect::<tt_core::Result<_>>()?;
+        .collect::<utre_core::Result<_>>()?;
     Ok(Sidebar {
         inbox: s.inbox()?.len() as u32,
         lists,
@@ -216,7 +216,7 @@ fn sortable(kind: ViewKind) -> bool {
 
 /// How a view is sorted: the device's one sort, shared by every sortable view.
 /// Empty for Completed and Trash.
-pub fn view_sort(s: &Store, view: &TaskView) -> tt_core::Result<Vec<String>> {
+pub fn view_sort(s: &Store, view: &TaskView) -> utre_core::Result<Vec<String>> {
     if sortable(view.kind) {
         s.device_sort()
     } else {
@@ -225,9 +225,9 @@ pub fn view_sort(s: &Store, view: &TaskView) -> tt_core::Result<Vec<String>> {
 }
 
 /// Choose the sort from a view's menu. It applies to every view on this device.
-pub fn set_view_sort(s: &Store, view: &TaskView, sort: &[String]) -> tt_core::Result<()> {
+pub fn set_view_sort(s: &Store, view: &TaskView, sort: &[String]) -> utre_core::Result<()> {
     if !sortable(view.kind) {
-        return Err(tt_core::Error::Invalid(format!(
+        return Err(utre_core::Error::Invalid(format!(
             "the {:?} view can't be sorted",
             view.kind
         )));
@@ -242,7 +242,7 @@ fn sorted_tasks(
     sort: &[String],
     now: i64,
     tz: Tz,
-) -> tt_core::Result<Vec<Task>> {
+) -> utre_core::Result<Vec<Task>> {
     let run = |r: serde_json::Value| s.run_rule(&rule(r)?, sort, false, now, tz);
     match view.kind {
         ViewKind::Inbox => s.inbox_sorted(sort),
@@ -254,12 +254,12 @@ fn sorted_tasks(
             let f = s
                 .find_filter(view.id()?)?
                 .ok_or_else(|| {
-                    tt_core::Error::NotFound(format!("filter {}", view.id().unwrap_or("")))
+                    utre_core::Error::NotFound(format!("filter {}", view.id().unwrap_or("")))
                 })?
                 .filter;
             s.run_rule(&f.rule, sort, f.show_completed, now, tz)
         }
-        ViewKind::Completed | ViewKind::Trash => Err(tt_core::Error::Invalid(format!(
+        ViewKind::Completed | ViewKind::Trash => Err(utre_core::Error::Invalid(format!(
             "the {:?} view can't be sorted",
             view.kind
         ))),
@@ -275,7 +275,7 @@ pub fn place_task(
     before: Option<&str>,
     now: i64,
     tz: Tz,
-) -> tt_core::Result<()> {
+) -> utre_core::Result<()> {
     let shown: Vec<String> = sorted_tasks(s, view, &["manual".to_string()], now, tz)?
         .into_iter()
         .map(|t| t.id)
@@ -283,7 +283,7 @@ pub fn place_task(
     s.place_task(id, before, &shown)
 }
 
-pub fn tasks(s: &Store, view: &TaskView, now: i64, tz: Tz) -> tt_core::Result<Vec<TaskRow>> {
+pub fn tasks(s: &Store, view: &TaskView, now: i64, tz: Tz) -> utre_core::Result<Vec<TaskRow>> {
     let tasks = match view.kind {
         ViewKind::Inbox | ViewKind::List | ViewKind::Tag | ViewKind::Filter => {
             sorted_tasks(s, view, &s.device_sort()?, now, tz)?
@@ -317,7 +317,7 @@ pub fn tasks(s: &Store, view: &TaskView, now: i64, tz: Tz) -> tt_core::Result<Ve
         .collect()
 }
 
-pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Result<Option<TaskDetail>> {
+pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> utre_core::Result<Option<TaskDetail>> {
     let Some(t) = s.get_task(id)? else {
         return Ok(None);
     };
@@ -327,7 +327,7 @@ pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Result<Opt
         Some(p) => s.get_task(p)?.map(|p| p.title),
         None => None,
     };
-    let repeat_after_completion = t.repeat_mode == tt_core::RepeatMode::AfterCompletion;
+    let repeat_after_completion = t.repeat_mode == utre_core::RepeatMode::AfterCompletion;
     let start_label = t.start_at.map(|ms| when_label(ms, t.all_day, now, tz));
     let checklist = s
         .checklist(id)?
@@ -342,7 +342,7 @@ pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Result<Opt
         .subtasks(id)?
         .into_iter()
         .map(|t| task_row(s, t, now, tz))
-        .collect::<tt_core::Result<_>>()?;
+        .collect::<utre_core::Result<_>>()?;
     let reminders = s
         .reminders(id)?
         .into_iter()
@@ -378,7 +378,7 @@ pub fn add_in(
     title: &str,
     now: i64,
     tz: Tz,
-) -> tt_core::Result<String> {
+) -> utre_core::Result<String> {
     let mut new = NewTask {
         title: title.to_string(),
         ..Default::default()
@@ -388,7 +388,7 @@ pub fn add_in(
         ViewKind::Tag => new.tags = view.id.clone().into_iter().collect(),
         ViewKind::Filter => {
             let f = s.find_filter(view.id()?)?.ok_or_else(|| {
-                tt_core::Error::NotFound(format!("filter {}", view.id().unwrap_or("")))
+                utre_core::Error::NotFound(format!("filter {}", view.id().unwrap_or("")))
             })?;
             new = s.new_task_matching(&f.filter.rule, title, now, tz)?;
         }
@@ -399,10 +399,10 @@ pub fn add_in(
 
 /// Complete an open task, or reopen a done one. Returns the new done state
 /// (a repeating task moves to its next date and stays open).
-pub fn toggle_done(s: &Store, id: &str) -> tt_core::Result<bool> {
+pub fn toggle_done(s: &Store, id: &str) -> utre_core::Result<bool> {
     let t = s
         .get_task(id)?
-        .ok_or_else(|| tt_core::Error::NotFound(format!("task {id}")))?;
+        .ok_or_else(|| utre_core::Error::NotFound(format!("task {id}")))?;
     if t.status == Status::Done {
         s.reopen_task(id)?;
         return Ok(false);
@@ -413,12 +413,12 @@ pub fn toggle_done(s: &Store, id: &str) -> tt_core::Result<bool> {
 
 /// Set the due date from text like `fri`, `tomorrow 14:30` or `2026-12-01`, or clear it.
 /// Switching between all-day and timed drops the start date rather than mixing kinds.
-pub fn set_due(s: &Store, id: &str, text: Option<&str>, now: i64, tz: Tz) -> tt_core::Result<()> {
+pub fn set_due(s: &Store, id: &str, text: Option<&str>, now: i64, tz: Tz) -> utre_core::Result<()> {
     set_date(s, id, DateField::Due, text, now, tz)
 }
 
 /// The same for the start date (it drops the due date on a kind switch).
-pub fn set_start(s: &Store, id: &str, text: Option<&str>, now: i64, tz: Tz) -> tt_core::Result<()> {
+pub fn set_start(s: &Store, id: &str, text: Option<&str>, now: i64, tz: Tz) -> utre_core::Result<()> {
     set_date(s, id, DateField::Start, text, now, tz)
 }
 
@@ -435,12 +435,12 @@ fn set_date(
     text: Option<&str>,
     now: i64,
     tz: Tz,
-) -> tt_core::Result<()> {
+) -> utre_core::Result<()> {
     let text = text.map(str::trim).filter(|t| !t.is_empty());
     let parsed = text.map(|t| parse_when(t, now, tz)).transpose()?;
     let t = s
         .get_task(id)?
-        .ok_or_else(|| tt_core::Error::NotFound(format!("task {id}")))?;
+        .ok_or_else(|| utre_core::Error::NotFound(format!("task {id}")))?;
     let mut sch = Schedule {
         start_at: t.start_at,
         due_at: t.due_at,
@@ -465,7 +465,7 @@ fn set_date(
 }
 
 /// The calendar's blocks overlapping `[from, until)`, with titles and colours.
-pub fn calendar(s: &Store, from: i64, until: i64, tz: Tz) -> tt_core::Result<Vec<CalendarItem>> {
+pub fn calendar(s: &Store, from: i64, until: i64, tz: Tz) -> utre_core::Result<Vec<CalendarItem>> {
     let mut cache: std::collections::HashMap<String, (Task, Option<String>, Option<String>)> =
         Default::default();
     let mut out = Vec::new();
@@ -515,7 +515,7 @@ pub fn unscheduled(
     filter_id: Option<&str>,
     now: i64,
     tz: Tz,
-) -> tt_core::Result<Vec<TaskRow>> {
+) -> utre_core::Result<Vec<TaskRow>> {
     let tasks = match filter_id {
         Some(id) if id.starts_with("list:") || id.starts_with("tag:") => {
             let (kind, id) = id.split_once(':').unwrap_or_default();
@@ -552,7 +552,7 @@ pub fn unscheduled(
 }
 
 /// Open tasks that `id` can be moved under (the detail's Parent picker).
-pub fn parent_candidates(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Result<Vec<TaskRow>> {
+pub fn parent_candidates(s: &Store, id: &str, now: i64, tz: Tz) -> utre_core::Result<Vec<TaskRow>> {
     s.parent_candidates(id)?
         .into_iter()
         .map(|t| task_row(s, t, now, tz))
@@ -560,11 +560,11 @@ pub fn parent_candidates(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Resu
 }
 
 /// How many open tasks a rule matches right now (the filter builder's live count).
-pub fn rule_count(s: &Store, rule: &FilterRule, now: i64, tz: Tz) -> tt_core::Result<u32> {
+pub fn rule_count(s: &Store, rule: &FilterRule, now: i64, tz: Tz) -> utre_core::Result<u32> {
     Ok(s.run_rule(rule, &[], false, now, tz)?.len() as u32)
 }
 
-fn task_row(s: &Store, t: Task, now: i64, tz: Tz) -> tt_core::Result<TaskRow> {
+fn task_row(s: &Store, t: Task, now: i64, tz: Tz) -> utre_core::Result<TaskRow> {
     let tags = s
         .task_tags(&t.id)?
         .into_iter()
@@ -610,7 +610,7 @@ fn task_row(s: &Store, t: Task, now: i64, tz: Tz) -> tt_core::Result<TaskRow> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tt_core::Filter;
+    use utre_core::Filter;
 
     #[test]
     fn quick_add_in_a_filter_stays_in_it() {

@@ -12,7 +12,7 @@ publish = false
 [profile.dev]
 debug = "line-tables-only"
 
-# The daily driver for tt-daemon and tt on this laptop: `cargo build --profile fast`.
+# The daily driver for utre-daemon and tt on this laptop: `cargo build --profile fast`.
 # Lighter optimisation and incremental builds; the app and the phone don't need -O3.
 [profile.fast]
 inherits = "release"

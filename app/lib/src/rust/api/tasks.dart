@@ -10,7 +10,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These functions are ignored because they are not marked as `pub`: `local_phone`, `now_ms`, `tz_name`, `watch`, `write`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
-/// The desktop database: the same file `tt` and `tt-daemon` use (`$TT_DB`, else
+/// The desktop database: the same file `tt` and `utre-daemon` use (`$TT_DB`, else
 /// `~/.local/share/tick-alt/tt.db` on Linux, `~/Library/Application Support/tick-alt/tt.db`
 /// on macOS).
 String desktopDbPath() => RustLib.instance.api.crateApiTasksDesktopDbPath();
@@ -58,7 +58,7 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Returns false if the task was already done.
   Future<bool> complete({required String id});
 
-  /// Desktop: use `tt-daemon` if it serves `path`, else open the file directly. A watcher
+  /// Desktop: use `utre-daemon` if it serves `path`, else open the file directly. A watcher
   /// thread keeps the change stream live either way and follows the daemon coming and
   /// going (systemd restarts it): its events while connected; while opened directly,
   /// a switch back as soon as it serves the file again, and other processes' commits.
@@ -93,7 +93,7 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Show or hide a Google calendar's events (hiding drops its cache on this device).
   Future<void> gcalSelect({required String calendarId, required bool selected});
 
-  /// Whether the Google page can work: only through tt-daemon.
+  /// Whether the Google page can work: only through utre-daemon.
   bool googleAvailable();
 
   /// Opens the browser sign-in; returns its URL (to show if the browser didn't open).
@@ -108,7 +108,7 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   Future<List<TaskItem>> inbox();
 
-  /// True when calls go through `tt-daemon`.
+  /// True when calls go through `utre-daemon`.
   bool isRemote();
 
   /// Open (or create) the database file at `path` in this process (Android, tests).
@@ -201,7 +201,7 @@ abstract class TaskDb implements RustOpaqueInterface {
     required String device,
   });
 
-  /// Whether the Devices page can work: through tt-daemon, or the phone's own node.
+  /// Whether the Devices page can work: through utre-daemon, or the phone's own node.
   bool syncAvailable();
 
   /// Pair with the device that made `ticket`, then sync.

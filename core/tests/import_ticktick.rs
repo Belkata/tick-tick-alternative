@@ -1,6 +1,6 @@
 //! The TickTick importer maps fields and is safe to run twice.
 use serde_json::json;
-use tt_core::{Store, parse_export};
+use utre_core::{Store, parse_export};
 
 fn export() -> serde_json::Value {
     json!({

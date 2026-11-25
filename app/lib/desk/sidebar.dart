@@ -103,11 +103,11 @@ class DeskSidebar extends StatelessWidget {
                     style: manrope(17, FontWeight.w800, color: s.fg),
                   ),
                 ),
-                // Desktop only: whether the app goes through tt-daemon (phones have none).
+                // Desktop only: whether the app goes through utre-daemon (phones have none).
                 if (!Platform.isAndroid)
                   Tooltip(
                     message: c.db.isRemote()
-                        ? 'Connected to tt-daemon'
+                        ? 'Connected to utre-daemon'
                         : 'Database opened directly (no daemon)',
                     child: Icon(
                       c.db.isRemote() ? Icons.link : Icons.link_off,

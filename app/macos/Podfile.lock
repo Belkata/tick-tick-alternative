@@ -1,21 +1,21 @@
 PODS:
   - FlutterMacOS (1.0.0)
-  - tt_bridge (0.0.1):
+  - utre_bridge (0.0.1):
     - FlutterMacOS
 
 DEPENDENCIES:
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - tt_bridge (from `Flutter/ephemeral/.symlinks/plugins/tt_bridge/macos`)
+  - utre_bridge (from `Flutter/ephemeral/.symlinks/plugins/utre_bridge/macos`)
 
 EXTERNAL SOURCES:
   FlutterMacOS:
     :path: Flutter/ephemeral
-  tt_bridge:
-    :path: Flutter/ephemeral/.symlinks/plugins/tt_bridge/macos
+  utre_bridge:
+    :path: Flutter/ephemeral/.symlinks/plugins/utre_bridge/macos
 
 SPEC CHECKSUMS:
   FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
-  tt_bridge: 3c0102ca7d2fe47e2d823e12499c0398b76ac121
+  utre_bridge: 3c0102ca7d2fe47e2d823e12499c0398b76ac121
 
 PODFILE CHECKSUM: 1e95c36afbfd1cb6423ceca4de7a8e1b256fb6ac
 

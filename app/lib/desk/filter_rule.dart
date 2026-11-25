@@ -1,5 +1,5 @@
 // The filter builder's model: an editable rule tree that converts to and from the core's
-// JSON (tt_core::FilterRule). Groups are `{"all": […]}` / `{"any": […]}`, conditions are
+// JSON (utre_core::FilterRule). Groups are `{"all": […]}` / `{"any": […]}`, conditions are
 // `{"field", "op", "value"}`, and NOT wraps either: `{"not": …}`.
 import 'dart:convert';
 
@@ -188,7 +188,7 @@ class RuleCond extends RuleNode {
       .toList();
 }
 
-/// A saved filter's editable definition (tt_core::Filter).
+/// A saved filter's editable definition (utre_core::Filter).
 class FilterDef {
   FilterDef({
     this.name = '',

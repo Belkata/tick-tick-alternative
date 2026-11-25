@@ -1,5 +1,5 @@
-//! The daemon's answers to control requests on the socket (`tt_api::server::SyncControl`):
-//! sync (`tt_sync::service::SyncService`, for `tt sync` and the app's Devices page) and
+//! The daemon's answers to control requests on the socket (`utre_api::server::SyncControl`):
+//! sync (`utre_sync::service::SyncService`, for `tt sync` and the app's Devices page) and
 //! Google (`google.rs`). Either can be missing (`--no-sync`, `--no-google`).
 
 use std::future::Future;
@@ -7,9 +7,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use serde_json::Value;
-use tt_api::Request;
-use tt_api::server::SyncControl;
-use tt_sync::service::{SyncService, outcome};
+use utre_api::Request;
+use utre_api::server::SyncControl;
+use utre_sync::service::{SyncService, outcome};
 
 use crate::google::GoogleService;
 
@@ -24,13 +24,13 @@ impl Control {
     fn sync(&self) -> Result<&Arc<SyncService>, String> {
         self.sync
             .as_ref()
-            .ok_or_else(|| "this tt-daemon doesn't run sync".to_string())
+            .ok_or_else(|| "this utre-daemon doesn't run sync".to_string())
     }
 
     fn google(&self) -> Result<&Arc<GoogleService>, String> {
         self.google
             .as_ref()
-            .ok_or_else(|| "this tt-daemon doesn't run Google (--no-google)".to_string())
+            .ok_or_else(|| "this utre-daemon doesn't run Google (--no-google)".to_string())
     }
 }
 

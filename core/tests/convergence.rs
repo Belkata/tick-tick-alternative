@@ -6,7 +6,7 @@ mod common;
 
 use common::{edit, run, seed};
 use proptest::prelude::*;
-use tt_core::Store;
+use utre_core::Store;
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]

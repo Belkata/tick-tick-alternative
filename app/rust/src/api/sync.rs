@@ -1,10 +1,10 @@
-//! Spike 2: iroh sync for Dart. Thin wrapper over tt-sync.
+//! Spike 2: iroh sync for Dart. Thin wrapper over utre-sync.
 
 use std::path::Path;
 use std::time::Duration;
 
 use flutter_rust_bridge::frb;
-use tt_sync::{Relays, SyncNode};
+use utre_sync::{Relays, SyncNode};
 
 /// The outcome of pulling a peer's open tasks.
 pub struct PullResult {

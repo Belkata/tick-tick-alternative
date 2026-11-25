@@ -1,6 +1,6 @@
-//! tt-daemon: owns the desktop database and serves it to the app and `tt` (M2, plan/15).
+//! utre-daemon: owns the desktop database and serves it to the app and `tt` (M2, plan/15).
 //!
-//! - **Socket:** `tt_api::server` runs one DB thread and answers JSON-line requests on
+//! - **Socket:** `utre_api::server` runs one DB thread and answers JSON-line requests on
 //!   `$XDG_RUNTIME_DIR/tick-alt.sock` (macOS: the data dir), with change events for subscribers.
 //!   Commits other processes make to the file (e.g. `tt` while no daemon ran) are noticed and broadcast.
 //! - **Tray**: the Inbox count and sync status, refreshed on every change. Linux: a
@@ -15,10 +15,10 @@
 //!
 //! - **Google** (M5b, `google.rs`): sign-in through the browser and a fetch of the selected
 //!   calendars' events every 5 minutes into the local cache. Needs the OAuth client file
-//!   (`tt_api::paths::google_client`); without it Google is simply unavailable.
+//!   (`utre_api::paths::google_client`); without it Google is simply unavailable.
 //!
 //! Flags: `--db <path>`, `--socket <path>`, `--no-tray`, `--no-sync`, `--no-google`, `--no-relay` (sync on
-//! direct addresses only); `tt-daemon notify <id>` sends one
+//! direct addresses only); `utre-daemon notify <id>` sends one
 //! reminder right away. `$TT_SNOOZE_SECS` shortens Snooze for testing; `$TT_APP` is what Open starts.
 
 use std::path::PathBuf;
@@ -38,11 +38,11 @@ mod tray;
 
 use std::sync::Arc;
 
-use tt_api::server::{self, Db, SyncControl};
-use tt_api::{Request, TzName};
-use tt_core::{ReminderFire, Task, local_tz};
-use tt_sync::Relays;
-use tt_sync::service::SyncService;
+use utre_api::server::{self, Db, SyncControl};
+use utre_api::{Request, TzName};
+use utre_core::{ReminderFire, Task, local_tz};
+use utre_sync::Relays;
+use utre_sync::service::SyncService;
 
 /// How often the tray re-reads the Inbox count and the reminder loop checks the schedule.
 const TICK: Duration = Duration::from_secs(5);
@@ -85,7 +85,7 @@ fn now_ms() -> i64 {
 fn db_path() -> Result<PathBuf> {
     match flag("--db") {
         Some(p) => Ok(PathBuf::from(p)),
-        None => Ok(tt_api::paths::default_db()?),
+        None => Ok(utre_api::paths::default_db()?),
     }
 }
 
@@ -142,10 +142,10 @@ async fn allow_notifications() {
     match mac_usernotifications::request_auth().await {
         Ok(true) => NOTIFICATIONS.store(true, Ordering::Relaxed),
         Ok(false) => eprintln!(
-            "tt-daemon: notifications are turned off for this app (System Settings > Notifications)"
+            "utre-daemon: notifications are turned off for this app (System Settings > Notifications)"
         ),
         Err(e) => eprintln!(
-            "tt-daemon: no notifications ({e}): run the bundled daemon (scripts/build-macos.sh)"
+            "utre-daemon: no notifications ({e}): run the bundled daemon (scripts/build-macos.sh)"
         ),
     }
 }
@@ -157,7 +157,7 @@ async fn allow_notifications() {
 fn notify(tx: mpsc::UnboundedSender<Cmd>, task_id: String, title: String) {
     use mac_usernotifications::{Action, Notification};
     if !NOTIFICATIONS.load(std::sync::atomic::Ordering::Relaxed) {
-        return eprintln!("tt-daemon: reminder (no notifications): {title}");
+        return eprintln!("utre-daemon: reminder (no notifications): {title}");
     }
     tokio::spawn(async move {
         let sent = Notification::new()
@@ -282,12 +282,12 @@ async fn run() -> Result<()> {
     let db_file = db_path()?;
     let socket = flag("--socket")
         .map(PathBuf::from)
-        .unwrap_or_else(tt_api::paths::socket);
+        .unwrap_or_else(utre_api::paths::socket);
 
     // The daemon owns the database (plan/03 rule 3): one DB thread, served on the socket.
     let db = Db::open(&db_file).with_context(|| format!("opening {}", db_file.display()))?;
     let listener = server::bind(&socket)?;
-    eprintln!("tt-daemon: {} on {}", db_file.display(), socket.display());
+    eprintln!("utre-daemon: {} on {}", db_file.display(), socket.display());
 
     // M3 sync: the node serves paired devices; without it the daemon still works locally.
     let sync = if has_flag("--no-sync") {
@@ -300,11 +300,11 @@ async fn run() -> Result<()> {
         };
         match SyncService::start(&db_file, hostname(), relays).await {
             Ok(s) => {
-                eprintln!("tt-daemon: sync node {}", s.status().node_id);
+                eprintln!("utre-daemon: sync node {}", s.status().node_id);
                 Some(s)
             }
             Err(e) => {
-                eprintln!("tt-daemon: sync is off: {e:#}");
+                eprintln!("utre-daemon: sync is off: {e:#}");
                 None
             }
         }
@@ -327,7 +327,7 @@ async fn run() -> Result<()> {
         let control = Some(control);
         async move {
             if let Err(e) = server::serve(listener, db, control).await {
-                eprintln!("tt-daemon: socket: {e:#}");
+                eprintln!("utre-daemon: socket: {e:#}");
             }
         }
     });
@@ -345,7 +345,7 @@ async fn run() -> Result<()> {
         Some(tray::Tray::start(inbox, sync_line, tx.clone()).await?)
     };
 
-    // `tt-daemon notify <id>`: one notification for a task right away (testing actions).
+    // `utre-daemon notify <id>`: one notification for a task right away (testing actions).
     let args: Vec<String> = std::env::args().skip(1).collect();
     if let Some(i) = args.iter().position(|a| a == "notify") {
         let suffix = args.get(i + 1).context("notify needs a task id")?.clone();
@@ -379,9 +379,9 @@ async fn run() -> Result<()> {
                 match db.get::<usize>(Request::Compact {}).await {
                     Ok(0) => {}
                     Ok(n) => {
-                        eprintln!("tt-daemon: compacted the op log: dropped {n} superseded ops")
+                        eprintln!("utre-daemon: compacted the op log: dropped {n} superseded ops")
                     }
-                    Err(e) => eprintln!("tt-daemon: compaction: {e:#}"),
+                    Err(e) => eprintln!("utre-daemon: compaction: {e:#}"),
                 }
                 tokio::time::sleep(Duration::from_secs(24 * 3600)).await;
             }
@@ -421,8 +421,8 @@ async fn run() -> Result<()> {
                     tokio::spawn(async move {
                         for o in svc.round().await {
                             match o.error {
-                                None => eprintln!("tt-daemon: synced with {}", o.peer_name),
-                                Some(e) => eprintln!("tt-daemon: {}: {e}", o.peer_name),
+                                None => eprintln!("utre-daemon: synced with {}", o.peer_name),
+                                Some(e) => eprintln!("utre-daemon: {}: {e}", o.peer_name),
                             }
                         }
                         let _ = tx.send(Cmd::SyncStatus);

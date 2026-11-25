@@ -20,7 +20,7 @@ import 'sync/sync_page.dart';
 import 'widget_bridge.dart';
 
 /// Tick Alt: the M2 three-pane shell (Soft style with Material tag chips, plan/09)
-/// over the Rust core, with the M5 calendar (plan/18). Desktop sync lives in tt-daemon.
+/// over the Rust core, with the M5 calendar (plan/18). Desktop sync lives in utre-daemon.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
@@ -33,7 +33,7 @@ Future<void> main() async {
   final dir = await getApplicationSupportDirectory();
   // Desktop shares tt's database; Android keeps it in the app's files dir (the widget reads it there).
   final dbPath = desktop ? desktopDbPath() : '${dir.path}/tt.db';
-  // On desktop, go through tt-daemon when it serves this database (plan/15).
+  // On desktop, go through utre-daemon when it serves this database (plan/15).
   final db = desktop
       ? await TaskDb.connectOrOpen(path: dbPath)
       : await TaskDb.open(path: dbPath);
@@ -82,7 +82,7 @@ class TickAltApp extends StatelessWidget {
           if (peer case final p?)
             ShellPage('Sync (spike)', Icons.sync, (_, _) => SyncPage(peer: p)),
           ShellPage('Devices', Icons.devices, (_, _) => DevicesPage(db: db)),
-          // Google runs in tt-daemon, so the desktop only (the phone has no daemon yet).
+          // Google runs in utre-daemon, so the desktop only (the phone has no daemon yet).
           if (!Platform.isAndroid)
             ShellPage(
               'Google Calendar',

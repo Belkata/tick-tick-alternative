@@ -6,7 +6,7 @@
 # The bundle:
 #   Tick Alt.app                      the Flutter app (dev.tickalt.tickAlt)
 #     Contents/Helpers/
-#       Tick Alt Daemon.app           tt-daemon as a menu-bar agent (dev.tickalt.daemon, LSUIElement).
+#       Tick Alt Daemon.app           utre-daemon as a menu-bar agent (dev.tickalt.daemon, LSUIElement).
 #                                     A bundle of its own so UNUserNotificationCenter works and
 #                                     Done / Snooze reach the daemon, not the window app.
 #       tt                            the CLI
@@ -21,8 +21,8 @@ app="$repo/app/build/macos/Build/Products/Release/Tick Alt.app"
 helpers="$app/Contents/Helpers"
 daemon_app="$helpers/Tick Alt Daemon.app"
 
-echo "==> Rust: tt-daemon and tt"
-cargo build --release -p tt-daemon -p tt --manifest-path "$repo/Cargo.toml"
+echo "==> Rust: utre-daemon and tt"
+cargo build --release -p utre-daemon -p tt --manifest-path "$repo/Cargo.toml"
 
 echo "==> Flutter: Tick Alt.app"
 (cd "$repo/app" && flutter build macos --release)
@@ -30,7 +30,7 @@ echo "==> Flutter: Tick Alt.app"
 echo "==> Tick Alt Daemon.app"
 rm -rf "$helpers"
 mkdir -p "$daemon_app/Contents/MacOS" "$daemon_app/Contents/Resources"
-cp "$repo/target/release/tt-daemon" "$daemon_app/Contents/MacOS/tt-daemon"
+cp "$repo/target/release/utre-daemon" "$daemon_app/Contents/MacOS/utre-daemon"
 cp "$app/Contents/Resources/AppIcon.icns" "$daemon_app/Contents/Resources/AppIcon.icns"
 cat > "$daemon_app/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -44,7 +44,7 @@ cat > "$daemon_app/Contents/Info.plist" <<EOF
 	<key>CFBundleDisplayName</key>
 	<string>Tick Alt</string>
 	<key>CFBundleExecutable</key>
-	<string>tt-daemon</string>
+	<string>utre-daemon</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>

@@ -37,7 +37,7 @@ prepare() {
 build() {
   cd tick-alt
   export CARGO_TARGET_DIR="$srcdir/tick-alt/target"
-  cargo build --release --frozen -p tt -p tt-daemon
+  cargo build --release --frozen -p tt -p utre-daemon
   cd app
   flutter --no-version-check build linux --release
 }
@@ -45,13 +45,13 @@ build() {
 check() {
   cd tick-alt
   export CARGO_TARGET_DIR="$srcdir/tick-alt/target"
-  cargo test --release --frozen -p tt-core -p tt-api --features tt-api/server
+  cargo test --release --frozen -p utre-core -p utre-api --features utre-api/server
 }
 
 package() {
   cd tick-alt
   install -Dm755 target/release/tt "$pkgdir/usr/bin/tt"
-  install -Dm755 target/release/tt-daemon "$pkgdir/usr/bin/tt-daemon"
+  install -Dm755 target/release/utre-daemon "$pkgdir/usr/bin/utre-daemon"
 
   # The Flutter bundle stays together (it finds lib/ and data/ next to its binary).
   install -d "$pkgdir/usr/lib/tick-alt"
