@@ -16,6 +16,7 @@ import 'package:kalender/src/models/kalender_events/draggable_event.dart'
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
 import '../desk/controller.dart';
 import '../desk/detail.dart';
@@ -84,6 +85,38 @@ class TaskEvent extends KalenderEvent {
 
   @override
   int get hashCode => Object.hash(super.hashCode, item);
+}
+
+/// A Google Calendar event (M5b, plan/19): read-only, so it can't be moved, resized or
+/// dropped on. The core caches them per device; the daemon keeps them fresh.
+class GoogleEvent extends KalenderEvent {
+  GoogleEvent(this.event, this.calendar)
+    : super(
+        id: 'g:${event.calendarId}:${event.id}',
+        start: DateTime.fromMillisecondsSinceEpoch(event.startAt),
+        end: DateTime.fromMillisecondsSinceEpoch(event.endAt),
+        isAllDay: event.allDay,
+        interaction: EventInteraction.allowNone(),
+      );
+
+  final GcalEvent event;
+
+  /// The Google calendar it belongs to (its name), if the list is loaded.
+  final GcalCalendar? calendar;
+
+  @override
+  GoogleEvent copyWithData({required DateTime start, required DateTime end}) =>
+      this; // never moved
+
+  @override
+  bool operator ==(Object other) =>
+      other is GoogleEvent &&
+      super == other &&
+      other.event == event &&
+      other.calendar == calendar;
+
+  @override
+  int get hashCode => Object.hash(super.hashCode, event, calendar);
 }
 
 const _views = ['Day', 'Week', 'Month'];
@@ -221,8 +254,21 @@ class _CalendarPageState extends State<CalendarPage> {
         source = null; // the filter, list or tag was deleted
       }
       final rows = await db.unscheduled(filterId: source);
+      // Google's events: a plain read of the cache, so a failure here never hides tasks.
+      var google = <GcalEvent>[];
+      var calendars = <String, GcalCalendar>{};
+      try {
+        google = await db.gcalEvents(
+          fromMs: from.millisecondsSinceEpoch,
+          untilMs: until.millisecondsSinceEpoch,
+        );
+        calendars = {for (final g in await db.gcalCalendars()) g.id: g};
+      } catch (_) {}
       if (gen != _generation || !mounted) return;
-      _events.replaceEvents([for (final i in items) TaskEvent(i)]);
+      _events.replaceEvents(<KalenderEvent>[
+        for (final i in items) TaskEvent(i),
+        for (final g in google) GoogleEvent(g, calendars[g.calendarId]),
+      ]);
       setState(() {
         _items = items;
         _unscheduled = rows;
@@ -303,6 +349,11 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   void _tapped(KalenderEvent e) {
+    if (e is GoogleEvent) {
+      _calendar.deselectEvent();
+      _showGoogleEvent(e);
+      return;
+    }
     if (e is! TaskEvent) return;
     // Phone: the first tap selects (resize handles), a second opens the detail.
     final outlined =
@@ -905,6 +956,7 @@ class _CalendarPageState extends State<CalendarPage> {
     KalenderEvent event,
     KalenderDateTimeRange range,
   ) {
+    if (event is GoogleEvent) return _googleTile(context, event);
     final s = context.soft;
     final e = event as TaskEvent;
     final i = e.item;
@@ -1073,6 +1125,209 @@ class _CalendarPageState extends State<CalendarPage> {
       message: i.allDay ? i.title : '${i.title}\n$time',
       waitDuration: const Duration(milliseconds: 700),
       child: tile,
+    );
+  }
+
+  /// A Google event: a paler tint than a task block, a hollow dot in Month, so it reads
+  /// as "not yours to move".
+  Widget _googleTile(BuildContext context, GoogleEvent e) {
+    final s = context.soft;
+    final g = e.event;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final tc = hexColor(g.color, s.mute);
+    final start = DateTime.fromMillisecondsSinceEpoch(g.startAt);
+    final end = DateTime.fromMillisecondsSinceEpoch(g.endAt);
+    final time = g.allDay ? '' : '${_hm(start)}–${_hm(end)}';
+    final tile = LayoutBuilder(
+      builder: (context, box) {
+        if (!g.allDay &&
+            box.maxHeight <= 22 &&
+            _calendar.viewConfiguration is MonthViewConfiguration) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Row(
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: tc, width: 1.5),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  _hm(start),
+                  style: manrope(10.5, FontWeight.w500, color: s.mute),
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    g.summary,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: manrope(11.5, FontWeight.w500, color: s.fg),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        final short = g.allDay || box.maxHeight < 34;
+        final lines = ((box.maxHeight - 22) / 16).floor().clamp(1, 4);
+        final title = Text(
+          g.summary,
+          maxLines: short ? 1 : lines,
+          overflow: TextOverflow.ellipsis,
+          style: manrope(12, FontWeight.w600, color: s.fg),
+        );
+        return Container(
+          margin: const EdgeInsets.all(0.5),
+          decoration: BoxDecoration(
+            color: Color.lerp(s.panel, tc, dark ? 0.14 : 0.09),
+            borderRadius: BorderRadius.circular(g.allDay ? 8 : 10),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 3, color: tc.withValues(alpha: 0.7)),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(6, short ? 0 : 4, 6, 0),
+                  child: short
+                      ? Align(
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            children: [
+                              Flexible(child: title),
+                              if (!g.allDay && box.maxWidth >= 90) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  _hm(start),
+                                  style: manrope(
+                                    11,
+                                    FontWeight.w500,
+                                    color: s.mute,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      : ClipRect(
+                          child: OverflowBox(
+                            alignment: Alignment.topLeft,
+                            maxHeight: double.infinity,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                title,
+                                const SizedBox(height: 1),
+                                Text(
+                                  time,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.clip,
+                                  style: manrope(
+                                    11,
+                                    FontWeight.w500,
+                                    color: s.mute,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (_narrow || Theme.of(context).platform == TargetPlatform.android) {
+      return tile;
+    }
+    return Tooltip(
+      message: g.allDay
+          ? '${g.summary}\nGoogle Calendar'
+          : '${g.summary}\n$time · Google Calendar',
+      waitDuration: const Duration(milliseconds: 700),
+      child: tile,
+    );
+  }
+
+  /// What a tap on a Google event shows: Google's events are read-only here.
+  void _showGoogleEvent(GoogleEvent e) {
+    final g = e.event;
+    final start = DateTime.fromMillisecondsSinceEpoch(g.startAt);
+    // All-day events end at the next local midnight; show the last day.
+    final end = DateTime.fromMillisecondsSinceEpoch(g.endAt - 1);
+    String day(DateTime d) =>
+        '${_weekdayName(d.weekday)}, ${d.day} ${_monthName(d.month)}';
+    final when = g.allDay
+        ? (day(start) == day(end) ? day(start) : '${day(start)} – ${day(end)}')
+        : (day(start) == day(end)
+              ? '${day(start)} · ${_hm(start)}–${_hm(end)}'
+              : '${day(start)} ${_hm(start)} – ${day(end)} ${_hm(end)}');
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final s = ctx.soft;
+        return AlertDialog(
+          key: const Key('google-event-dialog'),
+          title: Text(g.summary, style: manrope(17, FontWeight.w800)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(when, style: manrope(13.5, FontWeight.w600)),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: hexColor(g.color, s.mute),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      e.calendar?.summary ?? 'Google Calendar',
+                      style: manrope(12.5, FontWeight.w500, color: s.mute),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'From Google Calendar. Change it there; Utre shows it read-only.',
+                style: manrope(12, FontWeight.w500, color: s.mute),
+              ),
+            ],
+          ),
+          actions: [
+            if (g.htmlLink != null)
+              TextButton.icon(
+                key: const Key('google-event-copy-link'),
+                icon: const Icon(Icons.link, size: 16),
+                label: const Text('Copy link'),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: g.htmlLink!));
+                  _toast('Link to the event copied');
+                },
+              ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 
