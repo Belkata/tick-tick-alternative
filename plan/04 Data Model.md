@@ -26,7 +26,7 @@ erDiagram
 |---|---|---|
 | `id` | UUIDv7 | Generated on the device. Sortable by creation time. |
 | `title` | text | |
-| `notes` | text | Plain text in v1. Markdown is optional later. |
+| `notes` | text | Stored as plain text. The detail pane renders it as Markdown (`app/lib/desk/markdown.dart`, no package: headings, bold/italic/strike, code, links, quotes, lists, `- [ ]` tasks that toggle the source). |
 | `list_id` | UUID? | `NULL` means no list. |
 | `parent_id` | UUID? | Subtask. Max depth 3 (TickTick allows 5, which is more than needed). Set from the detail's Parent picker (`Store::parent_candidates` lists the tasks that fit). |
 | `priority` | 0–3 | none, low, med, high |

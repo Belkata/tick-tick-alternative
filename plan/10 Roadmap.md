@@ -78,7 +78,7 @@ Split into **M5a** (local calendar on real tasks) and **M5b** (Google). Plan and
 ## Later (not v1)
 - Natural-language quick add.
 - Kanban view.
-- Markdown notes.
+- ~~Markdown notes.~~ ✅ Done in v0.6.0 (rendered in the detail pane; stored as plain text).
 - Global quick-add popup.
 - Command palette.
 - Optional homelab relay or always-on peer.

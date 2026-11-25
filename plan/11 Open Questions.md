@@ -12,7 +12,7 @@ Back to [[00 Overview]]. Answer these inline, and I'll fold the answers into the
 
 ## Non-blocking (decide before the relevant milestone)
 3. ~~**Today and Next 7 Days presets.**~~ ✅ Decided (2026-11-24): **start with zero filters.** You build your own; the TickTick import recreates your 4.
-4. ~~**Notes format.**~~ ✅ Decided (2026-11-24): **plain text in v1**, Markdown rendering later.
+4. ~~**Notes format.**~~ ✅ Decided (2026-11-24): **plain text in v1**, Markdown rendering later. ✅ Rendering added in v0.6.0 (2026-11-25); storage is still plain text.
 5. ~~**Subtask depth.**~~ ✅ Decided (2026-11-24): **max 3 levels.** Enforced in the core (`MAX_DEPTH`).
 6. ~~**Calendar push scope.**~~ ✅ Decided (2026-11-24): **push all-day tasks too; completed tasks stay on Google, marked with a ✓.**
 7. ~~**Work list kanban columns.**~~ ✅ Decided (2026-11-24): **drop them** on import.
