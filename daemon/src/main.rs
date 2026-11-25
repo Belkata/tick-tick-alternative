@@ -25,11 +25,11 @@ mod sync;
 
 use std::sync::Arc;
 
-use sync::SyncService;
 use tt_api::server::{self, Db, SyncControl};
 use tt_api::{Request, TzName};
 use tt_core::{ReminderFire, Task, local_tz};
 use tt_sync::Relays;
+use tt_sync::service::SyncService;
 
 /// How often the tray re-reads the Inbox count and the reminder loop checks the schedule.
 const TICK: Duration = Duration::from_secs(5);
@@ -377,7 +377,9 @@ async fn main() -> Result<()> {
     };
     tokio::spawn({
         let db = db.clone();
-        let control = sync.clone().map(|s| s as Arc<dyn SyncControl>);
+        let control = sync
+            .clone()
+            .map(|s| Arc::new(sync::Control(s)) as Arc<dyn SyncControl>);
         async move {
             if let Err(e) = server::serve(listener, db, control).await {
                 eprintln!("tt-daemon: socket: {e:#}");
@@ -421,27 +423,12 @@ async fn main() -> Result<()> {
         });
     }
 
-    // Auto-sync: shortly after startup, every PERIOD, and a few seconds after local edits
+    // Auto-sync: shortly after startup, every 90 s, and a few seconds after local edits
     // (the sync's own writes arrive as outside commits, which don't count as edits).
-    if let Some(svc) = sync.clone() {
-        let (mut writes, tx) = (db.subscribe_writes(), tx.clone());
-        tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(5)).await;
-            let mut period = tokio::time::interval(sync::PERIOD);
-            loop {
-                tokio::select! {
-                    _ = period.tick() => {}
-                    r = writes.recv() => {
-                        if matches!(r, Err(tokio::sync::broadcast::error::RecvError::Closed)) {
-                            break;
-                        }
-                        tokio::time::sleep(sync::AFTER_EDIT).await;
-                        while writes.try_recv().is_ok() {}
-                    }
-                }
-                svc.round().await;
-                let _ = tx.send(Cmd::SyncStatus);
-            }
+    if let Some(svc) = &sync {
+        let tx = tx.clone();
+        svc.spawn_auto(db.subscribe_writes(), move || {
+            let _ = tx.send(Cmd::SyncStatus);
         });
     }
 

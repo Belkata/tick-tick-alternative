@@ -5,6 +5,7 @@
 //!   still served for the app's spike Sync tab and `tt sync spike-pull`.
 
 pub mod replicate;
+pub mod service;
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
