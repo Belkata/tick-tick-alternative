@@ -445,6 +445,24 @@ async fn main() -> Result<()> {
         });
     }
 
+    // Op-log compaction (plan/16): a minute after startup, then daily.
+    tokio::spawn({
+        let db = db.clone();
+        async move {
+            tokio::time::sleep(Duration::from_secs(60)).await;
+            loop {
+                match db.get::<usize>(Request::Compact {}).await {
+                    Ok(0) => {}
+                    Ok(n) => {
+                        eprintln!("tt-daemon: compacted the op log: dropped {n} superseded ops")
+                    }
+                    Err(e) => eprintln!("tt-daemon: compaction: {e:#}"),
+                }
+                tokio::time::sleep(Duration::from_secs(24 * 3600)).await;
+            }
+        }
+    });
+
     // Refresh the tray on every change, wherever it came from (app, `tt`, an outside write).
     let mut changes = db.subscribe();
     let tz = TzName(local_tz().name().to_string());

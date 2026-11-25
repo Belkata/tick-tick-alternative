@@ -284,6 +284,8 @@ enum SyncCommand {
     Peers,
     /// Unpair a device (by name or the start of its node id).
     Forget { device: String },
+    /// Drop superseded ops from the op log (tt-daemon also does this daily).
+    Compact,
     /// Serve paired devices (and Spike 2 pulls) until Ctrl-C.
     Serve {
         /// Don't use n0's relays (direct addresses only).
@@ -985,6 +987,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
             }
             node.shutdown().await;
         }
+        SyncCommand::Compact => compact(&Api::local(tt_core::Store::open(&db)?))?,
         SyncCommand::Peers => {
             let store = tt_core::Store::open(&db)?;
             let (now, tz) = (now_ms(), local_tz());
@@ -1136,11 +1139,22 @@ fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
                 _ => bail!("'{who}' matches several devices; use more of the node id"),
             }
         }
+        SyncCommand::Compact => compact(&api)?,
         SyncCommand::Serve { .. } => bail!("tt-daemon already serves sync for this database"),
         SyncCommand::Pull { .. } => bail!(
             "stop tt-daemon to use the Spike 2 pull (it holds this device's key): systemctl --user stop tick-alt"
         ),
     }
+    Ok(())
+}
+
+fn compact(api: &Api) -> Result<()> {
+    let before = api.op_count()?;
+    let dropped = api.compact()?;
+    println!(
+        "Dropped {dropped} superseded ops; {} remain.",
+        before - dropped
+    );
     Ok(())
 }
 

@@ -261,6 +261,9 @@ api! {
     // ----- Paired devices (local to this device; sync itself is SyncPair/SyncNow…) -----
     read Peers peers() -> Vec<Peer> => |s| s.peers();
     write RemovePeer remove_peer(node_id: String) -> bool => |s| s.remove_peer(&node_id);
+    // Op-log maintenance; changes no visible state, so it isn't announced as a write.
+    read Compact compact() -> usize => |s| s.compact();
+    read OpCount op_count() -> usize => |s| s.op_count();
 
     // ----- Views (what the app shows) -----
     read Sidebar sidebar(now_ms: i64, tz: TzName) -> Sidebar => |s| views::sidebar(s, now_ms, tz.tz());
