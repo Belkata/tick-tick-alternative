@@ -1,7 +1,14 @@
 package dev.tickalt.tick_alt
 
+import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import dev.tickalt.tick_alt.reminders.Reminders
+import dev.tickalt.tick_alt.sync.SyncWorker
+import java.util.TimeZone
 import dev.tickalt.tick_alt.widget.TaskListWidget
 import dev.tickalt.tick_alt.widget.TaskListWidgetReceiver
 import io.flutter.embedding.android.FlutterActivity
@@ -23,6 +30,25 @@ class MainActivity : FlutterActivity() {
                     TaskListWidget.refreshAll(applicationContext)
                     result.success(null)
                 }
+                // The app changed tasks: reschedule reminder alarms.
+                "reminders" -> {
+                    Reminders.schedule(applicationContext)
+                    result.success(null)
+                }
+                // The core needs the IANA zone (Android has no /etc/localtime).
+                "timeZone" -> result.success(TimeZone.getDefault().id)
+                // What paired devices call this phone; where its sync key lives.
+                "deviceName" -> result.success(SyncWorker.deviceName())
+                "keyPath" -> result.success(SyncWorker.keyPath(applicationContext))
+                // Ask once for notifications (Android 13+), for reminders.
+                "askNotifications" -> {
+                    if (Build.VERSION.SDK_INT >= 33 &&
+                        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+                    }
+                    result.success(null)
+                }
                 // Ask the launcher to place the widget; it shows its own confirmation.
                 "pin" -> {
                     val manager = AppWidgetManager.getInstance(this)
@@ -35,6 +61,12 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Reminders.ensureChannel(this)
+        SyncWorker.enqueue(applicationContext)
     }
 
     override fun onDestroy() {
