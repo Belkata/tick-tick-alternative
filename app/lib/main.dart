@@ -8,7 +8,7 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
-import 'calendar/spike_calendar.dart';
+import 'calendar/calendar_page.dart';
 import 'desk/devices.dart';
 import 'desk/shell.dart';
 import 'desk/theme.dart';
@@ -19,7 +19,7 @@ import 'sync/sync_page.dart';
 import 'widget_bridge.dart';
 
 /// Tick Alt: the M2 three-pane shell (Soft style with Material tag chips, plan/09)
-/// over the Rust core. The calendar is still an M0 spike; desktop sync lives in tt-daemon.
+/// over the Rust core, with the M5 calendar (plan/18). Desktop sync lives in tt-daemon.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
@@ -73,11 +73,12 @@ class TickAltApp extends StatelessWidget {
           ShellPage(
             'Calendar',
             Icons.calendar_month_outlined,
-            (_) => const SpikeCalendarPage(),
+            (_, c) => CalendarPage(c: c),
+            railSidebar: true,
           ),
           if (peer case final p?)
-            ShellPage('Sync (spike)', Icons.sync, (_) => SyncPage(peer: p)),
-          ShellPage('Devices', Icons.devices, (_) => DevicesPage(db: db)),
+            ShellPage('Sync (spike)', Icons.sync, (_, _) => SyncPage(peer: p)),
+          ShellPage('Devices', Icons.devices, (_, _) => DevicesPage(db: db)),
         ],
       ),
     );
