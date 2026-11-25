@@ -75,6 +75,7 @@ class TickAltApp extends StatelessWidget {
             Icons.calendar_month_outlined,
             (_, c) => CalendarPage(c: c),
             railSidebar: true,
+            ownMenuButton: true,
           ),
           if (peer case final p?)
             ShellPage('Sync (spike)', Icons.sync, (_, _) => SyncPage(peer: p)),

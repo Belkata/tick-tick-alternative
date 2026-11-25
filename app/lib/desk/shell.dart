@@ -17,6 +17,7 @@ class ShellPage {
     this.icon,
     this.builder, {
     this.railSidebar = false,
+    this.ownMenuButton = false,
   });
 
   final String label;
@@ -28,6 +29,10 @@ class ShellPage {
   /// On wide windows, fold the sidebar to an icon rail while this page is open, so the
   /// page gets the room (the calendar's seven columns, plan/18).
   final bool railSidebar;
+
+  /// On narrow windows and phones the page draws its own menu button (it opens the
+  /// drawer with `Scaffold.of(context).openDrawer()`), instead of the shell adding a bar.
+  final bool ownMenuButton;
 }
 
 /// M2 window: sidebar | task list | detail on wide windows (plan/08), and a single
@@ -386,7 +391,9 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
                 child: SafeArea(child: _sidebar(inDrawer: true)),
               ),
               body: SafeArea(
-                child: page != null
+                child: page != null && widget.pages[_page!].ownMenuButton
+                    ? page
+                    : page != null
                     // A bar for the menu button, so it never covers the page's own title.
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
