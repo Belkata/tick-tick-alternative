@@ -24,108 +24,70 @@ A personal, local-first TickTick replacement. The pieces:
 
 The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manrope headings) **with Material outlined tag chips**. The mockups are in `plan/ui-styles/styles.html`.
 
-## Where things stand (2026-11-24, evening, on the Arch laptop)
+## Where things stand (handoff, 2026-11-25, Arch laptop)
 
-M0 (decisions and spikes) is mostly done:
-- ✅ Stack and UI style chosen; library versions confirmed.
-- ✅ **Spike 1** passes on the Android emulator: Flutter calls the Rust core through `flutter_rust_bridge`. ⏸ The macOS check needs Xcode: not installed, and the user's Apple account got locked trying the App Store. When it's unlocked, download the `.xip` from developer.apple.com rather than using the App Store (it's a work Mac). ✅ Hyprland: native Wayland (`xwayland: 0`), and the Inbox integration test passes with `-d linux`.
-- ✅ **Spike 3**: the Glance Inbox widget completes tasks through UniFFI. Refresh works in both directions (app → widget, widget → app). Verified with a release build.
-- ✅ **Spike 5**: the calendar uses `kalender` 0.34. Drag, resize and dropping from the unscheduled strip all work, with 6 widget tests.
-- 🟡 **Spike 2**: iroh 1.5 works emulator ↔ Mac in both directions (`tt sync serve/pull`, the app's Sync tab), going direct after hole punching. ⚠️ On Android the relay connects in only about 1 of 4 launches (not yet diagnosed). ⏸ Real phone on mobile data.
-- ✅ **Spike 4** on Hyprland: the tray and reminders live in the Rust daemon (`daemon/`, ksni + notify-rust), not in Flutter. It shows in waybar, and Done/Snooze work through dunst. dunst needs a working `dmenu =` picker (set to rofi on the Arch laptop). ⏸ macOS needs Xcode.
+**Done** (details in the logs named in the table above):
+- **M0**: stack and UI style decided; Spikes 1, 3, 4, 5 pass. ⏸ macOS checks need Xcode (the user's Apple account was locked; download the `.xip` from developer.apple.com, not the App Store; it's a work Mac).
+- **M1**: the core (op-log, HLC, filters, recurrence, reminders) and the full `tt` CLI. ⏸ The user hasn't yet "managed tasks from the terminal for real" (the M1 exit).
+- **M2** (desktop, `plan/15`): the three-pane Flutter app, `tt-daemon` owning the DB over `$XDG_RUNTIME_DIR/tick-alt.sock`, the systemd user unit, the filter builder and edit dialogs, the PKGBUILD (`packaging/arch`, test-built, not installed). ⏸ The DMG waits for the Mac.
+- **M3** (sync, `plan/16`): protocol 2 over iroh (tt2 pairing tickets, trusted peers, trust sharing, removal spreading), compaction (schema **v5**), the network simulation test. The daemon runs the sync node with auto-sync, tray status and Sync now.
+- **M4** (Android, `plan/17`): in-process phone sync (`app/rust/src/phone.rs` + shared `tt_sync::service::SyncService`), QR pairing, AlarmManager reminders (Done / Snooze 10 min / 1 h), WorkManager background sync (15 min, plus expedited after outside edits), a share target, the CI release workflow. Tested on the emulator.
+- **Released**: pre-release **v0.2.0** on GitHub (`tick-alt-0.2.0-arm64.apk`, signed with this laptop's **debug** key). Its CI run fails until release-key secrets exist; that's expected.
 
-M1 (core and CLI) is done on the Mac:
-- The schema v2 migrations, op-log, HLC, model, filters, recurrence, reminders and the full `tt` CLI are in place.
-- 46 unit tests plus convergence property tests.
-- ✅ The Android app is rebuilt on the new core and checked on the emulator: the spike DB migrated, add/complete work, the widget works. Published as pre-release **v0.1.0** on GitHub for the user's phone.
-- ✅ On Arch, `cargo test --workspace` passes (53 tests), clippy is clean and every `tt` command works. ⏸ The user still needs to try `tt` for real to close the M1 exit.
-- Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`). It's public, so never commit secrets, tokens, `.key` files or personal data.
+**Running on this laptop now:**
+- The `tick-alt` user service runs this checkout's `target/release/tt-daemon` on `~/.local/share/tick-alt/tt.db` (schema v5, sync node `c382b28c2f…`, UDP 41824). **After rebuilding the daemon: `systemctl --user restart tick-alt`.**
+- Desktop app, `tt` and daemon were built from `6e11fb9`. The desktop entry is installed (rofi lists "Tick Alt").
+- **The user's phone** (Xiaomi 22101316G) runs v0.2.0 and is **paired with this daemon** (2026-11-25 09:09); tasks sync both ways. A reminder round-trip (09:14 "Reminder test from the laptop": Done on the phone → completed on the laptop) was in progress when this was written; check `tt completed`.
+- Toolchain: Rust 1.100, Flutter 3.50.1 (`~/flutter`), clang, `flutter_rust_bridge_codegen` 2.13.0 (+cargo-expand), Android Studio 2026.2.2 (JBR = JDK 25), SDK in `~/Android/Sdk` (platform 36, build-tools 37.0.0, NDK 28.2.13676358), emulator `tt_pixel` (headless: `emulator -avd tt_pixel -no-window -gpu swiftshader_indirect`).
 
-M2 (desktop app) has started; see `plan/15 M2 Desktop Log.md`:
-- ✅ Slice 1: the three-pane UI (Soft theme, sidebar, task cards, detail editing, keyboard). It runs on the in-process bridge, whose API has the shape the socket will copy.
-- ✅ Slice 2: the socket API. `tt-daemon` owns the DB and serves `$XDG_RUNTIME_DIR/tick-alt.sock` (JSON lines, change events, outside writes noticed via `data_version`). The app (`TaskDb.connectOrOpen`) and `tt` go through it when it serves their DB, and open the file directly otherwise.
-- On desktop the app shares `tt`'s DB (`~/.local/share/tick-alt/tt.db`).
-- ⚠️ Not yet built for Android since these changes.
+**Next** (ask the user which; anything in `plan/11` is theirs to decide):
+1. **Finish the phone checks**: did the reminder's Done reach the laptop? Does scanning the pairing QR work on the real phone camera? If not, make tickets compact (e.g. `tt3` + base64url with short field names; keep decoding `tt2`), with tests.
+2. **Visual checks on desktop** (only integration tests have run these): the Devices page, the tray tooltip and Sync now, the filter builder, the right-click edit dialogs, and the start, repeat and reminder fields.
+3. **Needs the user**: a release key plus the 4 CI secrets (`plan/07` "Release signing"; switching the phone to it costs one uninstall), a LICENSE file (copyright name), installing the PKGBUILD (sudo), and whether to keep the Mac's debug keystore at all (the phone now uses this laptop's).
+4. **Then pick a milestone**: widget polish (choose a list or filter, scrolling, **+** quick add, midnight refresh), **M5** (calendar plus Google: Week/Day/Month, drag to schedule, OAuth, events in and tasks out), **M6** (TickTick CSV import, then switch over).
+5. Smaller open items: convergent resolution of concurrent subtask cycles (`plan/14`), mobile-data sync on the real phone, the Android relay flakiness from Spike 2 (not seen on the emulator), Flutter's "migrate to built-in Kotlin" warning.
 
-- ✅ Slice 3: `daemon/tick-alt.service` (systemd user unit, restart on failure). Clients survive daemon restarts: they reconnect, or fall back to the file and switch back later. The release app is single instance, and the tray's Open raises it. Installed and enabled on the Arch laptop (2026-11-24) with `scripts/install-user-service.sh`: it runs this checkout's `target/release/tt-daemon` on the real DB. **After rebuilding the daemon, restart it with `systemctl --user restart tick-alt`.**
+Repo: **public** at https://github.com/Belkata/tick-tick-alternative (`origin`, pushed through `6e11fb9`). Never commit secrets, tokens, `.key`/`.jks` files, `key.properties` or personal data.
 
-- ✅ Slice 4: the visual filter builder (all/any/not, nested groups, live count), right-click edit for lists, tags and filters (rename, colour, icon, delete), and start, repeat and reminder editing in the detail pane.
-
-- ✅ Slice 5: `packaging/arch/PKGBUILD` (builds from GitHub; test-built, 33 MB; not installed).
-- M3 slice 1 ✅: sync protocol, pairing and `tt sync` (see `plan/16 M3 Sync Log.md`). Schema v3.
-- M3 slice 2 ✅: `tt-daemon` runs the sync node (auto sync, tray status, Sync now). `tt sync` and the app's **Devices** page go through it; desktop no longer starts the spike `SyncPeer`. The installed service runs it on the real DB (no peers yet; UDP 41824).
-- M3 slice 3 ✅: network simulation test; trust sharing with removal spreading (sync protocol 2, schema v4); op-log compaction (schema v5; daemon daily, `tt sync compact`). The real DB is at schema v5: every binary that opens it must be this build.
-
-- M4 (on branch `m4-android`, see `plan/17 M4 Android Log.md`): phone sync in-process (`app/rust/src/phone.rs`, shared `tt_sync::service::SyncService`), QR pairing, AlarmManager reminders with Done/Snooze, WorkManager background sync, share target, a CI release workflow. Tested on the `tt_pixel` emulator against a scratch daemon. `dist/tick-alt-v0.2.0-arm64.apk` is built for the user's phone (debug key: uninstall v0.1.0 first). The Android SDK is now on the laptop (`~/Android/Sdk`, Android Studio's JBR).
-
-**Next:** have the user check the Devices page and the tray line, install v0.2.0 on the phone and pair it, push the local commits (with their OK), then pair a real second device. Remaining M3: QR pairing (M4) and convergent resolution of subtask cycles. Then ask the user: the Android catch-up (needs the SDK on this laptop, plus M4) or M5 (calendar and Google). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
-
-## Continuing on the Arch laptop (handoff 2026-11-24)
-
-The dev Mac's per-machine state does **not** come along: Claude's memory, the repo-local git config, the Android debug keystore and the toolchain. Set these up first:
-
-1. **Clone and set your identity.** The commit email is per-repo, and the user's global email may be a work one.
-   ```bash
-   git clone https://github.com/Belkata/tick-tick-alternative.git
-   ```
-   ```bash
-   git -C tick-tick-alternative config user.email belkata.okfo@gmail.com
-   ```
-   ```bash
-   git -C tick-tick-alternative config user.name "Boris Belev"
-   ```
-   Push with the `Belkata` GitHub account (`gh auth login`). Ask the user before installing anything (downloads need their OK).
-2. **Toolchain.** Match the Mac's versions where it matters:
-   - Rust 1.100 (`rustup`).
-   - Flutter 3.50.1 / Dart 3.14.
-   - `flutter_rust_bridge_codegen` 2.13.0 (`cargo install --locked`).
-   - Flutter's Linux build needs `clang cmake ninja pkgconf gtk3` (pacman).
-   - Android work also needs Android Studio, SDK platform 36 and NDK 28.2.13676358 (see plan/13).
-   - Then `source scripts/env.sh`; it now handles Linux paths too.
-3. **Check the core:**
-   ```bash
-   cargo test --workspace
-   ```
-   ```bash
-   cargo build --release -p tt
-   ```
-   - The M1 exit is "I can manage tasks from the terminal on Arch", so let the user try `tt` for real (`tt --help`).
-   - `$TT_TZ` overrides the zone if `/etc/localtime` isn't a symlink.
-4. **Spike 1 on Hyprland:**
-   ```bash
-   cd app && flutter build linux
-   ```
-   Run it and confirm it's **native Wayland** (no XWayland: e.g. `hyprctl clients` shows `xwayland: 0`). Log the result in plan/13 and tick the roadmap.
-5. **Spike 4 on Hyprland:** a tray icon in waybar (StatusNotifierItem) and a desktop notification (mako/dunst), with Done and Snooze actions. Compare Flutter `tray_manager` with a Rust tray in the daemon (plan/08).
-6. **Android APKs from Arch:** a phone only accepts updates signed with the same key, and v0.1.0 was signed with the Mac's debug key (`~/.android/debug.keystore`).
-   - To keep updating the installed app, have the user copy that file to the Arch laptop's `~/.android/`.
-   - **Never commit it**: the repo is public.
-   - Without it, the phone needs an uninstall (local data is lost) before installing an Arch-built APK.
+## Setting up another machine
+Per-machine state doesn't travel: Claude's memory, the repo-local git identity, keystores, the toolchain.
+- Clone, then `git config user.email belkata.okfo@gmail.com` and `git config user.name "Boris Belev"` in the repo (the global email may be a work one). Push as the `Belkata` gh account. Ask before installing anything.
+- Toolchain as listed above, then `source scripts/env.sh` (handles macOS and Linux paths).
+- A phone accepts updates only when they're signed with the same key as the installed app. v0.2.0 is signed with **this laptop's** debug key (`~/.android/debug.keystore`). Building updates elsewhere needs that file, or better the release key (`plan/07`). **Never commit keystores.**
 
 ## Repo layout
 
 ```
 core/                 tt-core: domain + SQLite. Every write is an op (oplog.rs, hlc.rs) applied with per-field LWW.
-                      store (migrations/, write txn), task, organize (lists/tags), checklist, reminder,
-                      recur (rrule), filter (JSON AST -> SQL), dates. tests/convergence.rs = proptest
-api/                  tt-api: views (sidebar/rows/detail), request protocol (proto.rs table → Request + handle + Api), socket server (feature server) and client
-daemon/               tt-daemon: owns the desktop DB, serves the socket; tray (ksni) + reminder notifications (notify-rust) with Done/Snooze
-sync/                 tt-sync: iroh node. replicate.rs = M3 sync (pairing tt2 tickets, trusted peers, op streaming); Spike 2 pull still served
-cli/                  `tt` CLI (`tt --help`). Short ids = LAST 8 hex chars of the UUIDv7. $TT_DB, $TT_TZ
-app/                  Flutter app (android, linux, macos). lib/desk/ = M2 shell (theme, controller, sidebar, task_list, detail, shell)
+                      store (migrations/ v1–v5), task, organize, checklist, reminder, recur, filter, dates,
+                      replica (version vectors, peers, trust, compaction). tests/: convergence + network_sim (proptest)
+api/                  tt-api: views (sidebar/rows/detail), request protocol (proto.rs table → Request + handle + Api),
+                      socket server (feature server; SyncControl hook) and client (reconnect/fallback)
+sync/                 tt-sync: iroh node. replicate.rs = sync protocol 2 (tt2 pairing, trust, op streaming);
+                      service.rs = SyncService (rounds, status, auto-sync) shared by daemon and phone
+daemon/               tt-daemon: owns the desktop DB, serves the socket, runs SyncService; tray (ksni), reminders (notify-rust);
+                      tick-alt.service = systemd user unit
+cli/                  `tt` CLI (`tt --help`, `tt sync …`). Short ids = LAST 8 hex chars of the UUIDv7. $TT_DB, $TT_TZ, $TT_SOCKET
+app/                  Flutter app (android, linux, macos)
+  lib/main.dart       startup: desktop → TaskDb.connectOrOpen (daemon); Android → TaskDb.open + startPhoneSync
+  lib/desk/           the shell: theme, controller, sidebar, task_list, detail, filter_builder(+filter_rule), style_dialog, devices
+  lib/widget_bridge.dart   Android channel: widget refresh, reminders, zone, device name, share target
+  rust/               tt_bridge: Dart API (src/api/, frb), Kotlin API (src/kotlin.rs, UniFFI), phone.rs (in-process sync), changes.rs
   linux/packaging/    dev.tickalt.tick_alt.desktop + .svg icon (named after the Wayland app id)
-  rust/               tt_bridge crate: Dart API (src/api/, flutter_rust_bridge) + Kotlin API (src/kotlin.rs, UniFFI)
-  lib/                main.dart (Inbox), calendar/spike_calendar.dart, widget_bridge.dart
   android/app/src/main/kotlin/dev/tickalt/
     core/tt_bridge.kt          GENERATED UniFFI bindings (scripts/gen-kotlin-bindings.sh)
-    tick_alt/widget/           Glance widget, TtCore (DB path), CompleteTaskAction
-  test/                       calendar widget tests;  integration_test/  on-device Inbox test
+    tick_alt/                  MainActivity (channels, share target), widget/ (Glance), reminders/ (alarms, Done/Snooze),
+                               sync/SyncWorker (WorkManager)
+  test/               calendar + filter-rule tests;  integration_test/  shell tests (run with -d linux)
+packaging/arch/       PKGBUILD (+ .SRCINFO)
+.github/workflows/    android-release.yml (APK on v* tags; needs release-key secrets)
 tools/uniffi-bindgen/ uniffi-bindgen pinned to the library's UniFFI version
-scripts/              env.sh (toolchain env), gen-kotlin-bindings.sh, install-user-service.sh (systemd unit), install-desktop-entry.sh (launcher entry + icon)
+scripts/              env.sh, gen-kotlin-bindings.sh, install-user-service.sh, install-desktop-entry.sh
+dist/                 built APKs for the user (git-ignored)
 plan/                 Obsidian plan notes + attachments/
 ```
 
-There is one native library, `libtt_bridge.so`, used by both Flutter and the widget. Both open `Context.filesDir/tt.db`; SQLite's WAL mode handles the two writers.
+There is one native library, `libtt_bridge.so`, used by Flutter, the widget and the background job. On Android they all open `Context.filesDir/tt.db` (WAL handles the writers) and share one process-wide sync node. On desktop everything goes through `tt-daemon` when it runs.
 
 ## Build and test
 

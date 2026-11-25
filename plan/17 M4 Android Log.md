@@ -57,7 +57,10 @@ Back to [[00 Overview]] · [[10 Roadmap]] · [[07 Android App & Widget]] · [[16
 
 ## The phone build for the user
 - `dist/tick-alt-v0.2.0-arm64.apk` (git-ignored), **79.9 MB**, up from 35 MB in v0.1.0, mostly the camera and barcode libraries behind `mobile_scanner`. Signed with this laptop's debug key: uninstall v0.1.0 first (its local data goes; pair with the laptop and sync brings the laptop's tasks).
-- Not published as a GitHub release yet (needs the user's OK).
+- Published as GitHub pre-release **v0.2.0** (`tick-alt-0.2.0-arm64.apk`, SHA-256 `7e56bb11…118e09d`). Its CI run fails at the signing-secrets check until the release key exists (expected).
+
+## On the user's phone (2026-11-25)
+- v0.2.0 installed on a **Xiaomi 22101316G** and paired with the laptop's tt-daemon at 09:09:22 (Devices → Join on the phone). The laptop sent 26 ops (its tasks); 22 s later the phone sent 2 back (a task added on the phone). Periodic syncs follow every 90 s.
 
 ## Open
 - **Scanning the QR from a real phone** isn't tested (the emulator's camera can't). The code is dense: the ticket is hex-encoded JSON, about 690 chars. If scanning struggles, switch the ticket to base64url and shorter field names (about 2× smaller).
