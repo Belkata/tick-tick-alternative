@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-/// Talks to the Android home-screen widget (see MainActivity.kt).
+/// Talks to the Android side (see MainActivity.kt): the home-screen widget, reminder
+/// alarms, and the device facts the core needs.
 /// Does nothing on other platforms or in tests.
 class WidgetBridge {
   static const _channel = MethodChannel('tick_alt/widget');
@@ -18,6 +19,33 @@ class WidgetBridge {
       await _channel.invokeMethod<void>('refresh');
     } on MissingPluginException {
       // Running without the Android host (e.g. an integration test harness).
+    }
+  }
+
+  /// The app changed tasks: redraw widgets and reschedule reminder alarms.
+  static Future<void> changed() async {
+    await refresh();
+    await _call<void>('reminders');
+  }
+
+  /// The device's IANA zone (`Europe/Sofia`); null off Android.
+  static Future<String?> timeZone() => _call<String>('timeZone');
+
+  /// What paired devices call this phone (`Google Pixel 8`).
+  static Future<String?> deviceName() => _call<String>('deviceName');
+
+  /// Where the sync node's key lives (next to the database).
+  static Future<String?> keyPath() => _call<String>('keyPath');
+
+  /// Ask for notification permission once (Android 13+), for reminders.
+  static Future<void> askNotifications() => _call<void>('askNotifications');
+
+  static Future<T?> _call<T>(String method) async {
+    if (!supported) return null;
+    try {
+      return await _channel.invokeMethod<T>(method);
+    } on MissingPluginException {
+      return null;
     }
   }
 

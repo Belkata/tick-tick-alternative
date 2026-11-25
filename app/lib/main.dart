@@ -1,3 +1,5 @@
+import 'dart:async';
+
 // kalender is built on flutter/material; material_ui is a separate copy that it can't see.
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
@@ -14,31 +16,41 @@ import 'src/rust/api/sync.dart';
 import 'src/rust/api/tasks.dart';
 import 'src/rust/frb_generated.dart';
 import 'sync/sync_page.dart';
+import 'widget_bridge.dart';
 
 /// Tick Alt: the M2 three-pane shell (Soft style with Material tag chips, plan/09)
 /// over the Rust core. The calendar is still an M0 spike; desktop sync lives in tt-daemon.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
+  final desktop = Platform.isLinux || Platform.isMacOS;
+  if (!desktop) {
+    // Android has no /etc/localtime: tell the core the zone before anything reads it.
+    final tz = await WidgetBridge.timeZone();
+    if (tz != null) setTimeZone(name: tz);
+  }
   final dir = await getApplicationSupportDirectory();
   // Desktop shares tt's database; Android keeps it in the app's files dir (the widget reads it there).
-  final dbPath = Platform.isLinux || Platform.isMacOS
-      ? desktopDbPath()
-      : '${dir.path}/tt.db';
+  final dbPath = desktop ? desktopDbPath() : '${dir.path}/tt.db';
   // On desktop, go through tt-daemon when it serves this database (plan/15).
-  final db = Platform.isLinux || Platform.isMacOS
+  final db = desktop
       ? await TaskDb.connectOrOpen(path: dbPath)
       : await TaskDb.open(path: dbPath);
-  // Desktop: sync runs in tt-daemon, which owns the device key (Devices page, plan/16).
-  // Android: the Spike 2 node until M4; bound in the background so the first frame isn't held up.
-  final peer = Platform.isLinux || Platform.isMacOS
-      ? null
-      : SyncPeer.start(
-          dbPath: dbPath,
-          keyPath: dbPath.replaceFirst(RegExp(r'\.db$'), '.key'),
-          device: '${Platform.operatingSystem}-${Platform.localHostname}',
-        );
-  runApp(TickAltApp(db: db, peer: peer));
+  runApp(TickAltApp(db: db));
+  if (!desktop) {
+    // Android syncs in-process (no daemon), after the first frame so startup isn't held up.
+    final key = await WidgetBridge.keyPath();
+    final name = await WidgetBridge.deviceName();
+    if (key != null) {
+      unawaited(
+        db
+            .startPhoneSync(keyPath: key, device: name ?? 'phone')
+            .catchError((Object e) => debugPrint('sync: $e')),
+      );
+    }
+    unawaited(WidgetBridge.askNotifications());
+    unawaited(WidgetBridge.changed());
+  }
 }
 
 class TickAltApp extends StatelessWidget {
@@ -46,7 +58,7 @@ class TickAltApp extends StatelessWidget {
 
   final TaskDb db;
 
-  /// The Spike 2 sync node (Android); `null` on desktop, where tt-daemon syncs.
+  /// The Spike 2 sync node, for its diagnostics page (tests only; real sync is on Devices).
   final Future<SyncPeer>? peer;
 
   @override
@@ -64,9 +76,8 @@ class TickAltApp extends StatelessWidget {
             (_) => const SpikeCalendarPage(),
           ),
           if (peer case final p?)
-            ShellPage('Sync (spike)', Icons.sync, (_) => SyncPage(peer: p))
-          else
-            ShellPage('Devices', Icons.devices, (_) => DevicesPage(db: db)),
+            ShellPage('Sync (spike)', Icons.sync, (_) => SyncPage(peer: p)),
+          ShellPage('Devices', Icons.devices, (_) => DevicesPage(db: db)),
         ],
       ),
     );

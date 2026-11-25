@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../src/rust/api/tasks.dart';
 import 'filter_builder.dart' show confirm;
@@ -47,8 +50,14 @@ class _DevicesPageState extends State<DevicesPage> {
   }
 
   Future<void> _load() async {
-    if (!db.isRemote()) {
+    if (!db.syncAvailable()) {
       if (mounted) setState(() => _status = null);
+      // The phone's node starts just after launch: look again shortly.
+      if (Platform.isAndroid) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) _load();
+        });
+      }
       return;
     }
     try {
@@ -97,8 +106,21 @@ class _DevicesPageState extends State<DevicesPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'On the other device, open Devices → Join and paste this ticket, '
-                'or run "tt sync join <ticket>". It works once, for 5 minutes.',
+                'On the other device, open Devices → Join and scan this code or paste '
+                'the ticket, or run "tt sync join <ticket>". It works once, for 5 minutes.',
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(8),
+                  child: QrImageView(
+                    key: const Key('pair-qr'),
+                    data: ticket,
+                    size: 220,
+                    errorCorrectionLevel: QrErrorCorrectLevel.L,
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               Container(
@@ -143,14 +165,46 @@ class _DevicesPageState extends State<DevicesPage> {
   });
 
   Future<void> _join() async {
-    final ticket = await askText(
+    String? ticket;
+    if (Platform.isAndroid) {
+      // The phone scans the code the other device shows; pasting stays possible.
+      final how = await showModalBottomSheet<String>(
+        context: context,
+        builder: (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.qr_code_scanner),
+                title: const Text('Scan QR code'),
+                onTap: () => Navigator.pop(ctx, 'scan'),
+              ),
+              ListTile(
+                key: const Key('join-paste'),
+                leading: const Icon(Icons.content_paste),
+                title: const Text('Paste ticket'),
+                onTap: () => Navigator.pop(ctx, 'paste'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (!mounted || how == null) return;
+      if (how == 'scan') {
+        ticket = await Navigator.of(context)
+            .push<String>(MaterialPageRoute(builder: (_) => const _ScanPage()));
+        if (!mounted) return;
+      }
+    }
+    ticket ??= await askText(
       context,
       title: 'Join a device',
       hint: 'Paste the tt2… ticket',
     );
-    if (ticket == null || ticket.trim().isEmpty) return;
+    final t = ticket;
+    if (t == null || t.trim().isEmpty) return;
     await _run(() async {
-      final o = await db.syncJoin(ticket: ticket);
+      final o = await db.syncJoin(ticket: t);
       _snack(
         'Paired with ${o.peerName}: received ${o.received}, sent ${o.sent}',
       );
@@ -192,8 +246,10 @@ class _DevicesPageState extends State<DevicesPage> {
         _Card(
           child: Text(
             _error ??
-                'Sync runs in tt-daemon, which isn\'t running for this database.\n'
-                    'Start it with: systemctl --user start tick-alt',
+                (Platform.isAndroid
+                    ? 'Starting sync…'
+                    : 'Sync runs in tt-daemon, which isn\'t running for this database.\n'
+                          'Start it with: systemctl --user start tick-alt'),
             style: manrope(13.5, FontWeight.w500, color: s.mute),
           ),
         ),
@@ -344,3 +400,35 @@ String _ago(int ms) {
 String _clean(Object e) => '$e'
     .replaceFirst(RegExp(r'^(AnyhowException|Exception)\(?'), '')
     .replaceFirst(RegExp(r'\)$'), '');
+
+/// Camera view that returns the first `tt2…` pairing ticket it sees.
+class _ScanPage extends StatefulWidget {
+  const _ScanPage();
+
+  @override
+  State<_ScanPage> createState() => _ScanPageState();
+}
+
+class _ScanPageState extends State<_ScanPage> {
+  bool _done = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Scan the pairing code')),
+      body: MobileScanner(
+        onDetect: (capture) {
+          if (_done) return;
+          for (final code in capture.barcodes) {
+            final v = code.rawValue;
+            if (v != null && v.startsWith('tt2')) {
+              _done = true;
+              Navigator.of(context).pop(v);
+              return;
+            }
+          }
+        },
+      ),
+    );
+  }
+}

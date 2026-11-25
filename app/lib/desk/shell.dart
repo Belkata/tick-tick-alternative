@@ -75,7 +75,7 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
       c.error = null;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
     }
-    WidgetBridge.refresh();
+    WidgetBridge.changed();
   }
 
   bool get _typing {
