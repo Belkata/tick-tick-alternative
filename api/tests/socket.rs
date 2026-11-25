@@ -233,3 +233,38 @@ fn sync_requests_need_a_sync_node_and_peers_go_through_the_table() {
             .contains("tt-daemon")
     );
 }
+
+#[test]
+fn calendar_calls_go_through_the_socket() {
+    let dir = temp_dir("calendar");
+    let (_db, sock) = start_daemon(&dir);
+    let api = Api::remote(Client::connect(&sock).unwrap());
+    let tz: chrono_tz::Tz = "Europe/Sofia".parse().unwrap();
+    let now = 1_795_000_000_000;
+
+    let t = api.add_task("Plan the trip").unwrap();
+    api.tag_by_path(&t.id, "travel").unwrap();
+    let tag = api.find_tag("travel").unwrap().unwrap();
+    api.set_tag_style(&tag.id, Some("#aa5500"), None::<&str>)
+        .unwrap();
+    let ids = |rows: Vec<tt_api::TaskRow>| rows.into_iter().map(|r| r.id).collect::<Vec<_>>();
+    assert_eq!(
+        ids(api.unscheduled(None::<&str>, now, tz).unwrap()),
+        [t.id.as_str()]
+    );
+
+    let start = now + 3_600_000;
+    api.place_block(&t.id, start, Some(start + 90 * 60_000), false, tz)
+        .unwrap();
+    assert!(api.unscheduled(None::<&str>, now, tz).unwrap().is_empty());
+    let items = api.calendar(now, now + 86_400_000, tz).unwrap();
+    assert_eq!(items.len(), 1);
+    let item = &items[0];
+    assert_eq!((item.start_at, item.end_at), (start, start + 90 * 60_000));
+    assert_eq!(item.title, "Plan the trip");
+    assert_eq!(item.color.as_deref(), Some("#aa5500"));
+    assert!(item.movable && !item.all_day);
+
+    api.unschedule(&t.id).unwrap();
+    assert!(api.calendar(now, now + 86_400_000, tz).unwrap().is_empty());
+}

@@ -25,7 +25,8 @@ use tt_core::Store;
 pub use client::{Client, Disconnected};
 pub use proto::{Event, Hello, Request, SyncOutcome, SyncStatus, TzName};
 pub use views::{
-    ChecklistRow, NavItem, ReminderRow, Sidebar, TagChip, TaskDetail, TaskRow, TaskView, ViewKind,
+    CalendarItem, ChecklistRow, NavItem, ReminderRow, Sidebar, TagChip, TaskDetail, TaskRow,
+    TaskView, ViewKind,
 };
 
 /// Calls into the core, in-process or through the daemon.

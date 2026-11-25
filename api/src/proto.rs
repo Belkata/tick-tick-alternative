@@ -22,7 +22,7 @@ use tt_core::{
     ReminderKind, Repeat, SavedFilter, Schedule, Store, Tag, Task,
 };
 
-use crate::views::{self, Sidebar, TaskDetail, TaskRow, TaskView};
+use crate::views::{self, CalendarItem, Sidebar, TaskDetail, TaskRow, TaskView};
 
 /// A zone on the wire, by IANA name. The caller's zone decides "today", not the daemon's.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -279,6 +279,13 @@ api! {
         => |s| views::set_start(s, &id, text.as_deref(), now_ms, tz.tz());
     read RuleCount rule_count(rule: FilterRule, now_ms: i64, tz: TzName) -> u32
         => |s| views::rule_count(s, &rule, now_ms, tz.tz());
+    read Calendar calendar(from: i64, until: i64, tz: TzName) -> Vec<CalendarItem>
+        => |s| views::calendar(s, from, until, tz.tz());
+    read Unscheduled unscheduled(filter_id: Option<String>, now_ms: i64, tz: TzName) -> Vec<TaskRow>
+        => |s| views::unscheduled(s, filter_id.as_deref(), now_ms, tz.tz());
+    write PlaceBlock place_block(id: String, start_at: i64, end_at: Option<i64>, all_day: bool, tz: TzName) -> ()
+        => |s| s.place_block(&id, start_at, end_at, all_day, tz.tz());
+    write Unschedule unschedule(id: String) -> () => |s| s.unschedule(&id);
     write TagByPath tag_by_path(task_id: String, path: String) -> ()
         => |s| { let tag = s.ensure_tag_path(&path)?; s.tag_task(&task_id, &tag) };
 }

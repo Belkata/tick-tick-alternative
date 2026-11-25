@@ -108,6 +108,26 @@ pub struct ReminderRow {
     pub label: String,
 }
 
+/// One block on the calendar (see `tt_core::Block`), with what its tile shows.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CalendarItem {
+    pub task_id: String,
+    pub title: String,
+    /// Epoch ms; all-day items run from local midnight to the next one.
+    pub start_at: i64,
+    /// Exclusive.
+    pub end_at: i64,
+    pub all_day: bool,
+    pub done: bool,
+    /// The open task's current occurrence: it can be moved and resized.
+    pub movable: bool,
+    pub repeating: bool,
+    pub priority: u8,
+    /// `#rrggbb` of the first coloured tag, else the list's; none for the default accent.
+    pub color: Option<String>,
+    pub icon: Option<String>,
+}
+
 /// Everything the detail pane shows.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TaskDetail {
@@ -349,6 +369,73 @@ fn set_date(
     }
     sch.tz = (!sch.all_day).then(|| tz.name().to_string());
     s.set_schedule(id, Some(&sch))
+}
+
+/// The calendar's blocks overlapping `[from, until)`, with titles and colours.
+pub fn calendar(s: &Store, from: i64, until: i64, tz: Tz) -> tt_core::Result<Vec<CalendarItem>> {
+    let mut cache: std::collections::HashMap<String, (Task, Option<String>, Option<String>)> =
+        Default::default();
+    let mut out = Vec::new();
+    for b in s.calendar(from, until, tz)? {
+        if !cache.contains_key(&b.task_id) {
+            let Some(t) = s.get_task(&b.task_id)? else {
+                continue;
+            };
+            let tags = s.task_tags(&t.id)?;
+            let tag = tags.iter().find(|g| g.color.is_some());
+            let list = match &t.list_id {
+                Some(l) => s.find_list(l)?,
+                None => None,
+            };
+            let color = tag
+                .and_then(|g| g.color.clone())
+                .or_else(|| list.as_ref().and_then(|l| l.color.clone()));
+            let icon = tag
+                .and_then(|g| g.icon.clone())
+                .or_else(|| tags.iter().find_map(|g| g.icon.clone()))
+                .or_else(|| list.and_then(|l| l.icon));
+            cache.insert(b.task_id.clone(), (t, color, icon));
+        }
+        let (t, color, icon) = &cache[&b.task_id];
+        out.push(CalendarItem {
+            title: t.title.clone(),
+            priority: t.priority,
+            color: color.clone(),
+            icon: icon.clone(),
+            task_id: b.task_id,
+            start_at: b.start_at,
+            end_at: b.end_at,
+            all_day: b.all_day,
+            done: b.done,
+            movable: b.movable,
+            repeating: b.repeating,
+        });
+    }
+    Ok(out)
+}
+
+/// The calendar's Unscheduled panel: a saved filter's tasks, or by default every open
+/// task with no start or due.
+pub fn unscheduled(
+    s: &Store,
+    filter_id: Option<&str>,
+    now: i64,
+    tz: Tz,
+) -> tt_core::Result<Vec<TaskRow>> {
+    let tasks = match filter_id {
+        Some(id) => s.run_filter(id, now, tz)?,
+        None => s.run_rule(
+            &rule(serde_json::json!({"all": [
+                {"field": "due", "op": "none"},
+                {"field": "start", "op": "none"},
+            ]}))?,
+            &[],
+            false,
+            now,
+            tz,
+        )?,
+    };
+    tasks.into_iter().map(|t| task_row(s, t, now, tz)).collect()
 }
 
 /// How many open tasks a rule matches right now (the filter builder's live count).
