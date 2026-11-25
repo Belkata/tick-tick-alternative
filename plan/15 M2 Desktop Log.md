@@ -253,11 +253,19 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
 - ⚠️ The resize test writes the real `desk.json` (path_provider isn't faked in integration tests); it resets it to the default at the end.
 
 ## Sorting views (2026-11-25, on the Arch laptop, at the user's request)
-Decided with the user: lists' and tags' sorts **sync**; the menu offers Due date, Priority, Title, Newest first, Oldest first and **Manual** (drag to reorder); the **Inbox** gets the menu too.
+Decided with the user: lists' and tags' sorts **sync** (superseded in v0.5.1, see below); the menu offers Due date, Priority, Title, Newest first, Oldest first and **Manual** (drag to reorder); the **Inbox** gets the menu too.
 - **The sort menu** (sort icon, right of the view's title) in Inbox, list, tag and filter views; the current choice is ticked. Each choice saves core sort keys (`app/lib/desk/task_sort.dart`, same names as `tt sort`): due → `due_asc, priority_desc`; priority → `priority_desc, due_asc`; title → `title_asc`; newest/oldest → `created_desc`/`created_asc`; manual → `manual`. Completed and Trash keep their own order.
 - **Where it's kept:** a list's or tag's `sort` column (**schema v7**, synced JSON like `filter.sort`; an older build logs these ops and v7 replays them). A filter's menu choice writes its existing `sort` (the builder's dropdown also gained Oldest first and Manual). The Inbox's sort is **per device**, in `meta` (`inbox_sort`), since the Inbox isn't stored. Defaults: lists, tags and filters due then priority; Inbox oldest first.
 - **Manual:** drag a card (mouse: press and drag; phone: long-press) to move it. It's each task's synced `sort_key`, one order shared by every view: `Store::place_task(id, before, shown)` places it among the view's tasks (one op, or numbers the view's tasks the first time, like `place_tag`). Never-arranged tasks (new ones) come first, newest on top. Sort keys a build doesn't know are skipped, not fatal.
 - API: `ViewSort`, `SetViewSort`, `PlaceTask`, `InboxSorted`; Dart `TaskDb.viewSort`, `setViewSort`, `placeTask`. CLI: `tt sort [-l|-t|-f …] [due|priority|title|newest|oldest|manual|keys]`, `tt order <id> [--before <id>] [-l|-t|-f …]`; `tt ls` follows the saved sorts.
 - Tests: core `view_sort` (3), API `views_follow_their_sort_and_manual_moves`, Dart `task_sort_test.dart` (3), integration "sort a list from the header, then drag in manual order".
 - Not done: grouping (`group`), per-view manual order (TickTick keeps one per list; ours is global, which matters only for tasks seen in several views).
+
+### One sort for every view (2026-11-25, v0.5.1, at the user's request)
+The user wants a sort choice to stay when switching views. Decided with the user: **one sort per device**, shared by Inbox, lists, tags and filters, and the filter builder's Sort dropdown is gone.
+- Core: `Store::device_sort()` / `set_device_sort()`, kept in `meta` (`sort`; v0.5.0's `inbox_sort` carries over), never synced; default due date, then priority (`DEFAULT_SORT`). `run_filter` and the widget's Inbox follow it too.
+- No longer read: v7's `list.sort` and `tag.sort`, and `filter.sort` (still stored and synced for older builds; ops still apply). `tt sort [key]` sets the device's sort (no view flags); `tt filter add` lost `--sort`.
+- The menu, `ViewSort` and `SetViewSort` are unchanged on the wire (the view only decides whether it can be sorted). New API calls `DeviceSort`, `SetDeviceSort`.
+- Manual order was already shared by every view (each task's `sort_key`).
+- Integration test: "one sort for every view, then drag in manual order" (checks the choice in Inbox and back in the list).
 
