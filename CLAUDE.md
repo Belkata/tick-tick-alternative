@@ -19,6 +19,7 @@ A personal, local-first TickTick replacement. The pieces:
 | `plan/13 M0 Spike Log.md` | **Spike results and every gotcha found so far. Read before touching Android or Gradle.** |
 | `plan/14 M1 Core Log.md` | How the core is built (op-log, HLC, filters, recurrence) and where it differs from plan/04 and plan/05 |
 | `plan/16 M3 Sync Log.md` | M3 sync protocol, pairing, what's next |
+| `plan/17 M4 Android Log.md` | M4: phone sync, reminders, background sync, CI release, emulator results |
 | `plan/15 M2 Desktop Log.md` | **M2 plan, slices and the bridge contract.** The socket API must copy the bridge API |
 
 The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manrope headings) **with Material outlined tag chips**. The mockups are in `plan/ui-styles/styles.html`.
@@ -55,7 +56,9 @@ M2 (desktop app) has started; see `plan/15 M2 Desktop Log.md`:
 - M3 slice 2 ✅: `tt-daemon` runs the sync node (auto sync, tray status, Sync now). `tt sync` and the app's **Devices** page go through it; desktop no longer starts the spike `SyncPeer`. The installed service runs it on the real DB (no peers yet; UDP 41824).
 - M3 slice 3 ✅: network simulation test; trust sharing with removal spreading (sync protocol 2, schema v4); op-log compaction (schema v5; daemon daily, `tt sync compact`). The real DB is at schema v5: every binary that opens it must be this build.
 
-**Next:** have the user check the Devices page and the tray line, push the local commits (with their OK), then pair a real second device. Remaining M3: QR pairing (M4) and convergent resolution of subtask cycles. Then ask the user: the Android catch-up (needs the SDK on this laptop, plus M4) or M5 (calendar and Google). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
+- M4 (on branch `m4-android`, see `plan/17 M4 Android Log.md`): phone sync in-process (`app/rust/src/phone.rs`, shared `tt_sync::service::SyncService`), QR pairing, AlarmManager reminders with Done/Snooze, WorkManager background sync, share target, a CI release workflow. Tested on the `tt_pixel` emulator against a scratch daemon. `dist/tick-alt-v0.2.0-arm64.apk` is built for the user's phone (debug key: uninstall v0.1.0 first). The Android SDK is now on the laptop (`~/Android/Sdk`, Android Studio's JBR).
+
+**Next:** have the user check the Devices page and the tray line, install v0.2.0 on the phone and pair it, push the local commits (with their OK), then pair a real second device. Remaining M3: QR pairing (M4) and convergent resolution of subtask cycles. Then ask the user: the Android catch-up (needs the SDK on this laptop, plus M4) or M5 (calendar and Google). The Arch laptop has Rust 1.100, Flutter 3.50.1 in `~/flutter`, clang and `flutter_rust_bridge_codegen` 2.13.0 (with cargo-expand); there's no Android SDK yet. After that: M2 (desktop app) or the Android relay diagnosis. Ask the user. Everything in the app is spike-quality; the real UI comes in M2 and M4.
 
 ## Continuing on the Arch laptop (handoff 2026-11-24)
 
@@ -171,6 +174,7 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 - Hyprland 0.57 takes Lua in `hyprctl dispatch`. Useful for QA: `hl.dsp.send_shortcut({ mods = "", key = "Down", window = "class:dev.tickalt.tick_alt" })` and `hl.dsp.window.close({ window = "class:dev.tickalt.tick_alt" })`.
 - **After compaction a version vector means "has every winner up to here", not "holds every op".** Don't build logic on the latter (see plan/16 slice 3).
 - Filter definitions cross the bridge as JSON strings (`app/lib/desk/filter_rule.dart` mirrors `tt_core::FilterRule`'s JSON). Keep the two in step when the core gains a field or operator.
+- **Android SDK tooling:** `sdkmanager` is deprecated; use `android --no-metrics --sdk=$HOME/Android/Sdk sdk install <pkg/with/slashes>`. Flutter's accessibility tree on Android is coarse (one merged node), so drive the emulator by coordinates from `adb exec-out screencap` (1080×2400).
 - The integration-test binding doesn't paint into the desktop window, so screenshots of test runs show "Test starting…". Check visuals in the real app.
 - flutter_rust_bridge scans every type under `app/rust/src/api/`, private ones too. Keep helpers outside it (see `src/changes.rs`).
 

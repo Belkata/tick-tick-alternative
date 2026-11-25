@@ -48,11 +48,11 @@ Each milestone ends with something usable. Building the core first means the CLI
 **Exit:** Mac ↔ Arch stay in sync.
 
 ## M4: Android app and widget
-- [ ] Flutter UI on Android: lists, tags, filters, detail, quick add, share target.
+- [x] Flutter UI on Android: lists, tags, filters, detail, quick add, share target. ✅ The desktop shell's phone layout; share target (M4, see [[17 M4 Android Log]]).
 - [ ] Glance widget: config, scrolling list, checkbox complete, **+** quick add, midnight refresh.
-- [ ] AlarmManager reminders with notification actions.
-- [ ] WorkManager sync, QR scanner pairing.
-- [ ] APK release via CI.
+- [x] AlarmManager reminders with notification actions. ✅ Exact alarms, Done, Snooze 10 min and 1 h.
+- [x] WorkManager sync, QR scanner pairing. ✅ 15-min job plus expedited after outside edits; QR shown on Pair and scanned on Join (the real-phone scan isn't tested yet).
+- [ ] APK release via CI. 🟡 Workflow written (`.github/workflows/android-release.yml`); needs the user's release key and secrets.
 
 **Exit:** phone ↔ desktop sync, and the widget is on the home screen.
 
