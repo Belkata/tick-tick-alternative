@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# macOS: install daemon/dev.tickalt.daemon.plist into ~/Library/LaunchAgents/, so utre-daemon
+# macOS: install daemon/dev.utre.daemon.plist into ~/Library/LaunchAgents/, so utre-daemon
 # starts at login. The counterpart of scripts/install-user-service.sh on Linux.
 #   scripts/install-launch-agent.sh               this checkout's build (scripts/build-macos.sh)
-#   scripts/install-launch-agent.sh <Tick Alt.app> an installed copy, e.g. "/Applications/Tick Alt.app"
+#   scripts/install-launch-agent.sh <Utre.app> an installed copy, e.g. "/Applications/Utre.app"
 #   scripts/install-launch-agent.sh --remove      stop it and delete it
-# It runs the daemon bundled in the app (Tick Alt Daemon.app, needed for notifications), else
+# It runs the daemon bundled in the app (Utre Daemon.app, needed for notifications), else
 # this checkout's target/release/utre-daemon.
-# Logs: ~/Library/Logs/tick-alt/daemon.log
+# Logs: ~/Library/Logs/utre/daemon.log
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
-label="dev.tickalt.daemon"
+label="dev.utre.daemon"
 agent="$HOME/Library/LaunchAgents/$label.plist"
 domain="gui/$(id -u)"
 
@@ -20,10 +20,10 @@ if [[ "${1:-}" == "--remove" ]]; then
   exit 0
 fi
 
-app="${1:-$repo/app/build/macos/Build/Products/Release/Tick Alt.app}"
+app="${1:-$repo/app/build/macos/Build/Products/Release/Utre.app}"
 app="${app%/}"
-daemon="$app/Contents/Helpers/Tick Alt Daemon.app/Contents/MacOS/utre-daemon"
-log="$HOME/Library/Logs/tick-alt/daemon.log"
+daemon="$app/Contents/Helpers/Utre Daemon.app/Contents/MacOS/utre-daemon"
+log="$HOME/Library/Logs/utre/daemon.log"
 if [[ ! -x "$daemon" ]]; then
   daemon="$repo/target/release/utre-daemon"
   [[ -x "$daemon" ]] || { echo "Build it first: scripts/build-macos.sh" >&2; exit 1; }

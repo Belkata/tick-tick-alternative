@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# macOS: build Tick Alt.app with the daemon inside it, signed ad hoc, and a DMG (plan/08).
-#   scripts/build-macos.sh          build everything into dist/tick-alt-<version>-macos.dmg
+# macOS: build Utre.app with the daemon inside it, signed ad hoc, and a DMG (plan/08).
+#   scripts/build-macos.sh          build everything into dist/utre-<version>-macos.dmg
 #   scripts/build-macos.sh --no-dmg build the .app only
 #
 # The bundle:
-#   Tick Alt.app                      the Flutter app (dev.tickalt.tickAlt)
+#   Utre.app                      the Flutter app (dev.utre.utre)
 #     Contents/Helpers/
-#       Tick Alt Daemon.app           utre-daemon as a menu-bar agent (dev.tickalt.daemon, LSUIElement).
+#       Utre Daemon.app           utre-daemon as a menu-bar agent (dev.utre.daemon, LSUIElement).
 #                                     A bundle of its own so UNUserNotificationCenter works and
 #                                     Done / Snooze reach the daemon, not the window app.
-#       tt                            the CLI
+#       utre                            the CLI
 # scripts/install-launch-agent.sh then starts the daemon at login.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,17 +17,17 @@ repo="$(cd "$(dirname "$0")/.." && pwd)"
 source "$repo/scripts/env.sh"
 
 version="$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' "$repo/app/pubspec.yaml")"
-app="$repo/app/build/macos/Build/Products/Release/Tick Alt.app"
+app="$repo/app/build/macos/Build/Products/Release/Utre.app"
 helpers="$app/Contents/Helpers"
-daemon_app="$helpers/Tick Alt Daemon.app"
+daemon_app="$helpers/Utre Daemon.app"
 
-echo "==> Rust: utre-daemon and tt"
-cargo build --release -p utre-daemon -p tt --manifest-path "$repo/Cargo.toml"
+echo "==> Rust: utre-daemon and utre"
+cargo build --release -p utre-daemon -p utre --manifest-path "$repo/Cargo.toml"
 
-echo "==> Flutter: Tick Alt.app"
+echo "==> Flutter: Utre.app"
 (cd "$repo/app" && flutter build macos --release)
 
-echo "==> Tick Alt Daemon.app"
+echo "==> Utre Daemon.app"
 rm -rf "$helpers"
 mkdir -p "$daemon_app/Contents/MacOS" "$daemon_app/Contents/Resources"
 cp "$repo/target/release/utre-daemon" "$daemon_app/Contents/MacOS/utre-daemon"
@@ -38,11 +38,11 @@ cat > "$daemon_app/Contents/Info.plist" <<EOF
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>dev.tickalt.daemon</string>
+	<string>dev.utre.daemon</string>
 	<key>CFBundleName</key>
-	<string>Tick Alt Daemon</string>
+	<string>Utre Daemon</string>
 	<key>CFBundleDisplayName</key>
-	<string>Tick Alt</string>
+	<string>Utre</string>
 	<key>CFBundleExecutable</key>
 	<string>utre-daemon</string>
 	<key>CFBundleIconFile</key>
@@ -61,10 +61,10 @@ cat > "$daemon_app/Contents/Info.plist" <<EOF
 </plist>
 EOF
 plutil -lint "$daemon_app/Contents/Info.plist" >/dev/null
-cp "$repo/target/release/tt" "$helpers/tt"
+cp "$repo/target/release/utre" "$helpers/utre"
 
 echo "==> Signing (ad hoc)"
-codesign --force --sign - "$helpers/tt"
+codesign --force --sign - "$helpers/utre"
 codesign --force --sign - "$daemon_app"
 # Re-sign the outer app over its new contents, keeping Flutter's entitlements.
 codesign --force --sign - --preserve-metadata=entitlements "$app"
@@ -76,12 +76,12 @@ if [[ "${1:-}" == "--no-dmg" ]]; then
 fi
 
 echo "==> DMG"
-dmg="$repo/dist/tick-alt-$version-macos.dmg"
+dmg="$repo/dist/utre-$version-macos.dmg"
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
 cp -R "$app" "$stage/"
 ln -s /Applications "$stage/Applications"
 mkdir -p "$repo/dist"
 rm -f "$dmg"
-hdiutil create -quiet -volname "Tick Alt $version" -srcfolder "$stage" -format UDZO "$dmg"
+hdiutil create -quiet -volname "Utre $version" -srcfolder "$stage" -format UDZO "$dmg"
 echo "Built $dmg ($(du -h "$dmg" | cut -f1))"
