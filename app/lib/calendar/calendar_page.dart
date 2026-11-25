@@ -214,12 +214,11 @@ class _CalendarPageState extends State<CalendarPage> {
         fromMs: from.millisecondsSinceEpoch,
         untilMs: until.millisecondsSinceEpoch,
       );
-      final filters = c.sidebar?.filters ?? const <NavItem>[];
       var source = _prefs.unscheduledFilter;
       if (source != null &&
           c.sidebar != null &&
-          !filters.any((f) => f.id == source)) {
-        source = null; // the filter was deleted
+          !_sources().any((o) => o.key == source)) {
+        source = null; // the filter, list or tag was deleted
       }
       final rows = await db.unscheduled(filterId: source);
       if (gen != _generation || !mounted) return;
@@ -1146,10 +1145,24 @@ class _CalendarPageState extends State<CalendarPage> {
     ],
   );
 
-  /// Which tasks the panel lists: no date, or a saved filter. Remembered per device.
+  /// Everything the panel can list besides "No date": saved filters (their bare id, as
+  /// before), lists (`list:<id>`) and tags (`tag:<id>`), as (key, label) pairs.
+  List<MapEntry<String, String>> _sources() {
+    final sb = c.sidebar;
+    return [
+      for (final f in sb?.filters ?? const <NavItem>[]) MapEntry(f.id, f.name),
+      for (final l in sb?.lists ?? const <NavItem>[])
+        MapEntry('list:${l.id}', l.name),
+      for (final t in sb?.tags ?? const <NavItem>[])
+        MapEntry('tag:${t.id}', '#${t.name}'),
+    ];
+  }
+
+  /// Which tasks the panel lists: no date, or a saved filter, list or tag. Remembered
+  /// per device.
   Widget _sourcePicker(SoftColors s, {bool compact = false}) {
-    final filters = c.sidebar?.filters ?? const <NavItem>[];
-    final source = filters.any((f) => f.id == _prefs.unscheduledFilter)
+    final sources = _sources();
+    final source = sources.any((o) => o.key == _prefs.unscheduledFilter)
         ? _prefs.unscheduledFilter
         : null;
     return Container(
@@ -1171,7 +1184,7 @@ class _CalendarPageState extends State<CalendarPage> {
           style: manrope(compact ? 12 : 13, FontWeight.w600, color: s.fg),
           icon: Icon(Icons.expand_more, size: 18, color: s.mute),
           selectedItemBuilder: (context) => [
-            for (final label in ['No date', ...filters.map((f) => f.name)])
+            for (final label in ['No date', ...sources.map((o) => o.value)])
               Row(
                 mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
                 children: [
@@ -1186,8 +1199,8 @@ class _CalendarPageState extends State<CalendarPage> {
           ],
           items: [
             const DropdownMenuItem(value: null, child: Text('No date')),
-            for (final f in filters)
-              DropdownMenuItem(value: f.id, child: Text(f.name)),
+            for (final o in sources)
+              DropdownMenuItem(value: o.key, child: Text(o.value)),
           ],
           onChanged: (v) {
             setState(() => _prefs.unscheduledFilter = v);

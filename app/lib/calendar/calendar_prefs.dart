@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 class CalendarPrefs {
   CalendarPrefs({this.unscheduledFilter, this.view});
 
-  /// A saved filter's id, or null for the built-in "no date" default.
+  /// A saved filter's id, `list:<id>` or `tag:<id>`, or null for the built-in "no date" default.
   String? unscheduledFilter;
 
   /// `Day`, `Week` or `Month`.
