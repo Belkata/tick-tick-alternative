@@ -43,4 +43,4 @@ including the Limited Use requirements.
 If this policy changes, the new version will be published here with a new date.
 
 ## Contact
-[your contact email here]
+belkata.okfo+utre@gmail.com
