@@ -13,7 +13,11 @@
 //!   `UNUserNotificationCenter`, which only works from an app bundle (`Tick Alt Daemon.app`,
 //!   built by scripts/build-macos.sh); run bare, the daemon logs reminders instead.
 //!
-//! Flags: `--db <path>`, `--socket <path>`, `--no-tray`, `--no-sync`, `--no-relay` (sync on
+//! - **Google** (M5b, `google.rs`): sign-in through the browser and a fetch of the selected
+//!   calendars' events every 5 minutes into the local cache. Needs the OAuth client file
+//!   (`tt_api::paths::google_client`); without it Google is simply unavailable.
+//!
+//! Flags: `--db <path>`, `--socket <path>`, `--no-tray`, `--no-sync`, `--no-google`, `--no-relay` (sync on
 //! direct addresses only); `tt-daemon notify <id>` sends one
 //! reminder right away. `$TT_SNOOZE_SECS` shortens Snooze for testing; `$TT_APP` is what Open starts.
 
@@ -22,6 +26,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use tokio::sync::mpsc;
+mod google;
 mod sync;
 #[cfg_attr(target_os = "linux", path = "tray_sni.rs")]
 #[cfg_attr(target_os = "macos", path = "tray_mac.rs")]
@@ -304,11 +309,22 @@ async fn run() -> Result<()> {
             }
         }
     };
+    // Google Calendar (M5b): sign-in and fetching events into the local cache. Unavailable
+    // (and harmless) until the OAuth client file is in place.
+    let google = if has_flag("--no-google") {
+        None
+    } else {
+        let g = google::GoogleService::new(db_file.clone());
+        g.spawn_poll();
+        Some(g)
+    };
     tokio::spawn({
         let db = db.clone();
-        let control = sync
-            .clone()
-            .map(|s| Arc::new(sync::Control(s)) as Arc<dyn SyncControl>);
+        let control = Arc::new(sync::Control {
+            sync: sync.clone(),
+            google,
+        }) as Arc<dyn SyncControl>;
+        let control = Some(control);
         async move {
             if let Err(e) = server::serve(listener, db, control).await {
                 eprintln!("tt-daemon: socket: {e:#}");

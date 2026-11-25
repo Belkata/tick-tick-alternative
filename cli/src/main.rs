@@ -164,6 +164,34 @@ enum Command {
     /// Spike 2: talk to another device over iroh.
     #[command(subcommand)]
     Sync(SyncCommand),
+    /// Google Calendar: sign in, pick calendars, fetch events (needs tt-daemon).
+    #[command(subcommand)]
+    Google(GoogleCmd),
+}
+
+#[derive(Subcommand)]
+enum GoogleCmd {
+    /// Whether Google is set up, signed in, and when it last fetched.
+    Status,
+    /// Open the browser to sign in to Google.
+    SignIn,
+    /// Forget this device's Google tokens and cached events.
+    SignOut,
+    /// Fetch calendars and events now (tt-daemon also does this every 5 minutes).
+    Sync,
+    /// List your Google calendars; `*` marks the ones shown in Utre.
+    Calendars,
+    /// Show (or with --off hide) a calendar's events, by name or the start of its id.
+    Select {
+        calendar: String,
+        #[arg(long)]
+        off: bool,
+    },
+    /// Cached Google events for the next days.
+    Events {
+        #[arg(long, default_value_t = 7)]
+        days: i64,
+    },
 }
 
 #[derive(Args)]
@@ -720,6 +748,7 @@ impl Ctx {
                     );
                 }
             }
+            Command::Google(cmd) => self.google(cmd)?,
             Command::Sync(_) | Command::Import { .. } => unreachable!("handled in main"),
         }
         Ok(())
@@ -1021,6 +1050,102 @@ impl Ctx {
             Some(ListsCmd::Rm { name }) => {
                 s.delete_list(&self.list_id(&name)?)?;
                 println!("Deleted {name}; its tasks have no list now.");
+            }
+        }
+        Ok(())
+    }
+
+    fn google(&self, cmd: GoogleCmd) -> Result<()> {
+        let s = &self.store;
+        match cmd {
+            GoogleCmd::Status => {
+                let st = s.google_status()?;
+                if !st.configured {
+                    println!(
+                        "Not set up: save the OAuth client file as {} and restart tt-daemon.",
+                        tt_api::paths::google_client().display()
+                    );
+                } else if st.signing_in {
+                    println!("Waiting for you to finish signing in, in the browser.");
+                } else if st.signed_in {
+                    match st.last_sync_ms {
+                        Some(t) => println!(
+                            "Signed in. Last fetched {}.",
+                            when(t, false, self.now, self.tz)
+                        ),
+                        None => println!("Signed in. Nothing fetched yet (try `tt google sync`)."),
+                    }
+                } else {
+                    println!("Not signed in. Run `tt google sign-in`.");
+                }
+                if let Some(e) = st.last_error {
+                    println!("Last error: {e}");
+                }
+            }
+            GoogleCmd::SignIn => {
+                let url = s.google_sign_in()?;
+                println!(
+                    "Opened your browser to sign in. If nothing opened, visit:\n\n  {url}\n\nThen run `tt google status`."
+                );
+            }
+            GoogleCmd::SignOut => {
+                s.google_sign_out()?;
+                println!("Signed out; cached Google events removed from this device.");
+            }
+            GoogleCmd::Sync => {
+                s.google_sync()?;
+                println!("Fetched.");
+            }
+            GoogleCmd::Calendars => {
+                let all = s.gcal_calendars()?;
+                if all.is_empty() {
+                    println!("No calendars yet. Sign in and run `tt google sync`.");
+                }
+                for c in all {
+                    println!(
+                        "{} {}  {}",
+                        if c.selected { "*" } else { " " },
+                        c.summary,
+                        c.id
+                    );
+                }
+            }
+            GoogleCmd::Select { calendar, off } => {
+                let matches: Vec<_> = s
+                    .gcal_calendars()?
+                    .into_iter()
+                    .filter(|c| {
+                        c.summary.eq_ignore_ascii_case(&calendar) || c.id.starts_with(&calendar)
+                    })
+                    .collect();
+                match matches.as_slice() {
+                    [] => bail!("no Google calendar '{calendar}' (see `tt google calendars`)"),
+                    [c] => {
+                        s.gcal_select(&c.id, !off)?;
+                        println!(
+                            "{} {}.",
+                            if off { "Hidden:" } else { "Showing:" },
+                            c.summary
+                        );
+                        if !off {
+                            println!("Run `tt google sync` to fetch its events now.");
+                        }
+                    }
+                    _ => bail!("'{calendar}' matches several calendars; use more of the id"),
+                }
+            }
+            GoogleCmd::Events { days } => {
+                let events = s.gcal_events(self.now, self.now + days * 86_400_000, self.tz)?;
+                if events.is_empty() {
+                    println!("No cached Google events in the next {days} days.");
+                }
+                for e in events {
+                    println!(
+                        "{}  {}",
+                        when(e.start_at, e.all_day, self.now, self.tz),
+                        e.summary
+                    );
+                }
             }
         }
         Ok(())

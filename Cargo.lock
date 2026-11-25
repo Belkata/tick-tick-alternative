@@ -5137,6 +5137,7 @@ dependencies = [
  "tray-icon",
  "tt-api",
  "tt-core",
+ "tt-google",
  "tt-sync",
 ]
 

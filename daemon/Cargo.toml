@@ -10,6 +10,7 @@ anyhow = "1.0.105"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal", "sync"] }
 tt-api = { path = "../api", features = ["server"] }
 tt-core = { path = "../core" }
+tt-google = { path = "../google" }
 tt-sync = { path = "../sync" }
 serde_json = "1"
 
