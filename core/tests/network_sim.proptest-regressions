@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 0f7e1cc908fc0ca101880640d17d98d789115e4b8c929e2a57d7e2808c75fa7f # shrinks to steps = [Edit(0, Trash(0)), Session(2, 0), Session(3, 2), Edit(3, Restore(0)), Edit(2, Priority(1, 0)), Session(3, 2), Send { from: 3, to: 0, keep: 111 }, Send { from: 2, to: 0, keep: 117 }, Send { from: 2, to: 0, keep: 159 }, Edit(3, List(1, None)), Compact(0), Compact(2), Edit(1, Title(0, 216)), Send { from: 0, to: 2, keep: 177 }, Edit(2, Tag(2, 2)), Edit(3, Reopen(3))]
