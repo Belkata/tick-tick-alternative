@@ -182,6 +182,7 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 - Plan before implementing. Interview the user when unsure; anything listed in `plan/11` is the user's call.
 - Downloads, installs, licence acceptances and anything outward-facing need the user's OK first.
 - Keep `plan/` updated as decisions are made: tick the roadmap and log spike results.
+- **After every feature request or batch of them (once it's finished, not after each step), without asking:** commit, push, rebuild and restart the Arch daemon and the release desktop app, bump `version:` in `app/pubspec.yaml`, build the release APK, tag it and upload it as a GitHub pre-release (the "Publish a test APK" row in Build and test). Said by the user on 2026-11-25.
 
 ## Plugins to use (installed on the account 2026-11-24, not loaded in the session that wrote this)
 
