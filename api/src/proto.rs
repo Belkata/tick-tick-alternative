@@ -18,7 +18,7 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tt_core::{
-    ChecklistItem, Completion, Filter, FilterRule, List, NewTask, Reminder, ReminderFire,
+    ChecklistItem, Completion, Filter, FilterRule, List, NewTask, Peer, Reminder, ReminderFire,
     ReminderKind, Repeat, SavedFilter, Schedule, Store, Tag, Task,
 };
 
@@ -126,6 +126,15 @@ macro_rules! api {
             Hello,
             /// Turn this connection into an event stream (`{"event":"changed","version":n}`).
             Subscribe,
+            /// Sync control, answered by the daemon's sync node (see `server::SyncControl`):
+            /// a one-time pairing ticket ([`String`]).
+            SyncPair,
+            /// Pair with the device that made `ticket`, then sync ([`SyncOutcome`]).
+            SyncJoin { ticket: String },
+            /// Sync with every paired device now (`Vec<SyncOutcome>`).
+            SyncNow,
+            /// The sync node's state ([`SyncStatus`]).
+            SyncStatus,
             $( $variant { $($f: $w),* }, )*
         }
 
@@ -134,6 +143,8 @@ macro_rules! api {
             pub fn is_write(&self) -> bool {
                 match self {
                     Request::Hello | Request::Subscribe => false,
+                    // Sync writes reach the file through the sync node's own connection.
+                    Request::SyncPair | Request::SyncJoin { .. } | Request::SyncNow | Request::SyncStatus => false,
                     $( Request::$variant { .. } => api!(@is_write $rw), )*
                 }
             }
@@ -144,6 +155,9 @@ macro_rules! api {
             Ok(match req {
                 Request::Hello | Request::Subscribe => {
                     return Err(tt_core::Error::Invalid("only the daemon answers hello and subscribe".into()))
+                }
+                Request::SyncPair | Request::SyncJoin { .. } | Request::SyncNow | Request::SyncStatus => {
+                    return Err(tt_core::Error::Invalid("sync runs in tt-daemon, which isn't serving this database".into()))
                 }
                 $( Request::$variant { $($f),* } => {
                     let $s = store;
@@ -244,6 +258,10 @@ api! {
     write UpdateFilter update_filter(id: String, filter: Filter) -> () => |s| s.update_filter(&id, &filter);
     write DeleteFilter delete_filter(id: String) -> () => |s| s.delete_filter(&id);
 
+    // ----- Paired devices (local to this device; sync itself is SyncPair/SyncNow…) -----
+    read Peers peers() -> Vec<Peer> => |s| s.peers();
+    write RemovePeer remove_peer(node_id: String) -> bool => |s| s.remove_peer(&node_id);
+
     // ----- Views (what the app shows) -----
     read Sidebar sidebar(now_ms: i64, tz: TzName) -> Sidebar => |s| views::sidebar(s, now_ms, tz.tz());
     read Tasks tasks(view: TaskView, now_ms: i64, tz: TzName) -> Vec<TaskRow>
@@ -285,4 +303,28 @@ pub enum Reply {
 #[serde(tag = "event", rename_all = "snake_case")]
 pub enum Event {
     Changed { version: u64 },
+}
+
+/// One device's result from `sync_now` or `sync_join`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyncOutcome {
+    pub peer_id: String,
+    pub peer_name: String,
+    /// The error when the sync failed (the device is offline, refused…).
+    pub error: Option<String>,
+    pub sent: usize,
+    pub received: usize,
+    pub applied: usize,
+}
+
+/// What `sync_status` answers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyncStatus {
+    /// This device's iroh endpoint id.
+    pub node_id: String,
+    pub peers: usize,
+    /// Epoch ms of the last round that reached at least one device.
+    pub last_sync_ms: Option<i64>,
+    /// Why the last round failed, if it reached nobody.
+    pub last_error: Option<String>,
 }

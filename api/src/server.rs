@@ -2,8 +2,10 @@
 //! tray and reminder loops send it requests. Every write, and every commit another
 //! process makes to the file, bumps the change version and is broadcast to subscribers.
 
+use std::future::Future;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
@@ -30,6 +32,9 @@ struct Job {
 pub struct Db {
     jobs: mpsc::Sender<Job>,
     events: broadcast::Sender<u64>,
+    /// Successful write requests only (not outside commits): what auto-sync reacts to,
+    /// so the sync's own writes (seen as outside commits) don't trigger another round.
+    writes: broadcast::Sender<()>,
     version: Arc<AtomicU64>,
     path: Arc<PathBuf>,
 }
@@ -41,16 +46,18 @@ impl Db {
         let path = std::fs::canonicalize(path)?;
         let (jobs, rx) = mpsc::channel::<Job>();
         let (events, _) = broadcast::channel(64);
+        let (writes, _) = broadcast::channel(64);
         let version = Arc::new(AtomicU64::new(0));
         let db = Db {
             jobs,
             events: events.clone(),
+            writes: writes.clone(),
             version: version.clone(),
             path: Arc::new(path),
         };
         std::thread::Builder::new()
             .name("tt-db".into())
-            .spawn(move || db_thread(store, rx, events, version))?;
+            .spawn(move || db_thread(store, rx, events, writes, version))?;
         Ok(db)
     }
 
@@ -68,6 +75,16 @@ impl Db {
     pub async fn get<T: serde::de::DeserializeOwned>(&self, req: Request) -> anyhow::Result<T> {
         let v = self.call(req).await.map_err(anyhow::Error::msg)?;
         Ok(serde_json::from_value(v)?)
+    }
+
+    /// Fires after each successful write request (the daemon's clients editing).
+    pub fn subscribe_writes(&self) -> broadcast::Receiver<()> {
+        self.writes.subscribe()
+    }
+
+    /// The database file this daemon owns.
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
     /// Change versions, one per write (or batch of outside writes).
@@ -88,6 +105,7 @@ fn db_thread(
     store: Store,
     jobs: mpsc::Receiver<Job>,
     events: broadcast::Sender<u64>,
+    writes: broadcast::Sender<()>,
     version: Arc<AtomicU64>,
 ) {
     let changed = || {
@@ -102,6 +120,7 @@ fn db_thread(
                 let result = proto::handle(&store, req).map_err(|e| e.to_string());
                 if write && result.is_ok() {
                     changed();
+                    let _ = writes.send(());
                 }
                 let _ = reply.send(result);
             }
@@ -136,20 +155,38 @@ pub fn bind(path: &Path) -> anyhow::Result<UnixListener> {
     Ok(listener)
 }
 
-/// Accept connections until the listener fails.
-pub async fn serve(listener: UnixListener, db: Db) -> anyhow::Result<()> {
+/// The daemon's sync node, for `SyncPair`, `SyncJoin`, `SyncNow` and `SyncStatus`.
+/// (tt-api stays free of iroh; the daemon implements this over tt-sync.)
+pub trait SyncControl: Send + Sync + 'static {
+    fn handle(
+        &self,
+        req: Request,
+    ) -> Pin<Box<dyn Future<Output = Result<Value, String>> + Send + '_>>;
+}
+
+/// Accept connections until the listener fails. Sync requests go to `sync` when the
+/// daemon runs a sync node.
+pub async fn serve(
+    listener: UnixListener,
+    db: Db,
+    sync: Option<Arc<dyn SyncControl>>,
+) -> anyhow::Result<()> {
     loop {
         let (stream, _) = listener.accept().await?;
-        let db = db.clone();
+        let (db, sync) = (db.clone(), sync.clone());
         tokio::spawn(async move {
-            if let Err(e) = connection(stream, db).await {
+            if let Err(e) = connection(stream, db, sync).await {
                 eprintln!("tt-daemon: connection: {e:#}");
             }
         });
     }
 }
 
-async fn connection(stream: UnixStream, db: Db) -> anyhow::Result<()> {
+async fn connection(
+    stream: UnixStream,
+    db: Db,
+    sync: Option<Arc<dyn SyncControl>>,
+) -> anyhow::Result<()> {
     let (read, mut write) = stream.into_split();
     let mut lines = BufReader::new(read).lines();
     while let Some(line) = lines.next_line().await? {
@@ -157,6 +194,18 @@ async fn connection(stream: UnixStream, db: Db) -> anyhow::Result<()> {
             Err(e) => Reply::Err(format!("bad request: {e}")),
             Ok(Request::Hello) => Reply::Ok(serde_json::to_value(db.hello())?),
             Ok(Request::Subscribe) => return events(write, db).await,
+            Ok(
+                req @ (Request::SyncPair
+                | Request::SyncJoin { .. }
+                | Request::SyncNow
+                | Request::SyncStatus),
+            ) => match &sync {
+                Some(s) => match s.handle(req).await {
+                    Ok(v) => Reply::Ok(v),
+                    Err(e) => Reply::Err(e),
+                },
+                None => Reply::Err("this tt-daemon doesn't run sync".into()),
+            },
             Ok(req) => match db.call(req).await {
                 Ok(v) => Reply::Ok(v),
                 Err(e) => Reply::Err(e),

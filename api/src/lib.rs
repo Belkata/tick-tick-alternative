@@ -23,7 +23,7 @@ use serde::de::DeserializeOwned;
 use tt_core::Store;
 
 pub use client::{Client, Disconnected};
-pub use proto::{Event, Hello, Request, TzName};
+pub use proto::{Event, Hello, Request, SyncOutcome, SyncStatus, TzName};
 pub use views::{
     ChecklistRow, NavItem, ReminderRow, Sidebar, TagChip, TaskDetail, TaskRow, TaskView, ViewKind,
 };
@@ -114,6 +114,29 @@ impl Api {
             },
         };
         Ok(serde_json::from_value(value)?)
+    }
+
+    // ----- Sync (answered by the daemon's sync node) -----
+
+    /// A one-time pairing ticket (`tt2…`) for this device, valid for 5 minutes.
+    pub fn sync_pair(&self) -> anyhow::Result<String> {
+        self.call(Request::SyncPair)
+    }
+
+    /// Pair with the device that made `ticket`, then sync with it.
+    pub fn sync_join(&self, ticket: impl Into<String>) -> anyhow::Result<SyncOutcome> {
+        self.call(Request::SyncJoin {
+            ticket: ticket.into(),
+        })
+    }
+
+    /// Sync with every paired device now.
+    pub fn sync_now(&self) -> anyhow::Result<Vec<SyncOutcome>> {
+        self.call(Request::SyncNow)
+    }
+
+    pub fn sync_status(&self) -> anyhow::Result<SyncStatus> {
+        self.call(Request::SyncStatus)
     }
 
     /// Opened directly but the daemon now serves this file: switch to it. True if it switched.

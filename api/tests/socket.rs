@@ -27,7 +27,7 @@ fn start_daemon(dir: &std::path::Path) -> (PathBuf, PathBuf) {
             let handle = Db::open(&db2).unwrap();
             let listener = server::bind(&sock2).unwrap();
             ready_tx.send(()).unwrap();
-            server::serve(listener, handle).await.unwrap();
+            server::serve(listener, handle, None).await.unwrap();
         });
     });
     ready_rx.recv_timeout(Duration::from_secs(10)).unwrap();
@@ -151,7 +151,7 @@ impl Daemon {
                 let listener = server::bind(&sock).unwrap();
                 ready_tx.send(()).unwrap();
                 tokio::select! {
-                    _ = server::serve(listener, handle) => {}
+                    _ = server::serve(listener, handle, None) => {}
                     _ = stop_rx => {}
                 }
             });
@@ -207,4 +207,29 @@ fn clients_survive_the_daemon_restarting() {
     api.add_task("after the second restart").unwrap();
     assert!(!api.is_remote());
     assert_eq!(api.inbox().unwrap().len(), 3);
+}
+
+#[test]
+fn sync_requests_need_a_sync_node_and_peers_go_through_the_table() {
+    let dir = temp_dir("syncreq");
+    let (db, sock) = start_daemon(&dir);
+    let api = Api::remote(Client::connect(&sock).unwrap());
+    let err = api.sync_now().unwrap_err().to_string();
+    assert!(err.contains("doesn't run sync"), "{err}");
+    assert!(api.peers().unwrap().is_empty());
+    Store::open(&db)
+        .unwrap()
+        .add_peer("n1", "phone", None, 1)
+        .unwrap();
+    assert_eq!(api.peers().unwrap()[0].name, "phone");
+    assert!(api.remove_peer("n1").unwrap());
+    // In-process there's no daemon at all.
+    let local = Api::local(Store::open(&db).unwrap());
+    assert!(
+        local
+            .sync_status()
+            .unwrap_err()
+            .to_string()
+            .contains("tt-daemon")
+    );
 }

@@ -315,7 +315,7 @@ async fn main() -> Result<()> {
     tokio::spawn({
         let db = db.clone();
         async move {
-            if let Err(e) = server::serve(listener, db).await {
+            if let Err(e) = server::serve(listener, db, None).await {
                 eprintln!("tt-daemon: socket: {e:#}");
             }
         }
