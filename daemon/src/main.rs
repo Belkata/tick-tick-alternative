@@ -4,12 +4,15 @@
 //!   `$XDG_RUNTIME_DIR/tick-alt.sock`, with change events for subscribers. Commits other
 //!   processes make to the file (e.g. `tt` while no daemon ran) are noticed and broadcast.
 //! - **Tray** (Spike 4): a StatusNotifierItem (ksni) in waybar's `tray` module showing the
-//!   Inbox count, refreshed on every change. Menu: the first Inbox tasks, Open, Refresh,
-//!   Sync now (M3), Quit.
+//!   Inbox count and sync status, refreshed on every change. Menu: the first Inbox tasks,
+//!   Open, Refresh, the sync status and Sync now, Quit.
+//! - **Sync** (M3, `sync.rs`): the iroh sync node serves paired devices and syncs with them
+//!   every 90 s and a few seconds after local edits; `tt sync` and the app reach it via the socket.
 //! - **Reminders:** every 5 s the core is asked for reminders due since the last check;
 //!   each becomes a notification (notify-rust) with Done and Snooze actions.
 //!
-//! Flags: `--db <path>`, `--socket <path>`, `--no-tray`; `tt-daemon notify <id>` sends one
+//! Flags: `--db <path>`, `--socket <path>`, `--no-tray`, `--no-sync`, `--no-relay` (sync on
+//! direct addresses only); `tt-daemon notify <id>` sends one
 //! reminder right away. `$TT_SNOOZE_SECS` shortens Snooze for testing; `$TT_APP` is what Open starts.
 
 use std::path::PathBuf;
@@ -18,9 +21,15 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result};
 use ksni::TrayMethods;
 use tokio::sync::mpsc;
-use tt_api::server::{self, Db};
+mod sync;
+
+use std::sync::Arc;
+
+use sync::SyncService;
+use tt_api::server::{self, Db, SyncControl};
 use tt_api::{Request, TzName};
 use tt_core::{ReminderFire, Task, local_tz};
+use tt_sync::Relays;
 
 /// How often the tray re-reads the Inbox count and the reminder loop checks the schedule.
 const TICK: Duration = Duration::from_secs(5);
@@ -29,6 +38,10 @@ const TICK: Duration = Duration::from_secs(5);
 #[derive(Debug)]
 enum Cmd {
     Refresh,
+    /// Sync with every paired device now (tray menu).
+    SyncNow,
+    /// Re-read the sync status line for the tray.
+    SyncStatus,
     /// Show a notification for this task now.
     Notify {
         task_id: String,
@@ -50,6 +63,8 @@ enum Cmd {
 
 struct TickTray {
     inbox: Vec<Task>,
+    /// "Synced 3 min ago"…; `None` when the daemon runs without sync.
+    sync_line: Option<String>,
     tx: mpsc::UnboundedSender<Cmd>,
 }
 
@@ -79,10 +94,16 @@ impl ksni::Tray for TickTray {
         let n = self.inbox.len();
         ksni::ToolTip {
             title: "Tick Alt".into(),
-            description: match n {
-                0 => "Inbox is empty".into(),
-                1 => "1 task in Inbox".into(),
-                n => format!("{n} tasks in Inbox"),
+            description: {
+                let inbox = match n {
+                    0 => "Inbox is empty".to_string(),
+                    1 => "1 task in Inbox".to_string(),
+                    n => format!("{n} tasks in Inbox"),
+                };
+                match &self.sync_line {
+                    Some(line) => format!("{inbox}\n{line}"),
+                    None => inbox,
+                }
             },
             ..Default::default()
         }
@@ -143,8 +164,19 @@ impl ksni::Tray for TickTray {
             }
             .into(),
             StandardItem {
-                label: "Sync now (M3)".into(),
+                label: self
+                    .sync_line
+                    .clone()
+                    .unwrap_or_else(|| "Sync is off".into()),
                 enabled: false,
+                ..Default::default()
+            }
+            .into(),
+            StandardItem {
+                label: "Sync now".into(),
+                icon_name: "emblem-synchronizing".into(),
+                enabled: self.sync_line.is_some(),
+                activate: Box::new(|t: &mut Self| t.send(Cmd::SyncNow)),
                 ..Default::default()
             }
             .into(),
@@ -219,6 +251,16 @@ fn db_path() -> Result<PathBuf> {
         Some(p) => Ok(PathBuf::from(p)),
         None => Ok(tt_api::paths::default_db()?),
     }
+}
+
+/// This machine's name, shown to paired devices.
+fn hostname() -> String {
+    std::fs::read_to_string("/etc/hostname")
+        .ok()
+        .or_else(|| std::env::var("HOSTNAME").ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "desktop".into())
 }
 
 /// The value after `name` on the command line.
@@ -312,10 +354,32 @@ async fn main() -> Result<()> {
     let db = Db::open(&db_file).with_context(|| format!("opening {}", db_file.display()))?;
     let listener = server::bind(&socket)?;
     eprintln!("tt-daemon: {} on {}", db_file.display(), socket.display());
+
+    // M3 sync: the node serves paired devices; without it the daemon still works locally.
+    let sync = if has_flag("--no-sync") {
+        None
+    } else {
+        let relays = if has_flag("--no-relay") {
+            Relays::Off
+        } else {
+            Relays::N0
+        };
+        match SyncService::start(&db_file, hostname(), relays).await {
+            Ok(s) => {
+                eprintln!("tt-daemon: sync node {}", s.status().node_id);
+                Some(s)
+            }
+            Err(e) => {
+                eprintln!("tt-daemon: sync is off: {e:#}");
+                None
+            }
+        }
+    };
     tokio::spawn({
         let db = db.clone();
+        let control = sync.clone().map(|s| s as Arc<dyn SyncControl>);
         async move {
-            if let Err(e) = server::serve(listener, db, None).await {
+            if let Err(e) = server::serve(listener, db, control).await {
                 eprintln!("tt-daemon: socket: {e:#}");
             }
         }
@@ -331,6 +395,7 @@ async fn main() -> Result<()> {
         Some(
             TickTray {
                 inbox,
+                sync_line: sync.as_ref().map(|s| s.status_line()),
                 tx: tx.clone(),
             }
             .assume_sni_available(true)
@@ -356,6 +421,30 @@ async fn main() -> Result<()> {
         });
     }
 
+    // Auto-sync: shortly after startup, every PERIOD, and a few seconds after local edits
+    // (the sync's own writes arrive as outside commits, which don't count as edits).
+    if let Some(svc) = sync.clone() {
+        let (mut writes, tx) = (db.subscribe_writes(), tx.clone());
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            let mut period = tokio::time::interval(sync::PERIOD);
+            loop {
+                tokio::select! {
+                    _ = period.tick() => {}
+                    r = writes.recv() => {
+                        if matches!(r, Err(tokio::sync::broadcast::error::RecvError::Closed)) {
+                            break;
+                        }
+                        tokio::time::sleep(sync::AFTER_EDIT).await;
+                        while writes.try_recv().is_ok() {}
+                    }
+                }
+                svc.round().await;
+                let _ = tx.send(Cmd::SyncStatus);
+            }
+        });
+    }
+
     // Refresh the tray on every change, wherever it came from (app, `tt`, an outside write).
     let mut changes = db.subscribe();
     let tz = TzName(local_tz().name().to_string());
@@ -367,6 +456,7 @@ async fn main() -> Result<()> {
                 // Fire reminders due since the last tick.
                 let (from, until) = (last_check, now_ms());
                 last_check = until;
+                let _ = tx.send(Cmd::SyncStatus);
                 let req = Request::UpcomingReminders { from, until, tz: tz.clone() };
                 match db.get::<Vec<ReminderFire>>(req).await {
                     Ok(fires) => for f in fires {
@@ -382,6 +472,22 @@ async fn main() -> Result<()> {
                         h.update(|t| t.inbox = inbox).await;
                     },
                     Err(e) => eprintln!("inbox: {e:#}"),
+                },
+                Cmd::SyncNow => if let Some(svc) = sync.clone() {
+                    let tx = tx.clone();
+                    tokio::spawn(async move {
+                        for o in svc.round().await {
+                            match o.error {
+                                None => eprintln!("tt-daemon: synced with {}", o.peer_name),
+                                Some(e) => eprintln!("tt-daemon: {}: {e}", o.peer_name),
+                            }
+                        }
+                        let _ = tx.send(Cmd::SyncStatus);
+                    });
+                },
+                Cmd::SyncStatus => if let (Some(h), Some(svc)) = (&handle, &sync) {
+                    let line = svc.status_line();
+                    h.update(|t| if t.sync_line.as_deref() != Some(&line) { t.sync_line = Some(line) }).await;
                 },
                 Cmd::Notify { task_id, title } => notify(tx.clone(), task_id, title),
                 Cmd::Complete { task_id } => {
@@ -405,6 +511,9 @@ async fn main() -> Result<()> {
     }
     if let Some(h) = handle {
         h.shutdown().await;
+    }
+    if let Some(s) = sync {
+        s.shutdown().await;
     }
     Ok(())
 }

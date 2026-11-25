@@ -4199,9 +4199,11 @@ dependencies = [
  "anyhow",
  "ksni",
  "notify-rust",
+ "serde_json",
  "tokio",
  "tt-api",
  "tt-core",
+ "tt-sync",
 ]
 
 [[package]]
