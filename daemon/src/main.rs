@@ -9,8 +9,9 @@
 //! - **Sync** (M3, `sync.rs`): the iroh sync node serves paired devices and syncs with them
 //!   every 90 s and a few seconds after local edits; `tt sync` and the app reach it via the socket.
 //! - **Reminders:** every 5 s the core is asked for reminders due since the last check;
-//!   each becomes a notification (notify-rust) with Done and Snooze actions. On macOS this is
-//!   `NSUserNotificationCenter` for now (no app bundle yet), which shows the actions in one menu.
+//!   each becomes a notification (notify-rust) with Done and Snooze actions. On macOS that's
+//!   `UNUserNotificationCenter`, which only works from an app bundle (`Tick Alt Daemon.app`,
+//!   built by scripts/build-macos.sh); run bare, the daemon logs reminders instead.
 //!
 //! Flags: `--db <path>`, `--socket <path>`, `--no-tray`, `--no-sync`, `--no-relay` (sync on
 //! direct addresses only); `tt-daemon notify <id>` sends one
@@ -124,32 +125,91 @@ fn has_flag(name: &str) -> bool {
     std::env::args().skip(1).any(|a| a == name)
 }
 
+/// macOS: whether notifications can be shown (an app bundle, and the user allowed them).
+#[cfg(target_os = "macos")]
+static NOTIFICATIONS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// macOS: ask for permission to notify (the first time, macOS asks the user).
+#[cfg(target_os = "macos")]
+async fn allow_notifications() {
+    use std::sync::atomic::Ordering;
+    // request_auth checks for a bundle first: UNUserNotificationCenter crashes without one.
+    match mac_usernotifications::request_auth().await {
+        Ok(true) => NOTIFICATIONS.store(true, Ordering::Relaxed),
+        Ok(false) => eprintln!(
+            "tt-daemon: notifications are turned off for this app (System Settings > Notifications)"
+        ),
+        Err(e) => eprintln!(
+            "tt-daemon: no notifications ({e}): run the bundled daemon (scripts/build-macos.sh)"
+        ),
+    }
+}
+
 /// Shows a reminder notification and reports the chosen action back to the main loop.
+/// macOS: `UNUserNotificationCenter`'s async API on tokio; the answer comes back through
+/// AppKit's run loop on the main thread (`tray_mac::run_app`).
+#[cfg(target_os = "macos")]
+fn notify(tx: mpsc::UnboundedSender<Cmd>, task_id: String, title: String) {
+    use mac_usernotifications::{Action, Notification};
+    if !NOTIFICATIONS.load(std::sync::atomic::Ordering::Relaxed) {
+        return eprintln!("tt-daemon: reminder (no notifications): {title}");
+    }
+    tokio::spawn(async move {
+        let sent = Notification::new()
+            .title(&title)
+            .message("Reminder")
+            .action(Action::button("done", "Done"))
+            .action(Action::button("snooze", "Snooze 10 min"))
+            .send()
+            .await;
+        let response = match sent {
+            Ok(handle) => handle.response().await,
+            Err(e) => return eprintln!("notification failed: {e}"),
+        };
+        let response = match response {
+            Ok(r) => r,
+            Err(e) => return eprintln!("notification {task_id}: {e}"),
+        };
+        eprintln!("notification {task_id}: {}", response.action_identifier);
+        let cmd = if response.is_default_action() {
+            // A click on the notification itself.
+            Cmd::OpenApp { token: None }
+        } else {
+            match response.action_identifier.as_str() {
+                "done" => Cmd::Complete { task_id },
+                "snooze" => Cmd::Snooze { task_id, title },
+                _ => return, // dismissed
+            }
+        };
+        let _ = tx.send(cmd);
+    });
+}
+
+/// Shows a reminder notification and reports the chosen action back to the main loop.
+#[cfg(not(target_os = "macos"))]
 fn notify(tx: mpsc::UnboundedSender<Cmd>, task_id: String, title: String) {
     tokio::task::spawn_blocking(move || {
-        let mut n = notify_rust::Notification::new();
-        n.appname("Tick Alt")
+        let shown = notify_rust::Notification::new()
+            .appname("Tick Alt")
             .summary(&title)
             .body("Reminder")
             .icon("appointment-soon")
             // Dunst runs the "default" action on middle click when it's the only one and
             // otherwise opens its dmenu picker, so no default here: Done and Snooze only.
             .action("done", "Done")
-            .action("snooze", "Snooze 10 min");
-        #[cfg(all(unix, not(target_os = "macos")))]
-        n.hint(notify_rust::Hint::Category("im.received".into()))
-            .timeout(notify_rust::Timeout::Never);
-        let shown = n.show();
+            .action("snooze", "Snooze 10 min")
+            .hint(notify_rust::Hint::Category("im.received".into()))
+            .timeout(notify_rust::Timeout::Never)
+            .show();
         let handle = match shown {
             Ok(h) => h,
             Err(e) => return eprintln!("notification failed: {e}"),
         };
         handle.wait_for_action(|action| {
             eprintln!("notification {task_id}: {action}");
-            // macOS's NSUserNotificationCenter reports the button's label, not its id.
             let cmd = match action {
-                "done" | "Done" => Cmd::Complete { task_id },
-                "snooze" | "Snooze 10 min" => Cmd::Snooze { task_id, title },
+                "done" => Cmd::Complete { task_id },
+                "snooze" => Cmd::Snooze { task_id, title },
                 _ => return, // "__closed" (dismissed or expired)
             };
             let _ = tx.send(cmd);
@@ -255,6 +315,10 @@ async fn run() -> Result<()> {
             }
         }
     });
+
+    // In the background: the first time, macOS waits for the user to answer its prompt.
+    #[cfg(target_os = "macos")]
+    tokio::spawn(allow_notifications());
 
     let (tx, mut rx) = mpsc::unbounded_channel();
     let inbox: Vec<Task> = db.get(Request::Inbox {}).await?;
