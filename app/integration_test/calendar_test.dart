@@ -178,7 +178,8 @@ void main() {
         find.byKey(const Key('cal-quick-add')),
         'Call mum',
       );
-      await tester.tap(find.byKey(const Key('cal-quick-add-ok')));
+      // Submit from the keyboard; the on-screen keyboard can move the dialog's buttons.
+      await tester.testTextInput.receiveAction(TextInputAction.done);
       await settle(tester);
       expect((await db.unscheduled()).map((r) => r.title), ['Call mum']);
     },
