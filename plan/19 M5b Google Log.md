@@ -23,7 +23,10 @@ Work happens on branch `worktree-google-calendar` (a git worktree under `.claude
    - Wired into the daemon (2026-11-26, `daemon/src/google.rs`): `GoogleStatus`, `GoogleSignIn`, `GoogleSignOut` and `GoogleSync` requests on the socket (the same control hook as sync), a fetch every 5 minutes while signed in, `--no-google`. The cache is also readable through the `api!` table (`gcal_calendars`, `gcal_select`, `gcal_events`). CLI: `tt google status | sign-in | sign-out | sync | calendars | select | events`.
    - **Real sign-in tested** (2026-11-26, throwaway daemon and DB): the browser flow worked, 14 calendars listed, one selected, its events fetched (35 cached) and the second fetch used the saved sync token. The token file is owner-only.
    - Still to do for this slice: the app's Google button and calendar picker (slice 3), "on window focus" fetch (the app calls `GoogleSync`), and the keychain for tokens.
-3. **Events in on the calendar**: expose `gcal_events` through the `api!` table, draw them read-only in the Soft style, a Settings page to pick calendars.
+3. ✅ **Events in on the calendar** (2026-11-26). Desktop only: the phone has no daemon, so it has no Google yet (slice 5).
+   - Bridge (`TaskDb`): `googleAvailable`, `googleStatus`, `googleSignIn`, `googleSignOut`, `googleSync`, `gcalCalendars`, `gcalSelect`, `gcalEvents` (mirrors of `GoogleStatus`, `GcalCalendar`, `GcalEvent`; bindings regenerated).
+   - Calendar (`app/lib/calendar/calendar_page.dart`): `GoogleEvent` is a read-only `KalenderEvent` (no drag, resize or drop), loaded with the tasks on every reload, so the daemon's fetches show live through the change stream. A paler tint than a task block, a hollow dot in Month. A tap opens a dialog (title, time, calendar name, "Copy link"); there is no "Open in Google Calendar" button because the app has no URL-launcher dependency yet.
+   - Page (`app/lib/desk/google.dart`, sidebar entry "Google Calendar"): not set up / sign in (with a "copy the sign-in link" fallback) / signed in with "Fetch now", "Sign out" (asks first) and a switch per calendar (turning one on fetches at once).
 4. **Tasks out**: the "Tasks" calendar, push and reconcile, backoff. Decide how repeats go to Google (recurring event vs a window of occurrences).
 5. **Android**: Google Identity AuthorizationClient, polling in the WorkManager job.
 
