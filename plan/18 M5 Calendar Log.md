@@ -100,6 +100,12 @@ The same `CalendarPage`, with a phone layout below 760 px wide (phones, and narr
 - **Unscheduled drawer:** a `DraggableScrollableSheet` that peeks 64 px (title, count, source pill); drag it up or tap its header to open it half way. Long-press a card (Android; a mouse drag on desktop) and the drawer drops back to its peek so the day is visible; drop on the grid to schedule. Dropping a block on the drawer unschedules it. Mouse drags move the sheet too, for narrow desktop windows.
 - **Taps:** the first tap selects a block (outline, resize handles); a second tap on the selected block opens the detail as a page. Tapping a card in the drawer opens its detail.
 - **Quick add:** the **+** button asks for a title and adds the task to Inbox, so it appears in the default Unscheduled list.
-- **No tooltips** on the phone layout: Android shows them on long-press, which is the drag gesture.
+- **No tooltips on Android** (any width) or on the phone layout: on touch a tooltip claims the long-press, which is the drag gesture. The emulator run caught this on a wide Android screen.
+- **Keyboard:** when quick add's keyboard leaves less than 360 px, the page keeps its layout and is clipped behind the dialog instead of overflowing.
 - **Tests:** a phone-size test in `integration_test/calendar_test.dart` (week strip, drawer, drag out of the drawer, two taps for detail, quick add); each calendar test now starts from a fresh `calendar.json`. All 4 calendar tests, the 10 shell tests, `flutter test` and `flutter analyze` pass.
 - **Checked by eye** at 412 × 880 on a hidden X display (Xvfb): Day view, opening the drawer, dragging out of it, the second tap, the week strip and quick add. That found and fixed a crash when quick add's dialog closed (its text controller was disposed during the closing animation).
+
+**On the emulator** (`tt_pixel`, Android 16, x86_64; 2026-11-25):
+- A **release** APK (`--target-platform android-x64`, built from a clean worktree at the slice 4 commit, so the TickTick-import work in progress elsewhere stayed out) starts and shows the calendar: Day view in light mode, the week strip, a completed task faded, the drawer and the + button. No R8 problems (nothing new is loaded by reflection).
+- `adb input draganddrop` can't long-press, as noted in M0, so the drags were checked by running `integration_test/calendar_test.dart` on the emulator (debug build): **all 4 tests pass with real long-press drags**, the phone test using the emulator's own screen. The tests drag with a long-press on Android and a mouse drag on desktop.
+- Not tried yet on the real phone (Xiaomi): the drawer, long-press drags and quick add by hand. That needs a new APK (v0.3.0) on it.
