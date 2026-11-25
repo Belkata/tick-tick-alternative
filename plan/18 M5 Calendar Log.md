@@ -42,7 +42,7 @@ Today's calendar is still the M0 spike (`app/lib/calendar/spike_calendar.dart`):
    - Moves and resizes go through `set_schedule` (start + duration). Rust tests for expansion, DST days and the edit paths.
 2. ✅ **Look first: a static mockup** (2026-11-25, `plan/ui-styles/calendar.html`; approved) of the desktop Week view and the phone Day view in the Soft style, for the user's OK before wiring (added to `plan/ui-styles/`). This is the step that fixes "looks very bad".
 3. ✅ **Desktop calendar.** (2026-11-25, see below) Replace the spike: Week, Day and Month on kalender, Soft tiles, the all-day row, the current-time line, side-by-side overlaps, the Today button, the Unscheduled panel on the right with its source picker, drag in, move, resize, click for detail, live updates from the change stream. Integration tests, then visual checks in the real app.
-4. **Phone calendar.** Day by default with swipe between days, the Unscheduled panel as a bottom drawer, long-press drag, tap for the detail sheet. Checked on a release build on the emulator, then on the phone.
+4. ✅ **Phone calendar.** (2026-11-25, see below) Day by default with swipe between days, the Unscheduled panel as a bottom drawer, long-press drag, tap for the detail sheet. Checked on a release build on the emulator, then on the phone.
 
 ## Before starting
 - Check kalender's current version on pub.dev (the spike used 0.34.0) and record it in [[02 Tech Stack Options]].
@@ -72,7 +72,7 @@ Open for the user:
 - Month shows every repeat occurrence too, so a daily task takes a line in every cell. Hide daily repeats in Month?
 
 ## Slice 3: desktop calendar ✅ (2026-11-25, on the Arch laptop)
-`app/lib/calendar/calendar_page.dart` replaces the spike as the Calendar page (the spike file stays until the phone slice reuses its long-press test).
+`app/lib/calendar/calendar_page.dart` replaces the spike as the Calendar page (the spike and its test were removed in slice 4).
 
 ![[m5-calendar-week.jpg]]
 
@@ -89,3 +89,17 @@ Limits and follow-ups:
 - Light theme wasn't checked in the real app (the tokens are the same as the mockup's, which was checked in both).
 - The installed release app is still the old build; rebuild it (`flutter build linux --release`) to use the calendar day to day.
 - Month still shows daily repeats in every cell (the open question above).
+
+## Slice 4: phone calendar ✅ (2026-11-25, on the Arch laptop)
+The same `CalendarPage`, with a phone layout below 760 px wide (phones, and narrow desktop windows).
+
+![[m5-calendar-phone.jpg]]
+
+- **Bar:** the page draws its own ☰ (`ShellPage.ownMenuButton`), the weekday and date (Day) or the month (Week, Month), a **Today** pill and a view menu. Day opens by default unless a view was saved.
+- **Week strip** (Day view): Monday to Sunday around the shown day, the shown day in teal, today in teal text, a dot on days with blocks; tap a day to go there. Swiping the grid changes the day (kalender's paging). The grid's own day label is hidden here.
+- **Unscheduled drawer:** a `DraggableScrollableSheet` that peeks 64 px (title, count, source pill); drag it up or tap its header to open it half way. Long-press a card (Android; a mouse drag on desktop) and the drawer drops back to its peek so the day is visible; drop on the grid to schedule. Dropping a block on the drawer unschedules it. Mouse drags move the sheet too, for narrow desktop windows.
+- **Taps:** the first tap selects a block (outline, resize handles); a second tap on the selected block opens the detail as a page. Tapping a card in the drawer opens its detail.
+- **Quick add:** the **+** button asks for a title and adds the task to Inbox, so it appears in the default Unscheduled list.
+- **No tooltips** on the phone layout: Android shows them on long-press, which is the drag gesture.
+- **Tests:** a phone-size test in `integration_test/calendar_test.dart` (week strip, drawer, drag out of the drawer, two taps for detail, quick add); each calendar test now starts from a fresh `calendar.json`. All 4 calendar tests, the 10 shell tests, `flutter test` and `flutter analyze` pass.
+- **Checked by eye** at 412 × 880 on a hidden X display (Xvfb): Day view, opening the drawer, dragging out of it, the second tap, the week strip and quick add. That found and fixed a crash when quick add's dialog closed (its text controller was disposed during the closing animation).
