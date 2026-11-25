@@ -109,6 +109,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<NavItem> dco_decode_list_nav_item(dynamic raw);
 
   @protected
+  List<Peer> dco_decode_list_peer(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
@@ -116,6 +119,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<ServedItem> dco_decode_list_served_item(dynamic raw);
+
+  @protected
+  List<SyncOutcome> dco_decode_list_sync_outcome(dynamic raw);
 
   @protected
   List<TagChip> dco_decode_list_tag_chip(dynamic raw);
@@ -142,6 +148,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw);
 
   @protected
+  Peer dco_decode_peer(dynamic raw);
+
+  @protected
   PullResult dco_decode_pull_result(dynamic raw);
 
   @protected
@@ -152,6 +161,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Sidebar dco_decode_sidebar(dynamic raw);
+
+  @protected
+  SyncOutcome dco_decode_sync_outcome(dynamic raw);
+
+  @protected
+  SyncStatus dco_decode_sync_status(dynamic raw);
 
   @protected
   TagChip dco_decode_tag_chip(dynamic raw);
@@ -269,6 +284,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<NavItem> sse_decode_list_nav_item(SseDeserializer deserializer);
 
   @protected
+  List<Peer> sse_decode_list_peer(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
@@ -276,6 +294,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<ServedItem> sse_decode_list_served_item(SseDeserializer deserializer);
+
+  @protected
+  List<SyncOutcome> sse_decode_list_sync_outcome(SseDeserializer deserializer);
 
   @protected
   List<TagChip> sse_decode_list_tag_chip(SseDeserializer deserializer);
@@ -304,6 +325,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer);
 
   @protected
+  Peer sse_decode_peer(SseDeserializer deserializer);
+
+  @protected
   PullResult sse_decode_pull_result(SseDeserializer deserializer);
 
   @protected
@@ -314,6 +338,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Sidebar sse_decode_sidebar(SseDeserializer deserializer);
+
+  @protected
+  SyncOutcome sse_decode_sync_outcome(SseDeserializer deserializer);
+
+  @protected
+  SyncStatus sse_decode_sync_status(SseDeserializer deserializer);
 
   @protected
   TagChip sse_decode_tag_chip(SseDeserializer deserializer);
@@ -451,6 +481,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_nav_item(List<NavItem> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_peer(List<Peer> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -465,6 +498,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_served_item(
     List<ServedItem> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_sync_outcome(
+    List<SyncOutcome> self,
     SseSerializer serializer,
   );
 
@@ -499,6 +538,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_peer(Peer self, SseSerializer serializer);
+
+  @protected
   void sse_encode_pull_result(PullResult self, SseSerializer serializer);
 
   @protected
@@ -509,6 +551,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_sidebar(Sidebar self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_sync_outcome(SyncOutcome self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_sync_status(SyncStatus self, SseSerializer serializer);
 
   @protected
   void sse_encode_tag_chip(TagChip self, SseSerializer serializer);

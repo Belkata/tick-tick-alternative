@@ -117,6 +117,36 @@ pub struct _TaskDetail {
     pub reminders: Vec<ReminderRow>,
 }
 
+pub use tt_api::{SyncOutcome, SyncStatus};
+pub use tt_core::Peer;
+
+#[frb(mirror(SyncOutcome))]
+pub struct _SyncOutcome {
+    pub peer_id: String,
+    pub peer_name: String,
+    pub error: Option<String>,
+    pub sent: u32,
+    pub received: u32,
+    pub applied: u32,
+}
+
+#[frb(mirror(SyncStatus))]
+pub struct _SyncStatus {
+    pub node_id: String,
+    pub peers: u32,
+    pub last_sync_ms: Option<i64>,
+    pub last_error: Option<String>,
+}
+
+#[frb(mirror(Peer))]
+pub struct _Peer {
+    pub node_id: String,
+    pub name: String,
+    pub added_at: i64,
+    pub last_seen: Option<i64>,
+    pub last_addr: Option<String>,
+}
+
 /// A task as the M0 Inbox page sees it.
 pub struct TaskItem {
     pub id: String,
@@ -441,6 +471,39 @@ impl TaskDb {
     /// Delete a tag and the tags under it; tasks lose them.
     pub fn delete_tag(&self, id: String) -> anyhow::Result<()> {
         self.write(Request::DeleteTag { id }).map(drop)
+    }
+
+    // ----- Devices and sync (answered by tt-daemon's sync node; desktop only) -----
+
+    /// The daemon's sync node: this device's id, peer count, last sync. Errors without a daemon.
+    pub fn sync_status(&self) -> anyhow::Result<SyncStatus> {
+        self.api.sync_status()
+    }
+
+    pub fn peers(&self) -> anyhow::Result<Vec<Peer>> {
+        self.api.peers()
+    }
+
+    /// A one-time pairing ticket (`tt2…`, 5 minutes) for another device to join with.
+    pub fn sync_pair(&self) -> anyhow::Result<String> {
+        self.api.sync_pair()
+    }
+
+    /// Pair with the device that made `ticket`, then sync.
+    pub fn sync_join(&self, ticket: String) -> anyhow::Result<SyncOutcome> {
+        self.api.sync_join(ticket.trim())
+    }
+
+    /// Sync with every paired device now.
+    pub fn sync_now(&self) -> anyhow::Result<Vec<SyncOutcome>> {
+        self.api.sync_now()
+    }
+
+    /// Unpair a device.
+    pub fn forget_peer(&self, node_id: String) -> anyhow::Result<bool> {
+        Ok(serde_json::from_value(
+            self.write(Request::RemovePeer { node_id })?,
+        )?)
     }
 
     /// Run a write. In-process, tick the change stream here; through the daemon its

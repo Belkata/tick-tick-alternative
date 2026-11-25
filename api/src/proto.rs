@@ -312,9 +312,9 @@ pub struct SyncOutcome {
     pub peer_name: String,
     /// The error when the sync failed (the device is offline, refused…).
     pub error: Option<String>,
-    pub sent: usize,
-    pub received: usize,
-    pub applied: usize,
+    pub sent: u32,
+    pub received: u32,
+    pub applied: u32,
 }
 
 /// What `sync_status` answers.
@@ -322,7 +322,7 @@ pub struct SyncOutcome {
 pub struct SyncStatus {
     /// This device's iroh endpoint id.
     pub node_id: String,
-    pub peers: usize,
+    pub peers: u32,
     /// Epoch ms of the last round that reached at least one device.
     pub last_sync_ms: Option<i64>,
     /// Why the last round failed, if it reached nobody.

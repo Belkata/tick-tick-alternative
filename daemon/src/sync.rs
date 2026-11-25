@@ -118,7 +118,7 @@ impl SyncService {
         let st = lock(&self.state);
         SyncStatus {
             node_id: self.node.id(),
-            peers: st.peers,
+            peers: st.peers as u32,
             last_sync_ms: st.last_sync_ms,
             last_error: st.last_error.clone(),
         }
@@ -190,9 +190,9 @@ fn outcome(r: SyncReport) -> SyncOutcome {
         peer_id: r.peer_id,
         peer_name: r.peer_name,
         error: None,
-        sent: r.sent,
-        received: r.received,
-        applied: r.applied,
+        sent: r.sent as u32,
+        received: r.received as u32,
+        applied: r.applied as u32,
     }
 }
 

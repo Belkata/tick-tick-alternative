@@ -66,6 +66,9 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// A saved filter's definition as JSON (`name`, `icon`, `rule`, `sort`, `show_completed`).
   Future<String?> filterJson({required String id});
 
+  /// Unpair a device.
+  Future<bool> forgetPeer({required String nodeId});
+
   Future<List<TaskItem>> inbox();
 
   /// True when calls go through `tt-daemon`.
@@ -74,6 +77,8 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Open (or create) the database file at `path` in this process (Android, tests).
   static Future<TaskDb> open({required String path}) =>
       RustLib.instance.api.crateApiTasksTaskDbOpen(path: path);
+
+  Future<List<Peer>> peers();
 
   Future<void> removeReminder({required String id});
 
@@ -117,6 +122,18 @@ abstract class TaskDb implements RustOpaqueInterface {
   Future<void> setTitle({required String id, required String title});
 
   Future<Sidebar> sidebar();
+
+  /// Pair with the device that made `ticket`, then sync.
+  Future<SyncOutcome> syncJoin({required String ticket});
+
+  /// Sync with every paired device now.
+  Future<List<SyncOutcome>> syncNow();
+
+  /// A one-time pairing ticket (`tt2…`, 5 minutes) for another device to join with.
+  Future<String> syncPair();
+
+  /// The daemon's sync node: this device's id, peer count, last sync. Errors without a daemon.
+  Future<SyncStatus> syncStatus();
 
   /// Tag a task by path (`home/garden`); missing tags are created.
   Future<void> tag({required String id, required String path});
@@ -202,6 +219,41 @@ class NavItem {
           parentId == other.parentId;
 }
 
+class Peer {
+  final String nodeId;
+  final String name;
+  final PlatformInt64 addedAt;
+  final PlatformInt64? lastSeen;
+  final String? lastAddr;
+
+  const Peer({
+    required this.nodeId,
+    required this.name,
+    required this.addedAt,
+    this.lastSeen,
+    this.lastAddr,
+  });
+
+  @override
+  int get hashCode =>
+      nodeId.hashCode ^
+      name.hashCode ^
+      addedAt.hashCode ^
+      lastSeen.hashCode ^
+      lastAddr.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Peer &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          name == other.name &&
+          addedAt == other.addedAt &&
+          lastSeen == other.lastSeen &&
+          lastAddr == other.lastAddr;
+}
+
 class ReminderRow {
   final String id;
   final String label;
@@ -246,6 +298,76 @@ class Sidebar {
           lists == other.lists &&
           filters == other.filters &&
           tags == other.tags;
+}
+
+class SyncOutcome {
+  final String peerId;
+  final String peerName;
+  final String? error;
+  final int sent;
+  final int received;
+  final int applied;
+
+  const SyncOutcome({
+    required this.peerId,
+    required this.peerName,
+    this.error,
+    required this.sent,
+    required this.received,
+    required this.applied,
+  });
+
+  @override
+  int get hashCode =>
+      peerId.hashCode ^
+      peerName.hashCode ^
+      error.hashCode ^
+      sent.hashCode ^
+      received.hashCode ^
+      applied.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SyncOutcome &&
+          runtimeType == other.runtimeType &&
+          peerId == other.peerId &&
+          peerName == other.peerName &&
+          error == other.error &&
+          sent == other.sent &&
+          received == other.received &&
+          applied == other.applied;
+}
+
+class SyncStatus {
+  final String nodeId;
+  final int peers;
+  final PlatformInt64? lastSyncMs;
+  final String? lastError;
+
+  const SyncStatus({
+    required this.nodeId,
+    required this.peers,
+    this.lastSyncMs,
+    this.lastError,
+  });
+
+  @override
+  int get hashCode =>
+      nodeId.hashCode ^
+      peers.hashCode ^
+      lastSyncMs.hashCode ^
+      lastError.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SyncStatus &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          peers == other.peers &&
+          lastSyncMs == other.lastSyncMs &&
+          lastError == other.lastError;
 }
 
 class TagChip {
