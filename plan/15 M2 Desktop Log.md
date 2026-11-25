@@ -208,12 +208,12 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
 - Filter grouping (`group`), manual sort and drag-to-reorder: later.
 - Keyboard access to the builder and the edit dialogs: they're mouse-first for now.
 
-## Slice 5: the Mac (2026-11-25, on the Mac) 🟡
+## Slice 5: the Mac (2026-11-25, on the Mac) ✅
 **Done without Xcode:**
 - **`tt-daemon` builds and runs on macOS.** The ksni tray moved to `daemon/src/tray_sni.rs` (Linux only); `tray_mac.rs` is a menu-bar item with the same interface; `tray_none.rs` covers other platforms.
   - `tray_mac.rs` uses **tray-icon 0.26.1** (muda 0.21.2 menus), objc2 0.6.5, objc2-app-kit 0.3.2 and dispatch2 0.3.1. AppKit needs its run loop on the main thread, so on macOS `main` hands the main thread to `tray::run_app` and the tokio runtime runs on a second thread. Updates reach the icon through GCD's main queue; the icon's state lives in a main-thread `thread_local`. The process is an accessory app (no Dock icon).
   - It shows a template icon (filled while the Inbox has tasks, an outline when empty) with the Inbox count beside it. The menu matches Linux: the first 5 Inbox tasks (each sends its own notification, for testing), Open, Refresh, the sync line, Sync now, Quit.
-  - **Notifications:** notify-rust's default macOS backend (`NSUserNotificationCenter`, deprecated but working). It has no app bundle to post as yet, and it reports the button's *label*, so `Done`/`Snooze 10 min` are matched as well as the ids. `UNUserNotificationCenter` needs a bundle: revisit with the .app.
+  - **Notifications:** see "With Xcode" below (the first attempt, notify-rust's `NSUserNotificationCenter` backend, never delivered).
   - The device name comes from `scutil --get ComputerName` (macOS has no `/etc/hostname`). Open runs `open $TT_APP`, else `open -b dev.tickalt.tickAlt`.
 - **LaunchAgent:** `daemon/dev.tickalt.daemon.plist` and `scripts/install-launch-agent.sh` (`--remove` to undo). It starts at login, restarts after a crash (`KeepAlive.SuccessfulExit = false`) and stays stopped after Quit. Logs go to `~/Library/Logs/tick-alt/daemon.log`.
 - **Checked on the Mac:** `cargo test --workspace` passes and clippy is clean. Two daemons on throwaway DBs paired with `tt sync pair`/`join` and synced both ways, including auto-sync after edits.
@@ -221,4 +221,19 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
 - ⏸ Not verified: the Linux tray after the move (verbatim, plus a small wrapper). Run `cargo clippy -p tt-daemon` on Arch.
 - **App Sandbox off** in both entitlements files: in the sandbox, `dirs::data_dir()` is the app's container, so the app couldn't reach the daemon's socket or the shared `tick-alt/tt.db`. Fine for a personal, ad-hoc-signed app (plan/08).
 
-**Waiting for Xcode** (installed 2026-11-25, licence not yet accepted): `flutter build macos`, the window title and `.app` name, the menu's Open, notifications from a bundle, the DMG.
+**With Xcode** (27.2, from the App Store; the user accepted the licence and ran `-runFirstLaunch` with sudo):
+- **`flutter build macos` works.** Fixes on the way:
+  - The `tt_bridge` pod didn't link **SystemConfiguration** (iroh watches network changes with it): `s.frameworks` in `app/rust_builder/macos/tt_bridge.podspec`.
+  - **CocoaPods crashes on a non-UTF-8 locale** (`Unicode Normalization not appropriate for ASCII-8BIT`). `scripts/env.sh` now exports `LANG=en_US.UTF-8` on macOS. After changing a podspec, run `pod install` in `app/macos` (the build doesn't notice).
+  - The first build added the usual CocoaPods integration (Podfile, Podfile.lock, xcconfig includes): committed.
+- **The app is "Tick Alt"** (`PRODUCT_NAME`; bundle id stays `dev.tickalt.tickAlt`) and opens at 1280×720, centred, then restores its last frame (`MainFlutterWindow.swift`). The bundle is universal (arm64 + x86_64), signed ad hoc. The copyright line is still the template's: it waits for the user's LICENSE decision.
+- **Checked in the real app** (screenshots through background computer use): it connects to the daemon, shows the Inbox, and a task added with `tt` appears live. Typing into it from the background didn't reach Flutter's text field (no accessibility tree), so the user tries adding in the app.
+- **Notifications** take a bundle:
+  - First attempt, notify-rust's default backend (`NSUserNotificationCenter`) from the bare binary: without `set_application`, mac-notification-sys runs AppleScript `get id of application "use_default"`, which pops up a **"Choose Application" dialog**. With it set, macOS **silently dropped** the notifications (that app never got permission).
+  - Now: `UNUserNotificationCenter` through **mac-usernotifications 0.3.1** directly. notify-rust's `preview-macos-un` wrapper only has blocking calls, and `block_on_current` fails with **`MainThreadNotRunning` whenever AppKit's run loop isn't idle at that instant** (it checks `CFRunLoop::is_waiting`), both on send and while waiting for the answer. The async `send().await` / `response().await` on tokio don't check; the answer arrives through the main run loop that `tray_mac::run_app` runs. notify-rust is now a non-macOS dependency.
+  - The daemon asks for permission at startup (in the background: the first prompt waits for the user). Without a bundle (`target/release/tt-daemon`), `request_auth` fails and reminders are only logged, instead of the crash `UNUserNotificationCenter` would cause.
+  - A click on the notification opens the app; Done and Snooze arrive as action ids.
+  - ✅ The user allowed notifications, a reminder appeared, and **Done from Notification Centre completed the task**. macOS's default style for a new app is Banners, which hide after a few seconds; **System Settings > Notifications > Tick Alt > Alerts** keeps reminders on screen.
+- **`scripts/build-macos.sh`** builds the Rust binaries and the Flutter app, then puts `tt-daemon` into `Tick Alt.app/Contents/Helpers/Tick Alt Daemon.app` (`dev.tickalt.daemon`, `LSUIElement`, display name "Tick Alt") with `tt` beside it. It signs everything ad hoc and makes **`dist/tick-alt-<version>-macos.dmg`** (64 MB for 0.3.0). The daemon has a bundle of its own so notifications work and their actions reach it rather than the window app.
+- `install-launch-agent.sh [<Tick Alt.app>]` runs the bundled daemon (else `target/release/tt-daemon`, without notifications). ⏸ The user hasn't installed the LaunchAgent yet (the agent that ran this wasn't allowed to add a login item).
+- ⏸ **Not tested:** Snooze on macOS, the menu's Open, Sync now from the menu, pairing the Mac with the phone or the Arch laptop.

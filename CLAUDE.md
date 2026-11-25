@@ -28,15 +28,17 @@ The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manro
 ## Where things stand (handoff, 2026-11-25, Arch laptop)
 
 **Done** (details in the logs named in the table above):
-- **M0**: stack and UI style decided; Spikes 1, 3, 4, 5 pass. ⏸ macOS checks need Xcode (the user's Apple account was locked; download the `.xip` from developer.apple.com, not the App Store; it's a work Mac).
+- **M0**: stack and UI style decided; Spikes 1, 3, 4, 5 pass, on macOS too since M2 slice 5.
 - **M1**: the core (op-log, HLC, filters, recurrence, reminders) and the full `tt` CLI. ⏸ The user hasn't yet "managed tasks from the terminal for real" (the M1 exit).
-- **M2** (desktop, `plan/15`): the three-pane Flutter app, `tt-daemon` owning the DB over `$XDG_RUNTIME_DIR/tick-alt.sock`, the systemd user unit, the filter builder and edit dialogs, the PKGBUILD (`packaging/arch`, test-built, not installed). ⏸ The DMG waits for the Mac.
+- **M2** (desktop, `plan/15`): the three-pane Flutter app, `tt-daemon` owning the DB over `$XDG_RUNTIME_DIR/tick-alt.sock`, the systemd user unit, the filter builder and edit dialogs, the PKGBUILD (`packaging/arch`, test-built, not installed). **Slice 5, the Mac (2026-11-25):** the daemon runs there with a menu-bar icon and `UNUserNotificationCenter` reminders, `scripts/build-macos.sh` makes `Tick Alt.app` (daemon bundled inside) and a DMG, and there's a LaunchAgent script.
 - **M3** (sync, `plan/16`): protocol 2 over iroh (tt2 pairing tickets, trusted peers, trust sharing, removal spreading), compaction (schema **v5**), the network simulation test. The daemon runs the sync node with auto-sync, tray status and Sync now.
 - **M4** (Android, `plan/17`): in-process phone sync (`app/rust/src/phone.rs` + shared `tt_sync::service::SyncService`), QR pairing, AlarmManager reminders (Done / Snooze 10 min / 1 h), WorkManager background sync (15 min, plus expedited after outside edits), a share target, the CI release workflow. Tested on the emulator.
 - **M5a** (local calendar, `plan/18`): Day/Week/Month on real tasks in the Soft style, Unscheduled panel (desktop) and bottom drawer (phone) with drag in and out, `placeBlock`/`unschedule` in the core. M5b (Google) is next.
 - **Released**: pre-release **v0.3.0** on GitHub (`tick-alt-0.3.0-arm64.apk`, the calendar; v0.2.0 before it), signed with this laptop's **debug** key, so it updates v0.2.0 in place. Its CI run fails until release-key secrets exist; that's expected.
 
-**Running on this laptop now:**
+**On the Mac now (2026-11-25):** Xcode 27.2 installed and set up. Commits up to the M2 slice 5 plan update are **not pushed**. The bundled daemon runs from `app/build/…/Tick Alt.app` (started with `open`, not the LaunchAgent) on a fresh `~/Library/Application Support/tick-alt/tt.db` with 2 test tasks; it isn't paired with anything. The user allowed its notifications. Next on the Mac: install the DMG's app into /Applications and run `scripts/install-launch-agent.sh "/Applications/Tick Alt.app"`, then pair with the laptop or phone. Not tested yet: Snooze, the menu's Open, Sync now.
+
+**Running on the Arch laptop (as of its handoff):**
 - The `tick-alt` user service runs this checkout's `target/release/tt-daemon` on `~/.local/share/tick-alt/tt.db` (schema v5, sync node `c382b28c2f…`, UDP 41824). **After rebuilding the daemon: `systemctl --user restart tick-alt`.**
 - Desktop app, `tt` and daemon were built from `6e11fb9`. The desktop entry is installed (rofi lists "Tick Alt").
 - **The user's phone** (Xiaomi 22101316G) runs v0.2.0 and is **paired with this daemon** (2026-11-25 09:09); tasks sync both ways. A reminder round-trip (09:14 "Reminder test from the laptop": Done on the phone → completed on the laptop) was in progress when this was written; check `tt completed`.
@@ -67,8 +69,8 @@ api/                  tt-api: views (sidebar/rows/detail), request protocol (pro
                       socket server (feature server; SyncControl hook) and client (reconnect/fallback)
 sync/                 tt-sync: iroh node. replicate.rs = sync protocol 2 (tt2 pairing, trust, op streaming);
                       service.rs = SyncService (rounds, status, auto-sync) shared by daemon and phone
-daemon/               tt-daemon: owns the desktop DB, serves the socket, runs SyncService; tray (ksni), reminders (notify-rust);
-                      tick-alt.service = systemd user unit
+daemon/               tt-daemon: owns the desktop DB, serves the socket, runs SyncService, reminders. Tray: tray_sni.rs (Linux, ksni),
+                      tray_mac.rs (menu bar, tray-icon), tray_none.rs. tick-alt.service (systemd), dev.tickalt.daemon.plist (LaunchAgent)
 cli/                  `tt` CLI (`tt --help`, `tt sync …`). Short ids = LAST 8 hex chars of the UUIDv7. $TT_DB, $TT_TZ, $TT_SOCKET
 app/                  Flutter app (android, linux, macos)
   lib/main.dart       startup: desktop → TaskDb.connectOrOpen (daemon); Android → TaskDb.open + startPhoneSync
@@ -84,8 +86,9 @@ app/                  Flutter app (android, linux, macos)
 packaging/arch/       PKGBUILD (+ .SRCINFO)
 .github/workflows/    android-release.yml (APK on v* tags; needs release-key secrets)
 tools/uniffi-bindgen/ uniffi-bindgen pinned to the library's UniFFI version
-scripts/              env.sh, gen-kotlin-bindings.sh, install-user-service.sh, install-desktop-entry.sh
-dist/                 built APKs for the user (git-ignored)
+scripts/              env.sh, gen-kotlin-bindings.sh, install-user-service.sh, install-desktop-entry.sh,
+                      build-macos.sh (app + DMG), install-launch-agent.sh
+dist/                 built APKs and DMGs for the user (git-ignored)
 plan/                 Obsidian plan notes + attachments/
 ```
 
@@ -105,6 +108,8 @@ Always start with `source scripts/env.sh`. It sets up rustup, which is keg-only 
 | On-device Flutter test | `cd app && flutter test integration_test/inbox_test.dart -d emulator-5554` |
 | On-device Kotlin tests | `cd app/android && ./gradlew app:connectedDebugAndroidTest -Ptarget-platform=android-arm64` |
 | Release APK (what to try on a device) | `cd app && flutter build apk --release --target-platform android-arm64` |
+| macOS app + DMG (daemon bundled) | `scripts/build-macos.sh` (`--no-dmg` for the .app only) → `dist/tick-alt-<version>-macos.dmg` |
+| macOS LaunchAgent | `scripts/install-launch-agent.sh ["/Applications/Tick Alt.app"]` (`--remove` to undo) |
 | Publish a test APK | bump `version:` in `app/pubspec.yaml`, build the release APK, then `gh release create vX.Y.Z <apk> --prerelease` (see v0.1.0) |
 
 The first Gradle build takes about 6 minutes, because cargokit compiles Rust for each Android ABI. Long builds are best run in the background.
@@ -128,10 +133,14 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 - **Core writes go through `Store::write` and its `Writer::set` op path.** Never `UPDATE` tables directly, or sync loses the change. Don't call a public `Store` method from inside `write` (the nested `BEGIN` fails); use the `pub(crate)` helpers that take a `Writer`.
 - New syncable fields need an entry in `oplog::field_spec`; anything not listed is rejected.
 - `cargo fmt --all` reformats the generated `app/rust/src/frb_generated.rs`. Revert it with `git checkout` and don't commit it.
-- **Release APKs are signed with this Mac's debug key** (the template's `signingConfig`). A phone only accepts updates signed with the same key, so build releases on this Mac until a real release key exists (M4: APK release via CI).
+- **Release APKs are signed with the Arch laptop's debug key** (the template's `signingConfig`; v0.1.0 used the Mac's). A phone only accepts updates signed with the same key, so build releases there until a real release key exists (M4: APK release via CI).
 - **Release builds need `INTERNET` in `src/main/AndroidManifest.xml`.** The template only puts it in debug and profile.
 - The Android QA plugin's Python scripts need Python ≥ 3.10; `scripts/env.sh` puts Homebrew's `python3` first.
-- Xcode isn't installed, so macOS Flutter builds fail and `flutter doctor` complains. That's expected.
+- **macOS daemon:** AppKit owns the main thread (`tray_mac::run_app`), so tokio runs on a second thread and the menu-bar icon is updated through GCD's main queue. Don't put `#[tokio::main]` back on macOS.
+- **macOS notifications need the bundled daemon** (`Tick Alt Daemon.app` from `scripts/build-macos.sh`); bare `target/release/tt-daemon` only logs reminders. Use mac-usernotifications' **async** API: the blocking calls (and notify-rust's wrapper) fail with `MainThreadNotRunning` whenever the run loop is busy.
+- **Unix socket paths max out at 104 bytes on macOS.** Keep test `$TT_SOCKET`s short (the scratchpad path is too long).
+- After editing a podspec, run `pod install` in `app/macos`; `flutter build macos` doesn't notice. CocoaPods needs a UTF-8 locale (`scripts/env.sh` sets it).
+- The macOS app has **no App Sandbox**: in it the app couldn't reach the daemon's socket or the shared DB.
 - **New core calls go in the `api!` table in `api/src/proto.rs`.** That makes them reachable over the socket and as an `Api` method. Bridge view types are flutter_rust_bridge mirrors of `tt-api` types: change both together, then regenerate.
 - **Never let a Rust backtrace be captured in the app process.** It segfaults: libflutter_linux_gtk.so bundles libunwind and clashes with libgcc_s. `init_app` sets `RUST_BACKTRACE=0` for that reason, so don't remove it, and don't run the app with `RUST_BACKTRACE=1`.
 - **The release app is single instance** (GApplication). Launching it again only raises the open copy, so a test launch of a release build while the user's copy is open doesn't start anything. Debug builds aren't unique. Test the daemon under systemd with a temporary unit (`systemd-run --user --unit=tick-alt-test -p Restart=on-failure …`) rather than installing one.

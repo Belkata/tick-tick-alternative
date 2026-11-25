@@ -120,6 +120,7 @@ Before committing, a short **spike (milestone M0 in [[10 Roadmap]])** checks:
 > | ksni | 0.3.7 | Spike 4: pure-Rust StatusNotifierItem tray for `tt-daemon` (tokio) ✅ chosen for Linux |
 > | notify-rust | 4.19.0 | Spike 4: freedesktop notifications with actions; use `default-features = false, features = ["z-with-tokio"]` |
 > | tray-icon | 0.26.1 | M2 slice 5: the macOS menu-bar icon in `tt-daemon` (muda 0.21.2 menus); needs AppKit's run loop on the main thread |
+> | mac-usernotifications | 0.3.1 | M2 slice 5: macOS reminders (`UNUserNotificationCenter`) via its async API; needs an app bundle. notify-rust's blocking wrapper races AppKit's run loop |
 > | objc2 / objc2-app-kit / dispatch2 | 0.6.5 / 0.3.2 / 0.3.1 | M2 slice 5: `NSApplication` (accessory policy, `run`) and GCD's main queue for the menu-bar icon |
 > | `flutter_local_notifications` | 23.0.4 | Linux actions supported (`flutter_local_notifications_linux` 9.0.0); needed later on Android |
 > | `kalender` | 0.34.0 | candidate for the week grid |

@@ -12,10 +12,10 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [x] Choose the stack ([[02 Tech Stack Options]]): Option A, Rust core + Flutter + Kotlin Glance widget.
 - [x] Choose the UI style ([[09 UI Style Options]]): Soft with Material tag chips.
 - [x] Confirm current versions: iroh, Flutter, flutter_rust_bridge, UniFFI, Glance. See the table in [[02 Tech Stack Options]].
-- [ ] Spike 1: Rust core library plus `flutter_rust_bridge` running on an Android phone, macOS and Hyprland. ✅ Android (emulator); ✅ Hyprland (native Wayland); macOS waits for Xcode. See [[13 M0 Spike Log]].
+- [ ] Spike 1: Rust core library plus `flutter_rust_bridge` running on an Android phone, macOS and Hyprland. ✅ Android (emulator); ✅ Hyprland (native Wayland); ✅ macOS (2026-11-25, the M2 app). See [[13 M0 Spike Log]].
 - [ ] Spike 2: iroh connects phone ↔ Mac on LAN and across networks (phone on mobile data). ✅ Emulator ↔ Mac both directions (direct after hole punching); ⚠️ Android relay connects only sometimes; ⏸ real phone on mobile data. See [[13 M0 Spike Log]].
 - [x] Spike 3: Glance widget calls the Rust core through UniFFI and completes a task. ✅ Emulator, release build; see [[13 M0 Spike Log]].
-- [ ] Spike 4: tray icon and notification on Hyprland (waybar) and macOS. ✅ Hyprland: Rust tray in `tt-daemon` (ksni + notify-rust), Done and Snooze work through dunst; macOS waits for Xcode. See [[13 M0 Spike Log]].
+- [ ] Spike 4: tray icon and notification on Hyprland (waybar) and macOS. ✅ Hyprland: Rust tray in `tt-daemon` (ksni + notify-rust), Done and Snooze work through dunst; ✅ macOS: menu-bar icon (tray-icon) and UNUserNotificationCenter from the bundled daemon, Done tested (M2 slice 5). See [[13 M0 Spike Log]].
 - [x] Spike 5: Flutter week grid with drag and resize (evaluate the `kalender` package against a custom build). ✅ Use kalender 0.34; see [[13 M0 Spike Log]].
 
 **Exit:** the stack is confirmed, or we switch to Option B.
@@ -34,8 +34,8 @@ Each milestone ends with something usable. Building the core first means the CLI
 ## M2: Desktop app (Mac and Arch)
 - [ ] Tray daemon with socket API and systemd / LaunchAgent setup. 🟡 The socket API is done (slice 2) and so is the systemd user unit (slice 3: restart on failure, clients reconnect, single-instance app). On the Mac (slice 5) the daemon runs with a menu-bar icon and has a LaunchAgent (`scripts/install-launch-agent.sh`). See [[15 M2 Desktop Log]].
 - [ ] Three-pane UI: sidebar, list, detail. Tag tree, lists, filter builder, Completed and Trash. 🟡 Slices 1 and 4 done: sidebar (tag tree, lists, saved filters, Completed, Trash), task cards, detail editing (dates, repeat, reminders), keyboard, the visual filter builder, and tag and list colours and icons. Trash purge waits for the core. See [[15 M2 Desktop Log]].
-- [ ] Desktop notifications with Done and Snooze.
-- [ ] Packaging: PKGBUILD and a DMG. 🟡 PKGBUILD done (`packaging/arch`, test-built with makepkg); the DMG waits for the Mac.
+- [ ] Desktop notifications with Done and Snooze. 🟡 Linux: dunst (Spike 4). macOS: from the bundled daemon, Done tested, Snooze not yet (M2 slice 5).
+- [ ] Packaging: PKGBUILD and a DMG. 🟡 PKGBUILD done (`packaging/arch`, test-built with makepkg); DMG done (`scripts/build-macos.sh`, ad hoc signed, M2 slice 5). Neither installed yet.
 
 **Exit:** usable daily on one machine.
 
