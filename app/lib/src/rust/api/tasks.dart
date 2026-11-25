@@ -38,6 +38,12 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   Future<String> addSubtask({required String parentId, required String title});
 
+  /// Blocks overlapping `[from_ms, until_ms)` in this device's zone.
+  Future<List<CalendarItem>> calendar({
+    required PlatformInt64 fromMs,
+    required PlatformInt64 untilMs,
+  });
+
   /// Ticks with a new version number after every change: this handle's writes, and on
   /// desktop also every change the daemon reports (other windows, `tt`, outside writes).
   Stream<int> changes();
@@ -84,6 +90,15 @@ abstract class TaskDb implements RustOpaqueInterface {
       RustLib.instance.api.crateApiTasksTaskDbOpen(path: path);
 
   Future<List<Peer>> peers();
+
+  /// Drop, move or resize a block. `end_ms` `None` keeps the task's duration (else
+  /// 30 min); `all_day` puts it on the all-day row of `start_ms`'s day.
+  Future<void> placeBlock({
+    required String id,
+    required PlatformInt64 startMs,
+    PlatformInt64? endMs,
+    required bool allDay,
+  });
 
   Future<void> removeReminder({required String id});
 
@@ -162,9 +177,75 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   Future<void> trash({required String id});
 
+  /// Take a task off the calendar (clears its dates). Refused for repeating tasks.
+  Future<void> unschedule({required String id});
+
+  /// The Unscheduled panel: a saved filter's tasks, or with `None` every open task
+  /// with no date.
+  Future<List<TaskRow>> unscheduled({String? filterId});
+
   Future<void> untag({required String id, required String tagId});
 
   Future<void> updateFilter({required String id, required String json});
+}
+
+class CalendarItem {
+  final String taskId;
+  final String title;
+  final PlatformInt64 startAt;
+  final PlatformInt64 endAt;
+  final bool allDay;
+  final bool done;
+  final bool movable;
+  final bool repeating;
+  final int priority;
+  final String? color;
+  final String? icon;
+
+  const CalendarItem({
+    required this.taskId,
+    required this.title,
+    required this.startAt,
+    required this.endAt,
+    required this.allDay,
+    required this.done,
+    required this.movable,
+    required this.repeating,
+    required this.priority,
+    this.color,
+    this.icon,
+  });
+
+  @override
+  int get hashCode =>
+      taskId.hashCode ^
+      title.hashCode ^
+      startAt.hashCode ^
+      endAt.hashCode ^
+      allDay.hashCode ^
+      done.hashCode ^
+      movable.hashCode ^
+      repeating.hashCode ^
+      priority.hashCode ^
+      color.hashCode ^
+      icon.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CalendarItem &&
+          runtimeType == other.runtimeType &&
+          taskId == other.taskId &&
+          title == other.title &&
+          startAt == other.startAt &&
+          endAt == other.endAt &&
+          allDay == other.allDay &&
+          done == other.done &&
+          movable == other.movable &&
+          repeating == other.repeating &&
+          priority == other.priority &&
+          color == other.color &&
+          icon == other.icon;
 }
 
 class ChecklistRow {

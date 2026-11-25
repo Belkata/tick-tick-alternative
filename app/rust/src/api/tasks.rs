@@ -21,7 +21,8 @@ use crate::phone::{self, Phone};
 use crate::frb_generated::StreamSink;
 
 pub use tt_api::{
-    ChecklistRow, NavItem, ReminderRow, Sidebar, TagChip, TaskDetail, TaskRow, TaskView, ViewKind,
+    CalendarItem, ChecklistRow, NavItem, ReminderRow, Sidebar, TagChip, TaskDetail, TaskRow,
+    TaskView, ViewKind,
 };
 
 // Dart sees the tt-api view types through these mirrors (one definition, in tt-api).
@@ -116,6 +117,21 @@ pub struct _TaskDetail {
     pub checklist: Vec<ChecklistRow>,
     pub subtasks: Vec<TaskRow>,
     pub reminders: Vec<ReminderRow>,
+}
+
+#[frb(mirror(CalendarItem))]
+pub struct _CalendarItem {
+    pub task_id: String,
+    pub title: String,
+    pub start_at: i64,
+    pub end_at: i64,
+    pub all_day: bool,
+    pub done: bool,
+    pub movable: bool,
+    pub repeating: bool,
+    pub priority: u8,
+    pub color: Option<String>,
+    pub icon: Option<String>,
 }
 
 pub use tt_api::{SyncOutcome, SyncStatus};
@@ -477,6 +493,43 @@ impl TaskDb {
     pub fn rule_count(&self, rule_json: String) -> anyhow::Result<u32> {
         let rule: FilterRule = serde_json::from_str(&rule_json)?;
         self.api.rule_count(&rule, now_ms(), local_tz())
+    }
+
+    // ----- Calendar (plan/18) -----
+
+    /// Blocks overlapping `[from_ms, until_ms)` in this device's zone.
+    pub fn calendar(&self, from_ms: i64, until_ms: i64) -> anyhow::Result<Vec<CalendarItem>> {
+        self.api.calendar(from_ms, until_ms, local_tz())
+    }
+
+    /// The Unscheduled panel: a saved filter's tasks, or with `None` every open task
+    /// with no date.
+    pub fn unscheduled(&self, filter_id: Option<String>) -> anyhow::Result<Vec<TaskRow>> {
+        self.api.unscheduled(filter_id, now_ms(), local_tz())
+    }
+
+    /// Drop, move or resize a block. `end_ms` `None` keeps the task's duration (else
+    /// 30 min); `all_day` puts it on the all-day row of `start_ms`'s day.
+    pub fn place_block(
+        &self,
+        id: String,
+        start_ms: i64,
+        end_ms: Option<i64>,
+        all_day: bool,
+    ) -> anyhow::Result<()> {
+        self.write(Request::PlaceBlock {
+            id,
+            start_at: start_ms,
+            end_at: end_ms,
+            all_day,
+            tz: tz_name(),
+        })
+        .map(drop)
+    }
+
+    /// Take a task off the calendar (clears its dates). Refused for repeating tasks.
+    pub fn unschedule(&self, id: String) -> anyhow::Result<()> {
+        self.write(Request::Unschedule { id }).map(drop)
     }
 
     // ----- Lists and tags -----

@@ -91,6 +91,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt dco_decode_box_autoadd_u_64(dynamic raw);
 
   @protected
+  CalendarItem dco_decode_calendar_item(dynamic raw);
+
+  @protected
   ChecklistRow dco_decode_checklist_row(dynamic raw);
 
   @protected
@@ -101,6 +104,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<CalendarItem> dco_decode_list_calendar_item(dynamic raw);
 
   @protected
   List<ChecklistRow> dco_decode_list_checklist_row(dynamic raw);
@@ -264,6 +270,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
 
   @protected
+  CalendarItem sse_decode_calendar_item(SseDeserializer deserializer);
+
+  @protected
   ChecklistRow sse_decode_checklist_row(SseDeserializer deserializer);
 
   @protected
@@ -274,6 +283,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<CalendarItem> sse_decode_list_calendar_item(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<ChecklistRow> sse_decode_list_checklist_row(
@@ -460,6 +474,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
 
   @protected
+  void sse_encode_calendar_item(CalendarItem self, SseSerializer serializer);
+
+  @protected
   void sse_encode_checklist_row(ChecklistRow self, SseSerializer serializer);
 
   @protected
@@ -470,6 +487,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_calendar_item(
+    List<CalendarItem> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_checklist_row(
