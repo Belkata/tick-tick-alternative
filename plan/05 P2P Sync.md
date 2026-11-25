@@ -1,5 +1,5 @@
 ---
-tags: [project/tick-alt, plan, sync]
+tags: [project/utre, plan, sync]
 ---
 
 # 05 P2P Sync

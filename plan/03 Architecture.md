@@ -1,5 +1,5 @@
 ---
-tags: [project/tick-alt, plan, architecture]
+tags: [project/utre, plan, architecture]
 ---
 
 # 03 Architecture
@@ -10,7 +10,7 @@ Back to [[00 Overview]]. This assumes **Option A** from [[02 Tech Stack Options]
 
 ```mermaid
 flowchart TB
-  subgraph Core["Rust core crate (tt-core)"]
+  subgraph Core["Rust core crate (utre-core)"]
     M[Domain model<br/>tasks · lists · tags · filters]
     DB[(SQLite<br/>state + op-log)]
     F[Filter engine<br/>AND/OR/NOT]
@@ -39,17 +39,17 @@ flowchart TB
   subgraph Desktop["macOS / Arch (Hyprland)"]
     DF[Flutter UI] -->|flutter_rust_bridge| Core
     T[Tray daemon<br/>sync + notifications]
-    CLI[tt CLI<br/>Rust binary] --> Core
+    CLI[utre CLI<br/>Rust binary] --> Core
   end
 ```
 
 ## Repository layout (monorepo)
 
 ```
-tick-alt/
-  core/            # Rust: tt-core (lib). Domain, SQLite, filters, recurrence, sync, gcal
+utre/
+  core/            # Rust: utre-core (lib). Domain, SQLite, filters, recurrence, sync, gcal
   core-ffi/        # Rust: UniFFI + flutter_rust_bridge surfaces
-  cli/             # Rust: `tt` binary (talks to the same DB, or to the running daemon over IPC)
+  cli/             # Rust: `utre` binary (talks to the same DB, or to the running daemon over IPC)
   app/             # Flutter app (android, macos, linux targets)
   android-widget/  # Kotlin Glance widget + WorkManager + alarms (inside app/android)
   docs/plan/       # these notes

@@ -1,5 +1,5 @@
 ---
-tags: [project/tick-alt, plan, design]
+tags: [project/utre, plan, design]
 decision: soft-with-material-chips
 ---
 

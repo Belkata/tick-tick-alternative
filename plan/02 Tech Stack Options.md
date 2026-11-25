@@ -1,5 +1,5 @@
 ---
-tags: [project/tick-alt, plan, tech]
+tags: [project/utre, plan, tech]
 decision: option-a-rust-flutter
 ---
 
@@ -117,9 +117,9 @@ Before committing, a short **spike (milestone M0 in [[10 Roadmap]])** checks:
 > | Flutter stable | 3.50.1 (Dart 3.14.0) | |
 > | Jetpack Glance | 1.2.0 stable | 1.3.0 is alpha only |
 > | `tray_manager` | 0.9.1 | Spike 4: works on Hyprland (own SNI via nativeapi, no libappindicator), but only inside the Flutter process |
-> | ksni | 0.3.7 | Spike 4: pure-Rust StatusNotifierItem tray for `tt-daemon` (tokio) ✅ chosen for Linux |
+> | ksni | 0.3.7 | Spike 4: pure-Rust StatusNotifierItem tray for `utre-daemon` (tokio) ✅ chosen for Linux |
 > | notify-rust | 4.19.0 | Spike 4: freedesktop notifications with actions; use `default-features = false, features = ["z-with-tokio"]` |
-> | tray-icon | 0.26.1 | M2 slice 5: the macOS menu-bar icon in `tt-daemon` (muda 0.21.2 menus); needs AppKit's run loop on the main thread |
+> | tray-icon | 0.26.1 | M2 slice 5: the macOS menu-bar icon in `utre-daemon` (muda 0.21.2 menus); needs AppKit's run loop on the main thread |
 > | mac-usernotifications | 0.3.1 | M2 slice 5: macOS reminders (`UNUserNotificationCenter`) via its async API; needs an app bundle. notify-rust's blocking wrapper races AppKit's run loop |
 > | objc2 / objc2-app-kit / dispatch2 | 0.6.5 / 0.3.2 / 0.3.1 | M2 slice 5: `NSApplication` (accessory policy, `run`) and GCD's main queue for the menu-bar icon |
 > | `flutter_local_notifications` | 23.0.4 | Linux actions supported (`flutter_local_notifications_linux` 9.0.0); needed later on Android |

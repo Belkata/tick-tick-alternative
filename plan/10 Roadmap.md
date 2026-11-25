@@ -1,5 +1,5 @@
 ---
-tags: [project/tick-alt, plan, roadmap]
+tags: [project/utre, plan, roadmap]
 ---
 
 # 10 Roadmap
@@ -15,7 +15,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [ ] Spike 1: Rust core library plus `flutter_rust_bridge` running on an Android phone, macOS and Hyprland. ✅ Android (emulator); ✅ Hyprland (native Wayland); ✅ macOS (2026-11-25, the M2 app). See [[13 M0 Spike Log]].
 - [ ] Spike 2: iroh connects phone ↔ Mac on LAN and across networks (phone on mobile data). ✅ Emulator ↔ Mac both directions (direct after hole punching); ⚠️ Android relay connects only sometimes; ⏸ real phone on mobile data. See [[13 M0 Spike Log]].
 - [x] Spike 3: Glance widget calls the Rust core through UniFFI and completes a task. ✅ Emulator, release build; see [[13 M0 Spike Log]].
-- [ ] Spike 4: tray icon and notification on Hyprland (waybar) and macOS. ✅ Hyprland: Rust tray in `tt-daemon` (ksni + notify-rust), Done and Snooze work through dunst; ✅ macOS: menu-bar icon (tray-icon) and UNUserNotificationCenter from the bundled daemon, Done tested (M2 slice 5). See [[13 M0 Spike Log]].
+- [ ] Spike 4: tray icon and notification on Hyprland (waybar) and macOS. ✅ Hyprland: Rust tray in `utre-daemon` (ksni + notify-rust), Done and Snooze work through dunst; ✅ macOS: menu-bar icon (tray-icon) and UNUserNotificationCenter from the bundled daemon, Done tested (M2 slice 5). See [[13 M0 Spike Log]].
 - [x] Spike 5: Flutter week grid with drag and resize (evaluate the `kalender` package against a custom build). ✅ Use kalender 0.34; see [[13 M0 Spike Log]].
 
 **Exit:** the stack is confirmed, or we switch to Option B.
@@ -27,9 +27,9 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [x] Recurrence (fixed and after-completion) and the completion history.
 - [x] Reminder schedule computation.
 - [x] Op-log and HLC from day one, even before sync exists. Convergence is property-tested.
-- [x] The `tt` CLI: add, ls, done, tags, filters (plus edit, show, lists, repeat, remind, check, completed, trash).
+- [x] The `utre` CLI: add, ls, done, tags, filters (plus edit, show, lists, repeat, remind, check, completed, trash).
 
-**Exit:** I can manage tasks from the terminal on Arch. ✅ on the Mac; ✅ on Arch the 53 tests pass, clippy is clean, and every `tt` command works; ⏸ the user tries it for real. See [[14 M1 Core Log]].
+**Exit:** I can manage tasks from the terminal on Arch. ✅ on the Mac; ✅ on Arch the 53 tests pass, clippy is clean, and every `utre` command works; ⏸ the user tries it for real. See [[14 M1 Core Log]].
 
 ## M2: Desktop app (Mac and Arch)
 - [ ] Tray daemon with socket API and systemd / LaunchAgent setup. 🟡 The socket API is done (slice 2) and so is the systemd user unit (slice 3: restart on failure, clients reconnect, single-instance app). On the Mac (slice 5) the daemon runs with a menu-bar icon and has a LaunchAgent (`scripts/install-launch-agent.sh`). See [[15 M2 Desktop Log]].
@@ -70,7 +70,7 @@ Split into **M5a** (local calendar on real tasks) and **M5b** (Google). Plan and
 
 ## M6: Import and switch-over
 - [ ] TickTick CSV importer (dry run first). Recreate the 4 filters.
-- [ ] Use only Tick Alt for a week and fix whatever hurts.
+- [ ] Use only Utre for a week and fix whatever hurts.
 - [ ] Back up and export the DB (a JSON dump), so I never get locked in.
 
 **Exit:** TickTick uninstalled. 🎉

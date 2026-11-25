@@ -1,5 +1,5 @@
 ---
-tags: [project/tick-alt, plan, gcal]
+tags: [project/utre, plan, gcal]
 ---
 
 # 06 Google Calendar

@@ -1,5 +1,5 @@
 ---
-tags: [project/tick-alt, plan, requirements]
+tags: [project/utre, plan, requirements]
 ---
 
 # 01 Requirements & Scope
@@ -58,7 +58,7 @@ Decisions below come from the interview on 2026-11-24 and from looking at how my
   - A **+** button opens quick add, which saves to Inbox.
 - **macOS and Arch Linux (Hyprland, Wayland)** desktop app.
   - A **tray / menu-bar icon** keeps it running in the background for sync and reminders.
-  - A **CLI tool**, for example `tt add "Buy milk"` and `tt ls <filter>`.
+  - A **CLI tool**, for example `utre add "Buy milk"` and `utre ls <filter>`.
 
 ### Sync and data
 - **Pure peer-to-peer**: devices sync when they're online at the same time, over LAN or the internet. There's no always-on node, but the desktop tray app makes that overlap common.
