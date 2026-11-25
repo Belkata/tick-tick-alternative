@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS LaunchAgent for tt-daemon (plan/08, the counterpart of tick-alt.service).
+  scripts/install-launch-agent.sh fills in the @...@ paths and installs it to
+  ~/Library/LaunchAgents/, pointing at this checkout's build.
+  It starts at login and again if the daemon crashes; Quit in the menu-bar icon stops it
+  until the next login (or `launchctl kickstart gui/$UID/dev.tickalt.daemon`).
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>dev.tickalt.daemon</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>@DAEMON@</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<!-- What the menu's Open starts: the .app bundle. -->
+		<key>TT_APP</key>
+		<string>@APP@</string>
+	</dict>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>ThrottleInterval</key>
+	<integer>5</integer>
+	<!-- The menu-bar icon and notifications need the user's GUI session. -->
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+	<key>StandardOutPath</key>
+	<string>@LOG@</string>
+	<key>StandardErrorPath</key>
+	<string>@LOG@</string>
+</dict>
+</plist>
