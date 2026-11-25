@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'calendar/calendar_page.dart';
 import 'desk/devices.dart';
+import 'desk/google.dart';
 import 'desk/shell.dart';
 import 'desk/theme.dart';
 import 'src/rust/api/sync.dart';
@@ -81,6 +82,13 @@ class TickAltApp extends StatelessWidget {
           if (peer case final p?)
             ShellPage('Sync (spike)', Icons.sync, (_, _) => SyncPage(peer: p)),
           ShellPage('Devices', Icons.devices, (_, _) => DevicesPage(db: db)),
+          // Google runs in tt-daemon, so the desktop only (the phone has no daemon yet).
+          if (!Platform.isAndroid)
+            ShellPage(
+              'Google Calendar',
+              Icons.event_repeat_outlined,
+              (_, _) => GooglePage(db: db),
+            ),
         ],
       ),
     );
