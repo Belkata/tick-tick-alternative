@@ -402,6 +402,21 @@ class _CalendarPageState extends State<CalendarPage> {
   /// Unscheduled drawer at the bottom and a + for quick add.
   Widget _phone(SoftColors s) {
     final day = _calendar.viewConfiguration.name == 'Day';
+    // When the keyboard is up (quick add) there may be less room than the bar and
+    // strip need: keep the layout and clip it behind the dialog instead of overflowing.
+    return LayoutBuilder(
+      builder: (context, box) => ClipRect(
+        child: OverflowBox(
+          alignment: Alignment.topCenter,
+          minHeight: 0,
+          maxHeight: box.maxHeight < 360 ? 360 : box.maxHeight,
+          child: _phoneBody(s, day),
+        ),
+      ),
+    );
+  }
+
+  Widget _phoneBody(SoftColors s, bool day) {
     return ColoredBox(
       color: s.bg,
       child: Column(
