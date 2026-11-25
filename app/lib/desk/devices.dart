@@ -262,7 +262,10 @@ class _DevicesPageState extends State<DevicesPage> {
         _Card(
           child: Row(
             children: [
-              Icon(Icons.computer, color: s.accent),
+              Icon(
+                Platform.isAndroid ? Icons.smartphone : Icons.computer,
+                color: s.accent,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

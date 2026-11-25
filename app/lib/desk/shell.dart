@@ -269,18 +269,20 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
               ),
               body: SafeArea(
                 child: page != null
-                    ? Stack(
+                    // A bar for the menu button, so it never covers the page's own title.
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Positioned.fill(child: page),
-                          Positioned(
-                            left: 4,
-                            top: 4,
+                          Align(
+                            alignment: Alignment.centerLeft,
                             child: IconButton(
+                              key: const Key('open-drawer'),
                               icon: const Icon(Icons.menu),
                               onPressed: () =>
                                   _scaffold.currentState?.openDrawer(),
                             ),
                           ),
+                          Expanded(child: page),
                         ],
                       )
                     : TaskListPane(
