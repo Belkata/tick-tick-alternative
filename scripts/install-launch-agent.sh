@@ -19,7 +19,7 @@ if [[ "${1:-}" == "--remove" ]]; then
 fi
 
 daemon="$repo/target/release/tt-daemon"
-app="$repo/app/build/macos/Build/Products/Release/tick_alt.app"
+app="$repo/app/build/macos/Build/Products/Release/Tick Alt.app"
 log="$HOME/Library/Logs/tick-alt/daemon.log"
 [[ -x "$daemon" ]] || { echo "Build it first: cargo build --release -p tt-daemon" >&2; exit 1; }
 [[ -d "$app" ]] || echo "Note: $app isn't built yet; the menu's Open won't work until it is." >&2

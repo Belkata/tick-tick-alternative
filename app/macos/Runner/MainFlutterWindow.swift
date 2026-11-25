@@ -4,9 +4,11 @@ import FlutterMacOS
 class MainFlutterWindow: NSWindow {
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
-    let windowFrame = self.frame
     self.contentViewController = flutterViewController
-    self.setFrame(windowFrame, display: true)
+    // 1280×720 and centred, as on Linux; later launches restore the last size and position.
+    self.setContentSize(NSSize(width: 1280, height: 720))
+    self.center()
+    self.setFrameAutosaveName("TickAltMainWindow")
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
