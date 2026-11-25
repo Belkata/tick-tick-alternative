@@ -290,8 +290,16 @@ pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> tt_core::Result<Opt
     }))
 }
 
-/// Quick add: a plain title, in the current list or tag; everything else lands in Inbox.
-pub fn add_in(s: &Store, view: &TaskView, title: &str) -> tt_core::Result<String> {
+/// Quick add: a plain title, in the current list or tag. In a filter the task gets
+/// what the filter asks for (list, tags, priority, dates), so it stays in view.
+/// Everything else lands in Inbox.
+pub fn add_in(
+    s: &Store,
+    view: &TaskView,
+    title: &str,
+    now: i64,
+    tz: Tz,
+) -> tt_core::Result<String> {
     let mut new = NewTask {
         title: title.to_string(),
         ..Default::default()
@@ -299,6 +307,12 @@ pub fn add_in(s: &Store, view: &TaskView, title: &str) -> tt_core::Result<String
     match view.kind {
         ViewKind::List => new.list_id = view.id.clone(),
         ViewKind::Tag => new.tags = view.id.clone().into_iter().collect(),
+        ViewKind::Filter => {
+            let f = s.find_filter(view.id()?)?.ok_or_else(|| {
+                tt_core::Error::NotFound(format!("filter {}", view.id().unwrap_or("")))
+            })?;
+            new = s.new_task_matching(&f.filter.rule, title, now, tz)?;
+        }
         _ => {}
     }
     Ok(s.create_task(&new)?.id)
@@ -484,4 +498,45 @@ fn task_row(s: &Store, t: Task, now: i64, tz: Tz) -> tt_core::Result<TaskRow> {
         parent_id: t.parent_id,
         when_label: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tt_core::Filter;
+
+    #[test]
+    fn quick_add_in_a_filter_stays_in_it() {
+        let s = Store::open_in_memory().unwrap();
+        let tz = Tz::Europe__Sofia;
+        let now = 1_795_600_000_000; // 2026-11-25
+        s.create_list("Work").unwrap();
+        s.ensure_tag_path("deep").unwrap();
+        let rule = serde_json::from_str(
+            r#"{"all": [
+                {"field": "list", "op": "is", "value": "Work"},
+                {"field": "tag", "op": "has", "value": "deep"},
+                {"field": "due", "op": "on_or_before", "value": "today"}
+            ]}"#,
+        )
+        .unwrap();
+        let id = s
+            .save_filter(&Filter {
+                name: "Focus".into(),
+                icon: None,
+                rule,
+                sort: vec![],
+                group: None,
+                show_completed: false,
+            })
+            .unwrap();
+        let view = TaskView {
+            kind: ViewKind::Filter,
+            id: Some(id),
+        };
+        let task = add_in(&s, &view, "Design review", now, tz).unwrap();
+        let rows = tasks(&s, &view, now, tz).unwrap();
+        assert_eq!(rows.iter().map(|r| &r.id).collect::<Vec<_>>(), [&task]);
+        assert!(s.inbox().unwrap().is_empty());
+    }
 }

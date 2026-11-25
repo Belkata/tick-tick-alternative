@@ -302,11 +302,15 @@ impl TaskDb {
 
     // ----- Commands -----
 
-    /// Quick add: a plain title, in the current list or tag; everything else lands in Inbox.
+    /// Quick add: a plain title, in the current list or tag. In a filter the task
+    /// gets what the filter asks for, so it stays in view. Everything else lands in Inbox.
     pub fn add_in(&self, view: TaskView, title: String) -> anyhow::Result<String> {
-        Ok(serde_json::from_value(
-            self.write(Request::AddIn { view, title })?,
-        )?)
+        Ok(serde_json::from_value(self.write(Request::AddIn {
+            view,
+            title,
+            now_ms: now_ms(),
+            tz: tz_name(),
+        })?)?)
     }
 
     pub fn add_subtask(&self, parent_id: String, title: String) -> anyhow::Result<String> {

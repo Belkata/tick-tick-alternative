@@ -271,7 +271,8 @@ api! {
         => |s| views::tasks(s, &view, now_ms, tz.tz());
     read TaskDetail task_detail(id: String, now_ms: i64, tz: TzName) -> Option<TaskDetail>
         => |s| views::task_detail(s, &id, now_ms, tz.tz());
-    write AddIn add_in(view: TaskView, title: String) -> String => |s| views::add_in(s, &view, &title);
+    write AddIn add_in(view: TaskView, title: String, now_ms: i64, tz: TzName) -> String
+        => |s| views::add_in(s, &view, &title, now_ms, tz.tz());
     write ToggleDone toggle_done(id: String) -> bool => |s| views::toggle_done(s, &id);
     write SetDueText set_due_text(id: String, text: Option<String>, now_ms: i64, tz: TzName) -> ()
         => |s| views::set_due(s, &id, text.as_deref(), now_ms, tz.tz());
