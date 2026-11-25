@@ -9,6 +9,9 @@
 # Rust
 target/
 
+# Built packages for the user (APKs, DMGs)
+dist/
+
 # Flutter / Dart
 .dart_tool/
 build/
@@ -22,6 +25,7 @@ build/
 local.properties
 *.apk
 *.aab
+*.dmg
 *.keystore
 *.jks
 # Release signing (app/android/key.properties points at the keystore; never commit either)

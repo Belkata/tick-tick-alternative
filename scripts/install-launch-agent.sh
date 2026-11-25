@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# macOS: install a dev copy of daemon/dev.tickalt.daemon.plist into ~/Library/LaunchAgents/,
-# pointing at this checkout's release builds (target/release/tt-daemon and the Flutter .app).
-# The counterpart of scripts/install-user-service.sh on Linux.
-#   scripts/install-launch-agent.sh            install and (re)start it, started at login
-#   scripts/install-launch-agent.sh --remove   stop it and delete it
+# macOS: install daemon/dev.tickalt.daemon.plist into ~/Library/LaunchAgents/, so tt-daemon
+# starts at login. The counterpart of scripts/install-user-service.sh on Linux.
+#   scripts/install-launch-agent.sh               this checkout's build (scripts/build-macos.sh)
+#   scripts/install-launch-agent.sh <Tick Alt.app> an installed copy, e.g. "/Applications/Tick Alt.app"
+#   scripts/install-launch-agent.sh --remove      stop it and delete it
+# It runs the daemon bundled in the app (Tick Alt Daemon.app, needed for notifications), else
+# this checkout's target/release/tt-daemon.
 # Logs: ~/Library/Logs/tick-alt/daemon.log
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,10 +20,15 @@ if [[ "${1:-}" == "--remove" ]]; then
   exit 0
 fi
 
-daemon="$repo/target/release/tt-daemon"
-app="$repo/app/build/macos/Build/Products/Release/Tick Alt.app"
+app="${1:-$repo/app/build/macos/Build/Products/Release/Tick Alt.app}"
+app="${app%/}"
+daemon="$app/Contents/Helpers/Tick Alt Daemon.app/Contents/MacOS/tt-daemon"
 log="$HOME/Library/Logs/tick-alt/daemon.log"
-[[ -x "$daemon" ]] || { echo "Build it first: cargo build --release -p tt-daemon" >&2; exit 1; }
+if [[ ! -x "$daemon" ]]; then
+  daemon="$repo/target/release/tt-daemon"
+  [[ -x "$daemon" ]] || { echo "Build it first: scripts/build-macos.sh" >&2; exit 1; }
+  echo "Note: no bundled daemon in $app; using $daemon (no notifications)." >&2
+fi
 [[ -d "$app" ]] || echo "Note: $app isn't built yet; the menu's Open won't work until it is." >&2
 
 mkdir -p "$(dirname "$agent")" "$(dirname "$log")"
