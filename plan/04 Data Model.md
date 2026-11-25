@@ -48,11 +48,12 @@ erDiagram
 | `parent_id` | Nesting. Unlimited depth in the model, but the UI encourages 2–3 levels. |
 | `color` | Hex |
 | `icon` | Optional emoji or icon name |
-| `sort_key` | Sidebar order |
+| `sort_key` | Sidebar order among siblings (fractional index). Empty means never arranged: those come after the arranged ones, by name. |
 
 - Display path is `parent/child`.
 - Filtering on a tag **includes its descendants by default**. The filter builder offers an "exact" option to turn this off.
 - Renaming or moving a tag is a single op, so tasks don't need rewriting because they reference the tag id.
+- Arranging a tag (`Store::place_tag(id, before)`) writes one `sort_key` op: a base-36 key between its new neighbours (`core/src/order.rs`). The first arrangement of a set of siblings, or one that finds ties, numbers them all.
 
 ### List
 `id`, `name`, `color`, `icon`, `sort_key`, `archived`. Lists are flat: no folders, no sections.

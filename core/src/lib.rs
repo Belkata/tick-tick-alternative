@@ -12,6 +12,7 @@ pub mod hlc;
 mod import;
 mod inbox;
 pub mod oplog;
+mod order;
 mod organize;
 mod recur;
 mod reminder;

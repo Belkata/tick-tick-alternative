@@ -4,6 +4,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use uuid::Uuid;
 
 use crate::oplog::Entity;
+use crate::order::{key_between, spread_keys};
 use crate::store::Writer;
 use crate::task::require_task;
 use crate::{Error, Result, Store};
@@ -60,31 +61,76 @@ fn clean_name(name: &str, what: &str) -> Result<String> {
     Ok(name.to_string())
 }
 
-/// All live tags with their display paths, sorted by path.
+/// How deep the tag tree is walked; deeper tags (or a cycle from concurrent moves) are hidden.
+const MAX_TAG_DEPTH: usize = 32;
+
+/// All live tags as a tree walk: each tag, then its children. Siblings go in their
+/// arranged order (`sort_key`), and ones never arranged come after, by name.
 pub(crate) fn load_tags(conn: &Connection) -> Result<Vec<Tag>> {
     let mut stmt = conn.prepare(
-        "WITH RECURSIVE t(id, name, parent_id, color, icon, path, depth) AS (
-             SELECT id, name, parent_id, color, icon, name, 0 FROM tag
-              WHERE deleted = 0 AND (parent_id IS NULL
-                    OR parent_id NOT IN (SELECT id FROM tag WHERE deleted = 0))
-             UNION ALL
-             SELECT c.id, c.name, c.parent_id, c.color, c.icon, t.path || '/' || c.name, t.depth + 1
-               FROM tag c JOIN t ON c.parent_id = t.id
-              WHERE c.deleted = 0 AND t.depth < 32
-         )
-         SELECT id, name, parent_id, path, color, icon FROM t ORDER BY path, id",
+        "SELECT id, name, parent_id, color, icon FROM tag WHERE deleted = 0 \
+         ORDER BY sort_key = '', sort_key, lower(name), id",
     )?;
-    let rows = stmt.query_map([], |r| {
-        Ok(Tag {
-            id: r.get(0)?,
-            name: r.get(1)?,
-            parent_id: r.get(2)?,
-            path: r.get(3)?,
-            color: r.get(4)?,
-            icon: r.get(5)?,
-        })
-    })?;
-    Ok(rows.collect::<rusqlite::Result<_>>()?)
+    let rows: Vec<Tag> = stmt
+        .query_map([], |r| {
+            Ok(Tag {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                parent_id: r.get(2)?,
+                path: String::new(),
+                color: r.get(3)?,
+                icon: r.get(4)?,
+            })
+        })?
+        .collect::<rusqlite::Result<_>>()?;
+    let live: std::collections::HashSet<&str> = rows.iter().map(|t| t.id.as_str()).collect();
+    // Children of each parent, already in sibling order; a dangling parent counts as the top.
+    let mut children: std::collections::HashMap<Option<&str>, Vec<&Tag>> = Default::default();
+    for t in &rows {
+        let parent = t.parent_id.as_deref().filter(|p| live.contains(p));
+        children.entry(parent).or_default().push(t);
+    }
+    let mut out = Vec::with_capacity(rows.len());
+    let mut stack: Vec<(&Tag, String, usize)> = children
+        .get(&None)
+        .into_iter()
+        .flatten()
+        .rev()
+        .map(|t| (*t, t.name.clone(), 0))
+        .collect();
+    while let Some((t, path, depth)) = stack.pop() {
+        if depth < MAX_TAG_DEPTH {
+            for c in children
+                .get(&Some(t.id.as_str()))
+                .into_iter()
+                .flatten()
+                .rev()
+            {
+                stack.push((c, format!("{path}/{}", c.name), depth + 1));
+            }
+        }
+        out.push(Tag { path, ..t.clone() });
+    }
+    Ok(out)
+}
+
+/// The live siblings of `id` (itself included), in display order. Like [load_tags],
+/// a tag whose parent is gone counts as top-level.
+fn tag_siblings(conn: &Connection, id: &str) -> Result<Vec<(String, String)>> {
+    let parent: Option<String> = conn.query_row(
+        "SELECT p.id FROM tag t LEFT JOIN tag p ON p.id = t.parent_id AND p.deleted = 0 \
+         WHERE t.id = ?1",
+        [id],
+        |r| r.get(0),
+    )?;
+    let mut stmt = conn.prepare(
+        "SELECT id, sort_key FROM tag WHERE deleted = 0 AND (parent_id IS ?1 OR (?1 IS NULL \
+           AND parent_id NOT IN (SELECT id FROM tag WHERE deleted = 0))) \
+         ORDER BY sort_key = '', sort_key, lower(name), id",
+    )?;
+    Ok(stmt
+        .query_map([parent], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<rusqlite::Result<_>>()?)
 }
 
 /// `id` plus every live tag under it.
@@ -301,7 +347,7 @@ impl Store {
         })
     }
 
-    /// Live tags with display paths, sorted by path.
+    /// Live tags with display paths, as a tree in sidebar order (see `place_tag`).
     pub fn tags(&self) -> Result<Vec<Tag>> {
         load_tags(&self.conn)
     }
@@ -343,6 +389,42 @@ impl Store {
                 }
             }
             w.set(Entity::Tag, id, "parent_id", parent_id)
+        })
+    }
+
+    /// Arrange a tag among its siblings: right before `before` (a sibling), or last with
+    /// `None`. Usually one op; the first arrangement of a set of siblings numbers them all.
+    pub fn place_tag(&self, id: &str, before: Option<&str>) -> Result<()> {
+        self.write(|w| {
+            require_tag(w.conn, id)?;
+            let mut others = tag_siblings(w.conn, id)?;
+            others.retain(|(t, _)| t != id);
+            let at = match before {
+                None => others.len(),
+                Some(b) => others
+                    .iter()
+                    .position(|(t, _)| t == b)
+                    .ok_or_else(|| Error::Invalid(format!("tag {b} isn't a sibling of {id}")))?,
+            };
+            let arranged = others.iter().all(|(_, k)| !k.is_empty())
+                && others.windows(2).all(|p| p[0].1 < p[1].1);
+            if arranged {
+                let a = at.checked_sub(1).map(|i| others[i].1.as_str());
+                let b = others.get(at).map(|(_, k)| k.as_str());
+                let key = key_between(a, b);
+                // A key this module didn't make (e.g. from a future version) may not fit.
+                if a.is_none_or(|a| a < key.as_str()) && b.is_none_or(|b| key.as_str() < b) {
+                    return w.set(Entity::Tag, id, "sort_key", key.as_str());
+                }
+            }
+            // Ties, never-arranged or odd keys: number them all in the order they show now.
+            others.insert(at, (id.to_string(), String::new()));
+            for ((t, old), key) in others.iter().zip(spread_keys(others.len())) {
+                if *old != key {
+                    w.set(Entity::Tag, t, "sort_key", key.as_str())?;
+                }
+            }
+            Ok(())
         })
     }
 
@@ -393,7 +475,7 @@ impl Store {
         })
     }
 
-    /// The live tags on a task, by path.
+    /// The live tags on a task, in sidebar order.
     pub fn task_tags(&self, task_id: &str) -> Result<Vec<Tag>> {
         let mut stmt = self
             .conn
@@ -439,6 +521,62 @@ mod tests {
         assert!(s.move_tag(&home, Some(&errands)).is_err(), "loop");
         let tags = s.task_tags(&t.id).unwrap();
         assert_eq!(tags[0].path, "home/shopping");
+    }
+
+    #[test]
+    fn tags_walk_as_a_tree_and_can_be_arranged() {
+        let s = Store::open_in_memory().unwrap();
+        let paths =
+            |s: &Store| -> Vec<String> { s.tags().unwrap().into_iter().map(|t| t.path).collect() };
+        let work = s.ensure_tag_path("Work").unwrap();
+        let home = s.ensure_tag_path("home").unwrap();
+        s.ensure_tag_path("home/garden").unwrap();
+        let kitchen = s.ensure_tag_path("home/kitchen").unwrap();
+        s.ensure_tag_path("home-office").unwrap();
+        // Never arranged: by name (any case), children right after their parent.
+        assert_eq!(
+            paths(&s),
+            ["home", "home/garden", "home/kitchen", "home-office", "Work"]
+        );
+
+        s.place_tag(&work, Some(&home)).unwrap();
+        assert_eq!(
+            paths(&s),
+            ["Work", "home", "home/garden", "home/kitchen", "home-office"]
+        );
+        s.place_tag(&home, None).unwrap();
+        assert_eq!(
+            paths(&s),
+            ["Work", "home-office", "home", "home/garden", "home/kitchen"]
+        );
+        s.place_tag(&kitchen, None).unwrap();
+        s.place_tag(
+            &kitchen,
+            Some(&s.find_tag("home/garden").unwrap().unwrap().id),
+        )
+        .unwrap();
+        assert_eq!(
+            paths(&s),
+            ["Work", "home-office", "home", "home/kitchen", "home/garden"]
+        );
+
+        // A new tag goes after the arranged ones; arranging it is a single op.
+        let alpha = s.ensure_tag_path("alpha").unwrap();
+        assert_eq!(paths(&s).last().unwrap(), "alpha");
+        let before = s.ops().unwrap().len();
+        s.place_tag(&alpha, Some(&work)).unwrap();
+        assert_eq!(s.ops().unwrap().len(), before + 1);
+        assert_eq!(paths(&s)[..2], ["alpha", "Work"]);
+
+        // A tag whose parent was deleted on another device sits at the top level.
+        let shed = s.ensure_tag_path("shed").unwrap();
+        s.conn
+            .execute("UPDATE tag SET parent_id = 'gone' WHERE id = ?1", [&shed])
+            .unwrap();
+        s.place_tag(&shed, Some(&alpha)).unwrap();
+        assert_eq!(paths(&s)[..2], ["shed", "alpha"]);
+        assert!(s.place_tag(&kitchen, Some(&work)).is_err(), "not a sibling");
+        assert!(s.place_tag(&work, Some(&work)).is_err(), "itself");
     }
 
     #[test]
