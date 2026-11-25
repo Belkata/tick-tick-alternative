@@ -251,3 +251,13 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
 - **Going up the tree:** a subtask's detail starts with "↑ <parent title>"; tapping it opens the parent (`TaskDetail.parent_title`). Subtasks were already tappable going down.
 - Integration tests: "drag the line before the detail pane to resize it", "pick a parent task, then go up to it", "Show in Calendar off keeps a task off the calendar" (plan/18).
 - ⚠️ The resize test writes the real `desk.json` (path_provider isn't faked in integration tests); it resets it to the default at the end.
+
+## Sorting views (2026-11-25, on the Arch laptop, at the user's request)
+Decided with the user: lists' and tags' sorts **sync**; the menu offers Due date, Priority, Title, Newest first, Oldest first and **Manual** (drag to reorder); the **Inbox** gets the menu too.
+- **The sort menu** (sort icon, right of the view's title) in Inbox, list, tag and filter views; the current choice is ticked. Each choice saves core sort keys (`app/lib/desk/task_sort.dart`, same names as `tt sort`): due → `due_asc, priority_desc`; priority → `priority_desc, due_asc`; title → `title_asc`; newest/oldest → `created_desc`/`created_asc`; manual → `manual`. Completed and Trash keep their own order.
+- **Where it's kept:** a list's or tag's `sort` column (**schema v7**, synced JSON like `filter.sort`; an older build logs these ops and v7 replays them). A filter's menu choice writes its existing `sort` (the builder's dropdown also gained Oldest first and Manual). The Inbox's sort is **per device**, in `meta` (`inbox_sort`), since the Inbox isn't stored. Defaults: lists, tags and filters due then priority; Inbox oldest first.
+- **Manual:** drag a card (mouse: press and drag; phone: long-press) to move it. It's each task's synced `sort_key`, one order shared by every view: `Store::place_task(id, before, shown)` places it among the view's tasks (one op, or numbers the view's tasks the first time, like `place_tag`). Never-arranged tasks (new ones) come first, newest on top. Sort keys a build doesn't know are skipped, not fatal.
+- API: `ViewSort`, `SetViewSort`, `PlaceTask`, `InboxSorted`; Dart `TaskDb.viewSort`, `setViewSort`, `placeTask`. CLI: `tt sort [-l|-t|-f …] [due|priority|title|newest|oldest|manual|keys]`, `tt order <id> [--before <id>] [-l|-t|-f …]`; `tt ls` follows the saved sorts.
+- Tests: core `view_sort` (3), API `views_follow_their_sort_and_manual_moves`, Dart `task_sort_test.dart` (3), integration "sort a list from the header, then drag in manual order".
+- Not done: grouping (`group`), per-view manual order (TickTick keeps one per list; ours is global, which matters only for tasks seen in several views).
+

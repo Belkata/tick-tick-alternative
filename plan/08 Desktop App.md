@@ -49,6 +49,8 @@ tt ls -f "Today + Inbox"          # any filter, list, or tag
 tt done <id|#n>
 tt tags                           # tag tree with counts
 tt tags order <tag> --before <tag>  # arrange among siblings (no --before: last)
+tt sort [-l L|-t T|-f F] [due|priority|title|newest|oldest|manual]  # show or set a view's sort
+tt order <id> [--before <id>] [-l L|-t T|-f F]  # manual order
 tt sync                           # trigger sync now
 tt devices                        # paired devices + last seen
 tt import ticktick backup.csv     # see [[12 TickTick Import]]

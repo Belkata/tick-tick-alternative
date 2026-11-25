@@ -140,4 +140,4 @@ A filter is a named, saved AST (stored as JSON) plus display options: sort, grou
 - **Inbox**: the rule above.
 - **Completed**: `status = done`, plus repeat completions, newest first.
 - **Trash**: `status = deleted`. Restore or purge. Auto-purge after N days is configurable, default 30.
-- **List** views and **Tag** views: list, group and sort options.
+- **List** views and **Tag** views: list, group and sort options. Sort (2026-11-25): a list's and tag's `sort` (schema v7, synced, JSON keys like `filter.sort`); the Inbox's is per device (`meta.inbox_sort`). Manual order is the task's `sort_key` (`Store::place_task`), see plan/15 "Sorting views".
