@@ -67,6 +67,12 @@ impl SyncService {
                         svc.refresh_peers().await;
                         eprintln!("tt-daemon: paired with {name}");
                     }
+                    SyncEvent::TrustChanged { added, removed } => {
+                        svc.refresh_peers().await;
+                        eprintln!(
+                            "tt-daemon: trust shared by a peer: added {added:?}, removed {removed:?}"
+                        );
+                    }
                     SyncEvent::Refused { peer_id, reason } => {
                         eprintln!(
                             "tt-daemon: refused {}: {reason}",

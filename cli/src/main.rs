@@ -958,7 +958,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
                         Ok(SyncEvent::Paired { name, .. }) => println!("Paired with {name}."),
                         Ok(SyncEvent::Synced(r)) => { print_report(&r); break; }
                         Ok(SyncEvent::Refused { reason, .. }) => println!("Refused a device: {reason}"),
-                        Err(_) => {}
+                        Ok(SyncEvent::TrustChanged { .. }) | Err(_) => {}
                     },
                 }
             }
@@ -1149,6 +1149,20 @@ fn print_report(r: &tt_sync::replicate::SyncReport) {
         "Synced with {}: sent {}, received {} ({} applied).",
         r.peer_name, r.sent, r.received, r.applied
     );
+    if !r.learned.is_empty() {
+        println!(
+            "Now also paired with {} (through {}).",
+            r.learned.join(", "),
+            r.peer_name
+        );
+    }
+    if !r.dropped.is_empty() {
+        println!(
+            "Forgot {} ({} had unpaired them).",
+            r.dropped.join(", "),
+            r.peer_name
+        );
+    }
 }
 
 fn relays(no_relay: bool) -> Relays {
