@@ -6,3 +6,16 @@ members = ["core", "api", "sync", "google", "cli", "daemon", "app/rust", "tools/
 edition = "2024"
 license = "MIT"
 publish = false
+
+# Build speed (plan/13). `release` stays as it is: Flutter's release builds and the APK use it.
+# `debug` keeps only line tables: backtraces still have lines, and builds and `target/` shrink.
+[profile.dev]
+debug = "line-tables-only"
+
+# The daily driver for tt-daemon and tt on this laptop: `cargo build --profile fast`.
+# Lighter optimisation and incremental builds; the app and the phone don't need -O3.
+[profile.fast]
+inherits = "release"
+opt-level = 2
+incremental = true
+codegen-units = 16
