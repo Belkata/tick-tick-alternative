@@ -15,6 +15,7 @@ class DeskSidebar extends StatelessWidget {
     super.key,
     required this.c,
     this.onPicked,
+    this.top = const [],
     this.extras = const [],
   });
 
@@ -23,7 +24,10 @@ class DeskSidebar extends StatelessWidget {
   /// Called after a view is picked (the narrow layout closes its drawer).
   final VoidCallback? onPicked;
 
-  /// Entries under the views, e.g. the calendar and sync spike screens.
+  /// Entries right under Inbox, e.g. the calendar.
+  final List<Widget> top;
+
+  /// Entries under the views, e.g. the Devices and sync spike screens.
   final List<Widget> extras;
 
   @override
@@ -119,6 +123,7 @@ class DeskSidebar extends StatelessWidget {
             lead: icon(Icons.inbox_outlined),
             count: sb?.inbox,
           ),
+          ...top,
           section(
             'Lists',
             action: _SmallButton(

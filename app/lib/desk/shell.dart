@@ -18,6 +18,7 @@ class ShellPage {
     this.builder, {
     this.railSidebar = false,
     this.ownMenuButton = false,
+    this.top = false,
   });
 
   final String label;
@@ -33,6 +34,9 @@ class ShellPage {
   /// On narrow windows and phones the page draws its own menu button (it opens the
   /// drawer with `Scaffold.of(context).openDrawer()`), instead of the shell adding a bar.
   final bool ownMenuButton;
+
+  /// Listed right under Inbox instead of in the sidebar's More section.
+  final bool top;
 }
 
 /// M2 window: sidebar | task list | detail on wide windows (plan/08), and a single
@@ -290,26 +294,31 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
 
   Widget _sidebar({required bool inDrawer}) {
     final s = context.soft;
+    Widget pageTile(int i) => NavTile(
+      label: widget.pages[i].label,
+      lead: Icon(widget.pages[i].icon, size: 16, color: s.mute),
+      selected: _page == i,
+      onTap: () {
+        setState(() {
+          _page = i;
+          _railOpen = false;
+        });
+        if (inDrawer) Navigator.of(context).pop();
+      },
+    );
     return DeskSidebar(
       c: c,
       onPicked: () {
         _showTasks();
         if (inDrawer) Navigator.of(context).pop();
       },
+      top: [
+        for (var i = 0; i < widget.pages.length; i++)
+          if (widget.pages[i].top) pageTile(i),
+      ],
       extras: [
         for (var i = 0; i < widget.pages.length; i++)
-          NavTile(
-            label: widget.pages[i].label,
-            lead: Icon(widget.pages[i].icon, size: 16, color: s.mute),
-            selected: _page == i,
-            onTap: () {
-              setState(() {
-                _page = i;
-                _railOpen = false;
-              });
-              if (inDrawer) Navigator.of(context).pop();
-            },
-          ),
+          if (!widget.pages[i].top) pageTile(i),
         if (WidgetBridge.supported)
           NavTile(
             key: const Key('pin-widget'),
