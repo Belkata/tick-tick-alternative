@@ -25,7 +25,7 @@ A personal, local-first TickTick replacement. The pieces:
 
 The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manrope headings) **with Material outlined tag chips**. The mockups are in `plan/ui-styles/styles.html`.
 
-## Where things stand (handoff, 2026-11-25, Arch laptop)
+## Where things stand (handoff, 2026-11-25: the Mac, after the Arch laptop)
 
 **Done** (details in the logs named in the table above):
 - **M0**: stack and UI style decided; Spikes 1, 3, 4, 5 pass, on macOS too since M2 slice 5.
@@ -34,9 +34,21 @@ The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manro
 - **M3** (sync, `plan/16`): protocol 2 over iroh (tt2 pairing tickets, trusted peers, trust sharing, removal spreading), compaction (schema **v5**), the network simulation test. The daemon runs the sync node with auto-sync, tray status and Sync now.
 - **M4** (Android, `plan/17`): in-process phone sync (`app/rust/src/phone.rs` + shared `tt_sync::service::SyncService`), QR pairing, AlarmManager reminders (Done / Snooze 10 min / 1 h), WorkManager background sync (15 min, plus expedited after outside edits), a share target, the CI release workflow. Tested on the emulator.
 - **M5a** (local calendar, `plan/18`): Day/Week/Month on real tasks in the Soft style, Unscheduled panel (desktop) and bottom drawer (phone) with drag in and out, `placeBlock`/`unschedule` in the core. M5b (Google) is next.
-- **Released**: pre-release **v0.3.0** on GitHub (`tick-alt-0.3.0-arm64.apk`, the calendar; v0.2.0 before it), signed with this laptop's **debug** key, so it updates v0.2.0 in place. Its CI run fails until release-key secrets exist; that's expected.
+- **Released**: pre-release **v0.3.0** on GitHub (`tick-alt-0.3.0-arm64.apk`, the calendar; v0.2.0 before it), signed with the Arch laptop's **debug** key, so it updates v0.2.0 in place. Its CI run fails until release-key secrets exist; that's expected.
 
-**On the Mac now (2026-11-25):** Xcode 27.2 installed and set up. Commits up to the M2 slice 5 plan update are **not pushed**. The bundled daemon runs from `app/build/…/Tick Alt.app` (started with `open`, not the LaunchAgent) on a fresh `~/Library/Application Support/tick-alt/tt.db` with 2 test tasks; it isn't paired with anything. The user allowed its notifications. Next on the Mac: install the DMG's app into /Applications and run `scripts/install-launch-agent.sh "/Applications/Tick Alt.app"`, then pair with the laptop or phone. Not tested yet: Snooze, the menu's Open, Sync now.
+**Running on the Mac now (handoff 2026-11-25, end of M2 slice 5; everything is pushed):**
+- Toolchain: Xcode 27.2 (licence accepted, `xcode-select` points at it, first launch done), Rust 1.100, Flutter 3.50.1, CocoaPods 1.17.0 (Homebrew). `source scripts/env.sh` as always.
+- `/Applications/Tick Alt.app` is installed: a copy of `scripts/build-macos.sh`'s build from `401962f`, with the daemon bundled. `dist/tick-alt-0.3.0-macos.dmg` is the same build.
+- **The LaunchAgent is installed** (`~/Library/LaunchAgents/dev.tickalt.daemon.plist`): `tt-daemon` runs from the app's `Contents/Helpers/Tick Alt Daemon.app`, starts at login and restarts after a crash (tested with `kill -9`). Logs: `~/Library/Logs/tick-alt/daemon.log`. **After rebuilding:** copy the new app into `/Applications` (`ditto`), then `scripts/install-launch-agent.sh "/Applications/Tick Alt.app"` to restart the daemon.
+- Database: `~/Library/Application Support/tick-alt/tt.db`, fresh (only test tasks), sync node `58385947…`. **Not paired** with the Arch laptop or the phone yet.
+- The user allowed the daemon's notifications. Reminders show as banners; Done from Notification Centre completed a task. The menu-bar icon looks right (the user checked).
+- **Not tested on the Mac:** Snooze, the menu's Open and Sync now, adding a task by typing in the app (background computer use can't type into Flutter), pairing.
+
+**Next on the Mac** (ask the user which):
+1. Pair the Mac with the Arch laptop and/or the phone (Devices page or `tt sync pair`/`join`), then check M3's exit: "Mac ↔ Arch stay in sync".
+2. Test Snooze, Open and Sync now from the menu bar, and typing in the app.
+3. On Arch: `cargo clippy -p tt-daemon`, since the Linux tray moved to `daemon/src/tray_sni.rs` and couldn't be compiled on the Mac.
+4. Smaller: the bundle's copyright line waits for the LICENSE name; the macOS bundle is universal (arm64 + x86_64, 120 MB unpacked) and could be arm64 only; the "Next" list below still applies.
 
 **Running on the Arch laptop (as of its handoff):**
 - The `tick-alt` user service runs this checkout's `target/release/tt-daemon` on `~/.local/share/tick-alt/tt.db` (schema v5, sync node `c382b28c2f…`, UDP 41824). **After rebuilding the daemon: `systemctl --user restart tick-alt`.**
