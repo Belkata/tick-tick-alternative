@@ -1,19 +1,20 @@
-//! How list, tag, filter and Inbox views are sorted, and manual task order.
+//! How task views are sorted, and manual task order.
 //!
-//! A list's or tag's sort is a synced JSON array of sort keys, like `filter.sort`
-//! (empty means the default: due date, then priority). The Inbox isn't stored, so its
-//! sort is per device, in `meta`. Manual order is each task's synced `sort_key`:
+//! One sort per device, shared by every view (Inbox, lists, tags, filters), so a
+//! choice stays when you switch views (decided 2026-11-25). It's a JSON array of
+//! sort keys in `meta`, never synced. Manual order is each task's synced `sort_key`:
 //! one order shared by every view, arranged within whichever view a task is moved in.
+//! (v0.5.0 kept a sort per list and tag; schema v7's `list.sort` and `tag.sort` are
+//! still applied from peers but no longer read.)
 
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::OptionalExtension;
 
 use crate::oplog::Entity;
 use crate::order::{key_between, spread_keys};
-use crate::organize::{require_list, require_tag};
 use crate::task::{TASK_COLUMNS, query_tasks, require_task};
 use crate::{Error, Result, Store, Task};
 
-/// Every sort key the core knows, as stored in a view's sort (first wins).
+/// Every sort key the core knows (first wins).
 pub const SORT_KEYS: &[&str] = &[
     "due_asc",
     "due_desc",
@@ -26,8 +27,8 @@ pub const SORT_KEYS: &[&str] = &[
     "manual",
 ];
 
-/// The Inbox's sort when none is chosen: oldest first, as it always was.
-pub(crate) const INBOX_DEFAULT: &str = "created_asc";
+/// The sort until one is chosen: due date, then priority.
+pub const DEFAULT_SORT: &[&str] = &["due_asc", "priority_desc"];
 
 /// Reject unknown keys before saving a sort.
 pub(crate) fn check_sort(sort: &[String]) -> Result<()> {
@@ -46,81 +47,42 @@ pub(crate) fn known_sort(json: &str) -> Vec<String> {
         .collect()
 }
 
-fn stored_sort(conn: &Connection, table: &str, id: &str) -> Result<Vec<String>> {
-    // `table` is one of our own names, never input.
-    let json: Option<String> = conn
-        .query_row(
-            &format!("SELECT sort FROM {table} WHERE id = ?1 AND deleted = 0"),
-            [id],
-            |r| r.get(0),
-        )
-        .optional()?;
-    json.map(|j| known_sort(&j))
-        .ok_or_else(|| Error::NotFound(format!("{table} {id}")))
-}
-
 impl Store {
-    /// A list's saved sort; empty for the default.
-    pub fn list_sort(&self, id: &str) -> Result<Vec<String>> {
-        stored_sort(&self.conn, "list", id)
-    }
-
-    /// A tag's saved sort; empty for the default.
-    pub fn tag_sort(&self, id: &str) -> Result<Vec<String>> {
-        stored_sort(&self.conn, "tag", id)
-    }
-
-    pub fn set_list_sort(&self, id: &str, sort: &[String]) -> Result<()> {
-        check_sort(sort)?;
-        self.write(|w| {
-            require_list(w.conn, id)?;
-            w.set(Entity::List, id, "sort", serde_json::to_value(sort)?)
-        })
-    }
-
-    pub fn set_tag_sort(&self, id: &str, sort: &[String]) -> Result<()> {
-        check_sort(sort)?;
-        self.write(|w| {
-            require_tag(w.conn, id)?;
-            w.set(Entity::Tag, id, "sort", serde_json::to_value(sort)?)
-        })
-    }
-
-    /// Change only a saved filter's sort.
-    pub fn set_filter_sort(&self, id: &str, sort: &[String]) -> Result<()> {
-        check_sort(sort)?;
-        if self.find_filter(id)?.is_none() {
-            return Err(Error::NotFound(format!("filter {id}")));
-        }
-        self.write(|w| w.set(Entity::Filter, id, "sort", serde_json::to_value(sort)?))
-    }
-
-    /// This device's Inbox sort; empty for the default (oldest first).
-    pub fn inbox_sort(&self) -> Result<Vec<String>> {
+    /// How this device sorts every view: the chosen sort, or [`DEFAULT_SORT`].
+    pub fn device_sort(&self) -> Result<Vec<String>> {
+        // v0.5.0 kept the Inbox's choice under `inbox_sort`; it carries over.
         let json: Option<String> = self
             .conn
-            .query_row("SELECT value FROM meta WHERE key = 'inbox_sort'", [], |r| {
-                r.get(0)
-            })
+            .query_row(
+                "SELECT value FROM meta WHERE key IN ('sort', 'inbox_sort') \
+                 ORDER BY key = 'sort' DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
             .optional()?;
-        Ok(json.map(|j| known_sort(&j)).unwrap_or_default())
+        let sort = json.map(|j| known_sort(&j)).unwrap_or_default();
+        Ok(if sort.is_empty() {
+            DEFAULT_SORT.iter().map(|k| k.to_string()).collect()
+        } else {
+            sort
+        })
     }
 
-    /// Set this device's Inbox sort. Local only: it isn't an op and never syncs.
-    pub fn set_inbox_sort(&self, sort: &[String]) -> Result<()> {
+    /// Choose how this device sorts every view. Local only: it isn't an op and never syncs.
+    pub fn set_device_sort(&self, sort: &[String]) -> Result<()> {
         check_sort(sort)?;
         self.conn.execute(
-            "INSERT INTO meta (key, value) VALUES ('inbox_sort', ?1) \
+            "INSERT INTO meta (key, value) VALUES ('sort', ?1) \
              ON CONFLICT (key) DO UPDATE SET value = excluded.value",
             [serde_json::to_string(sort)?],
         )?;
+        self.conn
+            .execute("DELETE FROM meta WHERE key = 'inbox_sort'", [])?;
         Ok(())
     }
 
-    /// Inbox tasks in the given order (empty: oldest first).
+    /// Inbox tasks in the given order (empty: [`DEFAULT_SORT`]).
     pub fn inbox_sorted(&self, sort: &[String]) -> Result<Vec<Task>> {
-        let default = [INBOX_DEFAULT.to_string()];
-        let sort = if sort.is_empty() { &default[..] } else { sort };
         let sql = format!(
             "SELECT {TASK_COLUMNS} FROM task WHERE {} ORDER BY {}",
             crate::inbox::INBOX_WHERE,
@@ -187,53 +149,42 @@ mod tests {
     }
 
     #[test]
-    fn list_and_tag_sorts_round_trip() {
-        let s = Store::open_in_memory().unwrap();
-        let l = s.create_list("Home").unwrap();
-        let l = crate::List {
-            id: l,
-            name: String::new(),
-            color: None,
-            icon: None,
-            archived: false,
-        };
-        assert!(s.list_sort(&l.id).unwrap().is_empty(), "default");
-        s.set_list_sort(&l.id, &["title_asc".into()]).unwrap();
-        assert_eq!(s.list_sort(&l.id).unwrap(), ["title_asc"]);
-        assert!(s.set_list_sort(&l.id, &["sideways".into()]).is_err());
-
-        let t = s.ensure_tag_path("garden").unwrap();
-        s.set_tag_sort(&t, &["manual".into()]).unwrap();
-        assert_eq!(s.tag_sort(&t).unwrap(), ["manual"]);
-        assert!(s.tag_sort("nope").is_err());
-
-        // A key from a newer build is skipped, not fatal.
-        s.conn
-            .execute(
-                "UPDATE list SET sort = '[\"colour_asc\",\"title_asc\"]' WHERE id = ?1",
-                [&l.id],
-            )
-            .unwrap();
-        assert_eq!(s.list_sort(&l.id).unwrap(), ["title_asc"]);
-    }
-
-    #[test]
-    fn inbox_sort_is_local() {
+    fn one_local_sort_for_every_view() {
         let s = Store::open_in_memory().unwrap();
         s.add_task("b").unwrap();
         s.add_task("a").unwrap();
+        assert_eq!(s.device_sort().unwrap(), super::DEFAULT_SORT);
         assert_eq!(
-            titles(s.inbox_sorted(&s.inbox_sort().unwrap()).unwrap()),
+            titles(s.inbox_sorted(&s.device_sort().unwrap()).unwrap()),
             ["b", "a"]
         );
         let ops = s.ops().unwrap().len();
-        s.set_inbox_sort(&["title_asc".into()]).unwrap();
-        assert_eq!(s.inbox_sort().unwrap(), ["title_asc"]);
+        s.set_device_sort(&["title_asc".into()]).unwrap();
+        assert_eq!(s.device_sort().unwrap(), ["title_asc"]);
         assert_eq!(
-            titles(s.inbox_sorted(&s.inbox_sort().unwrap()).unwrap()),
+            titles(s.inbox_sorted(&s.device_sort().unwrap()).unwrap()),
             ["a", "b"]
         );
         assert_eq!(s.ops().unwrap().len(), ops, "no op: it doesn't sync");
+        assert!(s.set_device_sort(&["sideways".into()]).is_err());
+    }
+
+    #[test]
+    fn the_v0_5_0_inbox_sort_carries_over() {
+        let s = Store::open_in_memory().unwrap();
+        s.conn
+            .execute(
+                "INSERT INTO meta (key, value) VALUES ('inbox_sort', '[\"priority_desc\",\"colour\"]')",
+                [],
+            )
+            .unwrap();
+        assert_eq!(
+            s.device_sort().unwrap(),
+            ["priority_desc"],
+            "unknown keys skipped"
+        );
+        s.set_device_sort(&["manual".into()]).unwrap();
+        assert_eq!(s.device_sort().unwrap(), ["manual"]);
     }
 
     #[test]

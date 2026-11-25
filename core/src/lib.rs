@@ -32,7 +32,7 @@ pub use reminder::{Reminder, ReminderFire, ReminderKind};
 pub use replica::{Peer, Removal, SharedPeer, TrustChange, TrustList, VersionVector};
 pub use store::Store;
 pub use task::{MAX_DEPTH, NewTask, RepeatMode, Schedule, Status, Task};
-pub use view_sort::SORT_KEYS;
+pub use view_sort::{DEFAULT_SORT, SORT_KEYS};
 
 /// Errors returned by the core.
 #[derive(Debug, thiserror::Error)]

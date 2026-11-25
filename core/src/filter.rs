@@ -63,8 +63,8 @@ pub struct Filter {
     #[serde(default)]
     pub icon: Option<String>,
     pub rule: FilterRule,
-    /// Sort keys, first wins (`SORT_KEYS`): `due_asc`, `due_desc`, `start_asc`,
-    /// `priority_desc`, `priority_asc`, `created_asc`, `created_desc`, `title_asc`, `manual`.
+    /// Sort keys (`SORT_KEYS`), saved with the filter but no longer used: every view
+    /// follows the device's sort (`Store::device_sort`).
     #[serde(default)]
     pub sort: Vec<String>,
     /// Grouping for the UI (`priority`, `list`, `due`, `tag`); the core doesn't group.
@@ -542,7 +542,9 @@ impl Store {
         let f =
             load_filter(&self.conn, id)?.ok_or_else(|| Error::NotFound(format!("filter {id}")))?;
         let f = f.filter;
-        run(&self.conn, &f.rule, &f.sort, f.show_completed, now_ms, tz)
+        // Every view follows the device's sort; `f.sort` is kept but unused.
+        let sort = self.device_sort()?;
+        run(&self.conn, &f.rule, &sort, f.show_completed, now_ms, tz)
     }
 }
 
