@@ -1,7 +1,8 @@
 //! Network simulation from plan/05 "Testing the sync engine": replicas edit and sync in
 //! random pairs the way `tt-sync` does (version vectors, then the missing ops in HLC
 //! order), with connections that drop mid-stream (only a prefix arrives), one-way syncs,
-//! duplicated deliveries and long partitions (some pairs just don't meet for a while).
+//! duplicated deliveries, long partitions (some pairs just don't meet for a while) and
+//! op-log compaction at any moment.
 //! Once everyone finally meets, every replica must hold the same state and vector.
 
 mod common;
@@ -29,6 +30,8 @@ enum Step {
         from: usize,
         to: usize,
     },
+    /// A replica compacts its op log (drops superseded ops).
+    Compact(usize),
 }
 
 fn step() -> impl Strategy<Value = Step> {
@@ -37,7 +40,8 @@ fn step() -> impl Strategy<Value = Step> {
         4 => (r.clone(), edit()).prop_map(|(r, e)| Step::Edit(r, e)),
         2 => (r.clone(), r.clone(), any::<u8>()).prop_map(|(from, to, keep)| Step::Send { from, to, keep }),
         2 => (r.clone(), r.clone()).prop_map(|(a, b)| Step::Session(a, b)),
-        1 => (r.clone(), r).prop_map(|(from, to)| Step::Duplicate { from, to }),
+        1 => (r.clone(), r.clone()).prop_map(|(from, to)| Step::Duplicate { from, to }),
+        1 => r.prop_map(Step::Compact),
     ]
 }
 
@@ -73,25 +77,36 @@ proptest! {
                 Step::Send { from, to, keep } if from != to => send(&rs[*from], &rs[*to], *keep as usize),
                 Step::Session(a, b) if a != b => session(&rs[*a], &rs[*b]),
                 Step::Duplicate { from, to } if from != to => {
-                    // Everything `to` already holds that `from` also has, sent again.
-                    let have = rs[*to].version_vector().unwrap();
+                    // A retried batch: ops `to` already holds, sent again by `from`. (By the
+                    // ops themselves, not the vector: after compaction a vector no longer
+                    // means "holds every op below this", only "has every winner".)
+                    let have: std::collections::HashSet<_> =
+                        rs[*to].ops().unwrap().into_iter().map(|o| o.hlc).collect();
                     let again: Vec<_> = rs[*from]
                         .ops()
                         .unwrap()
                         .into_iter()
-                        .filter(|op| have.get(&op.hlc.device).is_some_and(|h| op.hlc <= *h))
+                        .filter(|op| have.contains(&op.hlc))
                         .collect();
                     let before = rs[*to].state_dump().unwrap();
                     prop_assert_eq!(rs[*to].apply_remote(&again).unwrap(), 0);
                     prop_assert_eq!(rs[*to].state_dump().unwrap(), before);
                 }
+                Step::Compact(r) => {
+                    let (dump, vv) = (rs[*r].state_dump().unwrap(), rs[*r].version_vector().unwrap());
+                    rs[*r].compact().unwrap();
+                    prop_assert_eq!(rs[*r].state_dump().unwrap(), dump);
+                    prop_assert_eq!(rs[*r].version_vector().unwrap(), vv);
+                }
                 _ => {}
             }
         }
+        let compacted = steps.iter().any(|s| matches!(s, Step::Compact(_)));
 
         // The invariant behind version vectors: a replica's ops from any device form an
         // unbroken prefix of that device's log, however lossy the syncs were.
-        for r in &rs {
+        // (Compaction leaves deliberate gaps: superseded ops are gone.)
+        for r in rs.iter().filter(|_| !compacted) {
             let vv = r.version_vector().unwrap();
             for (dev, top) in vv {
                 let mine: Vec<_> = r.ops().unwrap().into_iter().filter(|o| o.hlc.device == dev).map(|o| o.hlc).collect();

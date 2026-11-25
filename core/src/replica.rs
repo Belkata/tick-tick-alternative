@@ -63,17 +63,55 @@ const DEVICE_OFFSET: usize = 12 + 1 + 6 + 1;
 impl Store {
     /// The newest op per device in this store's log.
     pub fn version_vector(&self) -> Result<VersionVector> {
+        // The op log's newest per device, plus what compaction recorded before dropping ops.
         let mut stmt = self.conn.prepare(&format!(
-            "SELECT MAX(hlc) FROM op GROUP BY substr(hlc, {})",
+            "SELECT MAX(hlc) FROM op GROUP BY substr(hlc, {}) \
+             UNION ALL SELECT max_hlc FROM device_clock",
             DEVICE_OFFSET + 1
         ))?;
         let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
         let mut vv = VersionVector::new();
         for row in rows {
             let hlc: Hlc = row?.parse().map_err(|e| Error::Corrupt(format!("{e}")))?;
-            vv.insert(hlc.device, hlc);
+            let top = vv.entry(hlc.device).or_insert(hlc);
+            if hlc > *top {
+                *top = hlc;
+            }
         }
         Ok(vv)
+    }
+
+    /// Op-log compaction: drop ops a newer op on the same field has superseded. Under
+    /// per-field last-writer-wins only each field's winner shapes the state, so a peer that
+    /// never saw the dropped ops still converges from the winners, and a compacted log is
+    /// itself the snapshot a new device bootstraps from. Returns how many ops were dropped.
+    pub fn compact(&self) -> Result<usize> {
+        let tx = self.conn.unchecked_transaction()?;
+        // Remember each device's newest HLC first, so the vector can't go backwards.
+        self.conn.execute(
+            &format!(
+                "INSERT INTO device_clock (device, max_hlc) \
+                 SELECT substr(hlc, {0}), MAX(hlc) FROM op WHERE true GROUP BY substr(hlc, {0}) \
+                 ON CONFLICT(device) DO UPDATE SET max_hlc = max(max_hlc, excluded.max_hlc)",
+                DEVICE_OFFSET + 1
+            ),
+            [],
+        )?;
+        let dropped = self.conn.execute(
+            "DELETE FROM op WHERE EXISTS (SELECT 1 FROM field_clock fc \
+               WHERE fc.entity = op.entity AND fc.entity_id = op.entity_id \
+                 AND fc.field = op.field AND fc.hlc > op.hlc)",
+            [],
+        )?;
+        tx.commit()?;
+        Ok(dropped)
+    }
+
+    /// How many ops the log holds (to decide whether compacting is worth it).
+    pub fn op_count(&self) -> Result<usize> {
+        Ok(self
+            .conn
+            .query_row("SELECT COUNT(*) FROM op", [], |r| r.get::<_, i64>(0))? as usize)
     }
 
     /// The ops a peer with vector `theirs` hasn't seen, oldest first.
@@ -401,5 +439,47 @@ mod tests {
         assert_eq!(list.removed[0].node_id, "phone");
         s.add_peer("phone", "phone", None, i64::MAX).unwrap();
         assert!(s.trust_list().unwrap().removed.is_empty());
+    }
+
+    #[test]
+    fn compaction_keeps_state_vector_and_replay() {
+        let a = Store::open_in_memory().unwrap();
+        let t = a.add_task("v1").unwrap();
+        for i in 2..6 {
+            a.set_title(&t.id, &format!("v{i}")).unwrap();
+        }
+        a.complete_task(&t.id).unwrap();
+        a.reopen_task(&t.id).unwrap();
+        let (dump, vv, before) = (
+            a.state_dump().unwrap(),
+            a.version_vector().unwrap(),
+            a.op_count().unwrap(),
+        );
+
+        let dropped = a.compact().unwrap();
+        assert!(dropped >= 5, "dropped {dropped} of {before}");
+        assert_eq!(a.op_count().unwrap(), before - dropped);
+        assert_eq!(a.state_dump().unwrap(), dump);
+        assert_eq!(a.version_vector().unwrap(), vv);
+        assert_eq!(a.compact().unwrap(), 0);
+
+        // A new device bootstraps from the compacted log alone.
+        let b = Store::open_in_memory().unwrap();
+        b.apply_remote(&a.ops_missing(&b.version_vector().unwrap()).unwrap())
+            .unwrap();
+        assert_eq!(b.state_dump().unwrap(), dump);
+        assert_eq!(
+            b.version_vector()
+                .unwrap()
+                .get(&a.device_id())
+                .map(|h| h <= &vv[&a.device_id()]),
+            Some(true)
+        );
+        // And it doesn't ask for the dropped ops again: nothing is missing either way.
+        assert!(
+            a.ops_missing(&a.version_vector().unwrap())
+                .unwrap()
+                .is_empty()
+        );
     }
 }

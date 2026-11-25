@@ -15,6 +15,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("migrations/002_m1.sql"),
     include_str!("migrations/003_m3.sql"),
     include_str!("migrations/004_trust.sql"),
+    include_str!("migrations/005_compact.sql"),
 ];
 
 /// A handle to one Tick Alt database file.
