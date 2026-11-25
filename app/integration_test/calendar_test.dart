@@ -28,9 +28,13 @@ void main() {
     WidgetTester tester, {
     Size size = const Size(1400, 900),
   }) async {
-    tester.view.physicalSize = size;
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
+    // On a phone the phone layout comes from the real screen (a forced 1:1 size would
+    // leave no room once the on-screen keyboard's physical-pixel inset is applied).
+    if (!(Platform.isAndroid && size.width < 760)) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+    }
     // Start from no saved view or Unscheduled source (calendar.json).
     final support = await getApplicationSupportDirectory();
     final prefs = File('${support.path}/calendar.json');
