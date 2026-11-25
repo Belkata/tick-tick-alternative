@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // gradle.properties sets android.builtInKotlin=false, so apply Kotlin here, then the
@@ -9,7 +11,7 @@ plugins {
 }
 
 // Release signing (never committed): app/android/key.properties, see plan/07.
-val releaseKey = java.util.Properties().apply {
+val releaseKey = Properties().apply {
     val f = rootProject.file("key.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
