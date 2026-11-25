@@ -1,15 +1,16 @@
 //! tt-daemon: owns the desktop database and serves it to the app and `tt` (M2, plan/15).
 //!
 //! - **Socket:** `tt_api::server` runs one DB thread and answers JSON-line requests on
-//!   `$XDG_RUNTIME_DIR/tick-alt.sock`, with change events for subscribers. Commits other
-//!   processes make to the file (e.g. `tt` while no daemon ran) are noticed and broadcast.
-//! - **Tray** (Spike 4): a StatusNotifierItem (ksni) in waybar's `tray` module showing the
-//!   Inbox count and sync status, refreshed on every change. Menu: the first Inbox tasks,
-//!   Open, Refresh, the sync status and Sync now, Quit.
+//!   `$XDG_RUNTIME_DIR/tick-alt.sock` (macOS: the data dir), with change events for subscribers.
+//!   Commits other processes make to the file (e.g. `tt` while no daemon ran) are noticed and broadcast.
+//! - **Tray**: the Inbox count and sync status, refreshed on every change. Linux: a
+//!   StatusNotifierItem (`tray_sni.rs`). macOS: a menu-bar icon (`tray_mac.rs`), which owns the
+//!   main thread for AppKit, so the tokio runtime runs on a second thread there.
 //! - **Sync** (M3, `sync.rs`): the iroh sync node serves paired devices and syncs with them
 //!   every 90 s and a few seconds after local edits; `tt sync` and the app reach it via the socket.
 //! - **Reminders:** every 5 s the core is asked for reminders due since the last check;
-//!   each becomes a notification (notify-rust) with Done and Snooze actions.
+//!   each becomes a notification (notify-rust) with Done and Snooze actions. On macOS this is
+//!   `NSUserNotificationCenter` for now (no app bundle yet), which shows the actions in one menu.
 //!
 //! Flags: `--db <path>`, `--socket <path>`, `--no-tray`, `--no-sync`, `--no-relay` (sync on
 //! direct addresses only); `tt-daemon notify <id>` sends one
@@ -19,9 +20,15 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
-use ksni::TrayMethods;
 use tokio::sync::mpsc;
 mod sync;
+#[cfg_attr(target_os = "linux", path = "tray_sni.rs")]
+#[cfg_attr(target_os = "macos", path = "tray_mac.rs")]
+#[cfg_attr(
+    not(any(target_os = "linux", target_os = "macos")),
+    path = "tray_none.rs"
+)]
+mod tray;
 
 use std::sync::Arc;
 
@@ -61,183 +68,6 @@ enum Cmd {
     Quit,
 }
 
-struct TickTray {
-    inbox: Vec<Task>,
-    /// "Synced 3 min ago"…; `None` when the daemon runs without sync.
-    sync_line: Option<String>,
-    tx: mpsc::UnboundedSender<Cmd>,
-}
-
-impl TickTray {
-    fn send(&self, cmd: Cmd) {
-        let _ = self.tx.send(cmd);
-    }
-}
-
-impl ksni::Tray for TickTray {
-    fn id(&self) -> String {
-        "tick-alt".into()
-    }
-
-    fn title(&self) -> String {
-        format!("Tick Alt ({})", self.inbox.len())
-    }
-
-    fn icon_pixmap(&self) -> Vec<ksni::Icon> {
-        [22, 32, 48]
-            .into_iter()
-            .map(|s| check_icon(s, !self.inbox.is_empty()))
-            .collect()
-    }
-
-    fn tool_tip(&self) -> ksni::ToolTip {
-        let n = self.inbox.len();
-        ksni::ToolTip {
-            title: "Tick Alt".into(),
-            description: {
-                let inbox = match n {
-                    0 => "Inbox is empty".to_string(),
-                    1 => "1 task in Inbox".to_string(),
-                    n => format!("{n} tasks in Inbox"),
-                };
-                match &self.sync_line {
-                    Some(line) => format!("{inbox}\n{line}"),
-                    None => inbox,
-                }
-            },
-            ..Default::default()
-        }
-    }
-
-    /// Left click opens the app.
-    fn activate(&mut self, _x: i32, _y: i32) {
-        self.send(Cmd::OpenApp {
-            token: activation_token(),
-        });
-    }
-
-    fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
-        use ksni::menu::*;
-        let mut items: Vec<ksni::MenuItem<Self>> = vec![
-            StandardItem {
-                label: format!("Inbox: {}", self.inbox.len()),
-                enabled: false,
-                ..Default::default()
-            }
-            .into(),
-        ];
-        // The first few Inbox tasks, each one sends a notification for itself (spike: tests actions).
-        for task in self.inbox.iter().take(5) {
-            let (task_id, title) = (task.id.clone(), task.title.clone());
-            items.push(
-                StandardItem {
-                    label: format!("  {}", task.title),
-                    activate: Box::new(move |t: &mut Self| {
-                        t.send(Cmd::Notify {
-                            task_id: task_id.clone(),
-                            title: title.clone(),
-                        })
-                    }),
-                    ..Default::default()
-                }
-                .into(),
-            );
-        }
-        items.extend([
-            MenuItem::Separator,
-            StandardItem {
-                label: "Open".into(),
-                icon_name: "window-new".into(),
-                activate: Box::new(|t: &mut Self| {
-                    t.send(Cmd::OpenApp {
-                        token: activation_token(),
-                    })
-                }),
-                ..Default::default()
-            }
-            .into(),
-            StandardItem {
-                label: "Refresh".into(),
-                icon_name: "view-refresh".into(),
-                activate: Box::new(|t: &mut Self| t.send(Cmd::Refresh)),
-                ..Default::default()
-            }
-            .into(),
-            StandardItem {
-                label: self
-                    .sync_line
-                    .clone()
-                    .unwrap_or_else(|| "Sync is off".into()),
-                enabled: false,
-                ..Default::default()
-            }
-            .into(),
-            StandardItem {
-                label: "Sync now".into(),
-                icon_name: "emblem-synchronizing".into(),
-                enabled: self.sync_line.is_some(),
-                activate: Box::new(|t: &mut Self| t.send(Cmd::SyncNow)),
-                ..Default::default()
-            }
-            .into(),
-            MenuItem::Separator,
-            StandardItem {
-                label: "Quit".into(),
-                icon_name: "application-exit".into(),
-                activate: Box::new(|t: &mut Self| t.send(Cmd::Quit)),
-                ..Default::default()
-            }
-            .into(),
-        ]);
-        items
-    }
-}
-
-/// A rounded teal square with a white check mark, ARGB32 big-endian.
-/// Dimmed when the Inbox is empty.
-fn check_icon(size: i32, active: bool) -> ksni::Icon {
-    let s = size as f32;
-    let (r, g, b) = if active {
-        (0x0f, 0x9d, 0x8f)
-    } else {
-        (0x6b, 0x7f, 0x7d)
-    };
-    let radius = s * 0.22;
-    // The check mark: two segments in unit coordinates.
-    let seg = [((0.27, 0.53), (0.43, 0.69)), ((0.43, 0.69), (0.74, 0.34))];
-    let stroke = (s * 0.09).max(1.6);
-    let mut data = Vec::with_capacity((size * size * 4) as usize);
-    for y in 0..size {
-        for x in 0..size {
-            let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
-            // Coverage of the rounded square, antialiased over one pixel.
-            let dx = (radius - px).max(px - (s - radius)).max(0.0);
-            let dy = (radius - py).max(py - (s - radius)).max(0.0);
-            let inside = (radius - (dx * dx + dy * dy).sqrt() + 0.5).clamp(0.0, 1.0);
-            // Distance to the check mark.
-            let d = seg
-                .iter()
-                .map(|&((ax, ay), (bx, by))| seg_dist(px, py, ax * s, ay * s, bx * s, by * s))
-                .fold(f32::MAX, f32::min);
-            let on_check = (stroke / 2.0 - d + 0.5).clamp(0.0, 1.0);
-            let mix = |c: u8| (c as f32 * (1.0 - on_check) + 255.0 * on_check) as u8;
-            data.extend([(inside * 255.0) as u8, mix(r), mix(g), mix(b)]);
-        }
-    }
-    ksni::Icon {
-        width: size,
-        height: size,
-        data,
-    }
-}
-
-fn seg_dist(px: f32, py: f32, ax: f32, ay: f32, bx: f32, by: f32) -> f32 {
-    let (vx, vy) = (bx - ax, by - ay);
-    let t = (((px - ax) * vx + (py - ay) * vy) / (vx * vx + vy * vy)).clamp(0.0, 1.0);
-    let (cx, cy) = (ax + t * vx - px, ay + t * vy - py);
-    (cx * cx + cy * cy).sqrt()
-}
-
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -255,8 +85,7 @@ fn db_path() -> Result<PathBuf> {
 
 /// This machine's name, shown to paired devices.
 fn hostname() -> String {
-    std::fs::read_to_string("/etc/hostname")
-        .ok()
+    machine_name()
         .or_else(|| std::env::var("HOSTNAME").ok())
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
@@ -274,6 +103,23 @@ fn flag(name: &str) -> Option<String> {
     None
 }
 
+#[cfg(not(target_os = "macos"))]
+fn machine_name() -> Option<String> {
+    std::fs::read_to_string("/etc/hostname").ok()
+}
+
+/// The name set in System Settings > General > About (macOS has no /etc/hostname).
+#[cfg(target_os = "macos")]
+fn machine_name() -> Option<String> {
+    let out = std::process::Command::new("/usr/sbin/scutil")
+        .args(["--get", "ComputerName"])
+        .output()
+        .ok()?;
+    out.status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
 fn has_flag(name: &str) -> bool {
     std::env::args().skip(1).any(|a| a == name)
 }
@@ -281,27 +127,29 @@ fn has_flag(name: &str) -> bool {
 /// Shows a reminder notification and reports the chosen action back to the main loop.
 fn notify(tx: mpsc::UnboundedSender<Cmd>, task_id: String, title: String) {
     tokio::task::spawn_blocking(move || {
-        let shown = notify_rust::Notification::new()
-            .appname("Tick Alt")
+        let mut n = notify_rust::Notification::new();
+        n.appname("Tick Alt")
             .summary(&title)
             .body("Reminder")
             .icon("appointment-soon")
             // Dunst runs the "default" action on middle click when it's the only one and
             // otherwise opens its dmenu picker, so no default here: Done and Snooze only.
             .action("done", "Done")
-            .action("snooze", "Snooze 10 min")
-            .hint(notify_rust::Hint::Category("im.received".into()))
-            .timeout(notify_rust::Timeout::Never)
-            .show();
+            .action("snooze", "Snooze 10 min");
+        #[cfg(all(unix, not(target_os = "macos")))]
+        n.hint(notify_rust::Hint::Category("im.received".into()))
+            .timeout(notify_rust::Timeout::Never);
+        let shown = n.show();
         let handle = match shown {
             Ok(h) => h,
             Err(e) => return eprintln!("notification failed: {e}"),
         };
         handle.wait_for_action(|action| {
             eprintln!("notification {task_id}: {action}");
+            // macOS's NSUserNotificationCenter reports the button's label, not its id.
             let cmd = match action {
-                "done" => Cmd::Complete { task_id },
-                "snooze" => Cmd::Snooze { task_id, title },
+                "done" | "Done" => Cmd::Complete { task_id },
+                "snooze" | "Snooze 10 min" => Cmd::Snooze { task_id, title },
                 _ => return, // "__closed" (dismissed or expired)
             };
             let _ = tx.send(cmd);
@@ -317,18 +165,9 @@ fn snooze_delay() -> Duration {
         .unwrap_or(Duration::from_secs(600))
 }
 
-/// Starts the Flutter app: $TT_APP, else `tick_alt` on PATH.
-/// The tray host's XDG activation token for the click being handled. It may arrive just
-/// after the event, so look twice (ksni's advice).
-fn activation_token() -> Option<String> {
-    ksni::current_xdg_activation_token().or_else(|| {
-        std::thread::sleep(Duration::from_millis(1));
-        ksni::current_xdg_activation_token()
-    })
-}
-
 /// Start the Flutter app (`$TT_APP`, else `tick_alt` on PATH). A release build is single
 /// instance, so if it's already open this raises its window. The token lets Wayland focus it.
+#[cfg(not(target_os = "macos"))]
 fn open_app(token: Option<String>) {
     let app = std::env::var("TT_APP").unwrap_or_else(|_| "tick_alt".into());
     let mut cmd = std::process::Command::new(&app);
@@ -343,8 +182,38 @@ fn open_app(token: Option<String>) {
     }
 }
 
+/// Start or raise the app with `open`: `$TT_APP` (a path to the .app), else by bundle id.
+#[cfg(target_os = "macos")]
+fn open_app(_token: Option<String>) {
+    let mut cmd = std::process::Command::new("/usr/bin/open");
+    match std::env::var("TT_APP") {
+        Ok(app) => cmd.arg(app),
+        Err(_) => cmd.args(["-b", "dev.tickalt.tickAlt"]),
+    };
+    match cmd.status() {
+        Ok(s) if s.success() => {}
+        Ok(s) => eprintln!("could not open the app: open exited with {s}"),
+        Err(e) => eprintln!("could not open the app: {e}"),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
 #[tokio::main]
 async fn main() -> Result<()> {
+    run().await
+}
+
+#[cfg(target_os = "macos")]
+fn main() {
+    tray::run_app(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()?
+            .block_on(run())
+    })
+}
+
+async fn run() -> Result<()> {
     let db_file = db_path()?;
     let socket = flag("--socket")
         .map(PathBuf::from)
@@ -389,22 +258,11 @@ async fn main() -> Result<()> {
 
     let (tx, mut rx) = mpsc::unbounded_channel();
     let inbox: Vec<Task> = db.get(Request::Inbox {}).await?;
-    // Without a tray host yet (waybar starts after a systemd unit), keep running: ksni
-    // registers the item as soon as a StatusNotifierWatcher appears.
     let handle = if has_flag("--no-tray") {
         None
     } else {
-        Some(
-            TickTray {
-                inbox,
-                sync_line: sync.as_ref().map(|s| s.status_line()),
-                tx: tx.clone(),
-            }
-            .assume_sni_available(true)
-            .spawn()
-            .await
-            .context("starting the tray")?,
-        )
+        let sync_line = sync.as_ref().map(|s| s.status_line());
+        Some(tray::Tray::start(inbox, sync_line, tx.clone()).await?)
     };
 
     // `tt-daemon notify <id>`: one notification for a task right away (testing actions).
@@ -474,7 +332,7 @@ async fn main() -> Result<()> {
             Some(cmd) = rx.recv() => match cmd {
                 Cmd::Refresh => match db.get::<Vec<Task>>(Request::Inbox {}).await {
                     Ok(inbox) => if let Some(h) = &handle {
-                        h.update(|t| t.inbox = inbox).await;
+                        h.set_inbox(inbox).await;
                     },
                     Err(e) => eprintln!("inbox: {e:#}"),
                 },
@@ -491,8 +349,7 @@ async fn main() -> Result<()> {
                     });
                 },
                 Cmd::SyncStatus => if let (Some(h), Some(svc)) = (&handle, &sync) {
-                    let line = svc.status_line();
-                    h.update(|t| if t.sync_line.as_deref() != Some(&line) { t.sync_line = Some(line) }).await;
+                    h.set_sync_line(svc.status_line()).await;
                 },
                 Cmd::Notify { task_id, title } => notify(tx.clone(), task_id, title),
                 Cmd::Complete { task_id } => {

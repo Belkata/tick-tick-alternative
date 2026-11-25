@@ -7,10 +7,20 @@ publish.workspace = true
 
 [dependencies]
 anyhow = "1.0.105"
-ksni = "0.3.7"
 notify-rust = { version = "4.19.0", default-features = false, features = ["z-with-tokio"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal", "sync"] }
 tt-api = { path = "../api", features = ["server"] }
 tt-core = { path = "../core" }
 tt-sync = { path = "../sync" }
 serde_json = "1"
+
+# The tray: a StatusNotifierItem over D-Bus, Linux only.
+[target.'cfg(target_os = "linux")'.dependencies]
+ksni = "0.3.7"
+
+# The menu-bar icon: tray-icon needs AppKit's run loop on the main thread (tray_mac.rs).
+[target.'cfg(target_os = "macos")'.dependencies]
+tray-icon = "0.26.1"
+objc2 = "0.6.5"
+objc2-app-kit = { version = "0.3.2", features = ["NSApplication", "NSResponder", "NSRunningApplication"] }
+dispatch2 = "0.3.1"
