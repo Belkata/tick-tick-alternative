@@ -1,6 +1,6 @@
 //! The request protocol: one JSON object per line, tagged by `cmd`.
 //!
-//! Every core call the UIs and `tt` need is one [`Request`] variant, generated from the
+//! Every core call the UIs and `utre` need is one [`Request`] variant, generated from the
 //! table below together with its typed [`Api`](crate::Api) method and its dispatch arm in
 //! [`handle`]. The same `handle` serves the daemon's socket and in-process callers, so the
 //! two paths can't drift apart.

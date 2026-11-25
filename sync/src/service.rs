@@ -28,12 +28,12 @@ struct State {
 pub struct SyncService {
     pub node: SyncNode,
     state: Mutex<State>,
-    /// One round at a time (periodic, after an edit, or `tt sync now`).
+    /// One round at a time (periodic, after an edit, or `utre sync now`).
     round: tokio::sync::Mutex<()>,
 }
 
 impl SyncService {
-    /// Start the node on `db`, with its key next to it (`tt.db` → `tt.key`, as `tt sync`).
+    /// Start the node on `db`, with its key next to it (`utre.db` → `utre.key`, as `utre sync`).
     pub async fn start(db: &Path, device: String, relays: Relays) -> Result<Arc<SyncService>> {
         Self::start_with_key(db, &db.with_extension("key"), device, relays).await
     }

@@ -68,11 +68,11 @@ impl TickTray {
 
 impl ksni::Tray for TickTray {
     fn id(&self) -> String {
-        "tick-alt".into()
+        "utre".into()
     }
 
     fn title(&self) -> String {
-        format!("Tick Alt ({})", self.inbox.len())
+        format!("Utre ({})", self.inbox.len())
     }
 
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
@@ -85,7 +85,7 @@ impl ksni::Tray for TickTray {
     fn tool_tip(&self) -> ksni::ToolTip {
         let n = self.inbox.len();
         ksni::ToolTip {
-            title: "Tick Alt".into(),
+            title: "Utre".into(),
             description: {
                 let inbox = match n {
                     0 => "Inbox is empty".to_string(),

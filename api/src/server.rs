@@ -56,7 +56,7 @@ impl Db {
             path: Arc::new(path),
         };
         std::thread::Builder::new()
-            .name("tt-db".into())
+            .name("utre-db".into())
             .spawn(move || db_thread(store, rx, events, writes, version))?;
         Ok(db)
     }
@@ -127,7 +127,7 @@ fn db_thread(
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => return,
         }
-        // Another process committed (e.g. `tt` opened the file while no daemon ran).
+        // Another process committed (e.g. `utre` opened the file while no daemon ran).
         if let Ok(dv) = store.data_version()
             && dv != seen
         {

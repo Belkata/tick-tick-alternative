@@ -272,7 +272,7 @@ impl TaskDb {
         let changes = Arc::<Changes>::default();
         let (watch_api, watch_changes) = (api.clone(), changes.clone());
         std::thread::Builder::new()
-            .name("tt-watch".into())
+            .name("utre-watch".into())
             .spawn(move || watch(&watch_api, &watch_changes))?;
         Ok(Self {
             api,
@@ -309,7 +309,7 @@ impl TaskDb {
     // ----- Change stream -----
 
     /// Ticks with a new version number after every change: this handle's writes, and on
-    /// desktop also every change the daemon reports (other windows, `tt`, outside writes).
+    /// desktop also every change the daemon reports (other windows, `utre`, outside writes).
     pub fn changes(&self, sink: StreamSink<u32>) {
         let v = self.changes.version.load(Ordering::SeqCst);
         if sink.add(v).is_ok() {
@@ -794,8 +794,8 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-/// The desktop database: the same file `tt` and `utre-daemon` use (`$TT_DB`, else
-/// `~/.local/share/tick-alt/tt.db` on Linux, `~/Library/Application Support/tick-alt/tt.db`
+/// The desktop database: the same file `utre` and `utre-daemon` use (`$UTRE_DB`, else
+/// `~/.local/share/utre/utre.db` on Linux, `~/Library/Application Support/utre/utre.db`
 /// on macOS).
 #[frb(sync)]
 pub fn desktop_db_path() -> anyhow::Result<String> {
@@ -809,7 +809,7 @@ pub fn set_time_zone(name: String) {
     if name.parse::<chrono_tz::Tz>().is_ok() {
         // SAFETY: called once at startup from Dart, before sync or other threads read it,
         // like init_app's own environment setup.
-        unsafe { std::env::set_var("TT_TZ", name) };
+        unsafe { std::env::set_var("UTRE_TZ", name) };
     }
 }
 

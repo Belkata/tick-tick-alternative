@@ -1,8 +1,8 @@
-//! iroh transport between Tick Alt devices.
+//! iroh transport between Utre devices.
 //!
-//! - [`replicate`] (M3): pairing, trusted peers and op-log sync on ALPN `tickalt/sync/1`.
+//! - [`replicate`] (M3): pairing, trusted peers and op-log sync on ALPN `tickalt/sync/1` (kept after the rename to Utre, so older builds can still pair).
 //! - The Spike 2 protocol (`tickalt/spike/0`, a pull of open tasks by `tt1…` ticket) is
-//!   still served for the app's spike Sync tab and `tt sync spike-pull`.
+//!   still served for the app's spike Sync tab and `utre sync spike-pull`.
 
 pub mod replicate;
 pub mod service;
@@ -25,12 +25,11 @@ const TICKET_PREFIX: &str = "tt1";
 const MAX_MSG: usize = 1 << 20;
 /// How long the client waits for hole punching to upgrade a relay path to a direct one.
 const DIRECT_WAIT: Duration = Duration::from_secs(4);
-/// The UDP port a node prefers (`$TT_SYNC_PORT` overrides; 0 means random).
+/// The UDP port a node prefers (`$UTRE_SYNC_PORT` overrides; 0 means random).
 pub const DEFAULT_SYNC_PORT: u16 = 41824;
 
 fn sync_port() -> u16 {
-    std::env::var("TT_SYNC_PORT")
-        .ok()
+    utre_core::envvar::var("SYNC_PORT")
         .and_then(|p| p.parse().ok())
         .unwrap_or(DEFAULT_SYNC_PORT)
 }
@@ -491,7 +490,7 @@ pub fn decode_ticket(ticket: &str) -> Result<EndpointAddr> {
     let hex = ticket
         .trim()
         .strip_prefix(TICKET_PREFIX)
-        .context("not a Tick Alt ticket (expected tt1…)")?;
+        .context("not a Utre ticket (expected tt1…)")?;
     if hex.len() % 2 != 0 {
         bail!("ticket has odd length; was it cut off?");
     }

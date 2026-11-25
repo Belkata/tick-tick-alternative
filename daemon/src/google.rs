@@ -1,7 +1,7 @@
 //! The daemon's side of Google Calendar (plan/06, plan/19): sign-in, and fetching the
 //! user's events into the local cache.
 //!
-//! `utre-google` does the network work. This file owns the state the app and `tt` ask about
+//! `utre-google` does the network work. This file owns the state the app and `utre` ask about
 //! (`GoogleStatus`), starts the browser sign-in, and polls every 5 minutes while signed in.
 //! Events land in the cache tables through the daemon's own connection to the database file;
 //! the DB thread notices those commits and tells subscribers, like any outside write.
@@ -34,7 +34,7 @@ pub struct GoogleService {
     client_file: PathBuf,
     db_file: PathBuf,
     state: Mutex<State>,
-    /// One fetch at a time (the poll, `tt google sync` and the app's button can overlap).
+    /// One fetch at a time (the poll, `utre google sync` and the app's button can overlap).
     busy: tokio::sync::Mutex<()>,
 }
 

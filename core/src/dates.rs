@@ -16,15 +16,14 @@ pub(crate) const DAY_MS: i64 = 86_400_000;
 /// A calendar date, re-exported for callers that don't depend on chrono.
 pub type Day = NaiveDate;
 
-/// The device's zone: `$TT_TZ`, then `$TZ`, then the `/etc/localtime` link
+/// The device's zone: `$UTRE_TZ`, then `$TZ`, then the `/etc/localtime` link
 /// (macOS and Arch), else UTC. Android passes its zone in explicitly.
 pub fn local_tz() -> Tz {
-    let from_env = |k: &str| {
-        std::env::var(k)
-            .ok()
-            .and_then(|v| v.trim_start_matches(':').parse().ok())
-    };
-    if let Some(tz) = from_env("TT_TZ").or_else(|| from_env("TZ")) {
+    let parse = |v: String| v.trim_start_matches(':').parse().ok();
+    let from_env = crate::envvar::var("TZ")
+        .and_then(parse)
+        .or_else(|| std::env::var("TZ").ok().and_then(parse));
+    if let Some(tz) = from_env {
         return tz;
     }
     std::fs::read_link("/etc/localtime")
