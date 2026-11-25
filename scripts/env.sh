@@ -8,6 +8,9 @@ case "$(uname -s)" in
     export PATH="/opt/homebrew/bin:$PATH"              # Homebrew python3 (3.14): the Android QA plugin scripts need 3.10+
     export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
     export ANDROID_HOME="$HOME/Library/Android/sdk"
+    # CocoaPods (run by `flutter build macos`) crashes on a non-UTF-8 locale.
+    export LANG="${LANG:-en_US.UTF-8}"
+    case "$LANG" in *UTF-8*) ;; *) export LANG=en_US.UTF-8 ;; esac
     ;;
   Linux)
     # Arch: Android Studio (AUR `android-studio`) puts the SDK in ~/Android/Sdk and ships its own JBR.
