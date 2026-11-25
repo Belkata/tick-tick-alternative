@@ -314,6 +314,11 @@ enum FilterCmd {
     Rm {
         name: String,
     },
+    /// Set a filter's icon (an emoji); leave it out to clear it.
+    Icon {
+        name: String,
+        icon: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -1079,6 +1084,13 @@ impl Ctx {
             Some(FilterCmd::Show { name }) => {
                 let f = find(&name)?;
                 println!("{}", serde_json::to_string_pretty(&f.filter.rule)?);
+            }
+            Some(FilterCmd::Icon { name, icon }) => {
+                let f = find(&name)?;
+                let mut def = f.filter.clone();
+                def.icon = icon.filter(|i| !i.trim().is_empty());
+                s.update_filter(&f.id, &def)?;
+                println!("Filter {name} icon updated.");
             }
             Some(FilterCmd::Rm { name }) => {
                 s.delete_filter(&find(&name)?.id)?;
