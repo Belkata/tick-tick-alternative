@@ -53,24 +53,35 @@ class TaskListPane extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
-            child: Row(
-              children: [
-                ?leading,
-                Flexible(
-                  child: Text(
-                    c.title,
-                    overflow: TextOverflow.ellipsis,
-                    style: manrope(19, FontWeight.w800, color: s.fg),
+            // A fixed height, so views with and without the sort button line up.
+            child: SizedBox(
+              height: 34,
+              child: Row(
+                children: [
+                  ?leading,
+                  // Title and count take the free space, so the sort button stays
+                  // at the right edge whatever the title's length.
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            c.title,
+                            overflow: TextOverflow.ellipsis,
+                            style: manrope(19, FontWeight.w800, color: s.fg),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${rows.length}',
+                          style: manrope(12, FontWeight.w600, color: s.mute),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '${rows.length}',
-                  style: manrope(12, FontWeight.w600, color: s.mute),
-                ),
-                const Spacer(),
-                if (sortable(c.view.kind)) _SortMenu(c: c),
-              ],
+                  if (sortable(c.view.kind)) _SortMenu(c: c),
+                ],
+              ),
             ),
           ),
           if (c.canAdd)
@@ -102,7 +113,8 @@ class TaskListPane extends StatelessWidget {
   }
 }
 
-/// The header's sort button: a menu of [sortChoices], the current one ticked.
+/// The header's sort button: the sort icon and the current choice's name, opening a
+/// menu of [sortChoices] with the current one ticked.
 class _SortMenu extends StatelessWidget {
   const _SortMenu({required this.c});
 
@@ -114,9 +126,24 @@ class _SortMenu extends StatelessWidget {
     final current = sortChoiceOf(c.sort);
     return PopupMenuButton<SortChoice>(
       key: const Key('sort-menu'),
-      tooltip: 'Sort: ${current?.label ?? 'custom'}',
-      icon: Icon(Icons.sort, size: 20, color: s.mute),
+      tooltip: 'Sort',
       position: PopupMenuPosition.under,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.sort, size: 18, color: s.mute),
+            const SizedBox(width: 6),
+            Text(
+              current?.label ?? 'Custom',
+              key: const Key('sort-label'),
+              style: manrope(12.5, FontWeight.w600, color: s.mute),
+            ),
+          ],
+        ),
+      ),
       onSelected: (choice) => c.setSort(choice.keys),
       itemBuilder: (_) => [
         for (final choice in sortChoices)

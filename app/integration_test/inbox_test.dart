@@ -295,10 +295,20 @@ void main() {
     expect(await db.viewSort(view: view), ['title_asc']);
     expect(await titles(), ['Apples', 'Bank', 'Cobbler']);
     expect(y('Apples'), lessThan(y('Bank')));
+    String label() =>
+        tester.widget<Text>(find.byKey(const Key('sort-label'))).data!;
+    expect(label(), 'Title');
+    final buttonAt = tester.getTopRight(find.byKey(const Key('sort-menu')));
 
     // The choice holds in every view, and when coming back.
     await tester.tap(find.text('Inbox').first);
     await settle(tester);
+    expect(label(), 'Title');
+    expect(
+      tester.getTopRight(find.byKey(const Key('sort-menu'))),
+      buttonAt,
+      reason: 'the button stays put whatever the title',
+    );
     expect(await db.viewSort(view: const TaskView(kind: ViewKind.inbox)), [
       'title_asc',
     ]);
