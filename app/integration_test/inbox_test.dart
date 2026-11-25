@@ -7,6 +7,8 @@ import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:tick_alt/desk/detail.dart';
+import 'package:tick_alt/desk/task_list.dart';
 import 'package:tick_alt/main.dart';
 import 'package:tick_alt/src/rust/api/sync.dart';
 import 'package:tick_alt/src/rust/api/tasks.dart';
@@ -267,6 +269,100 @@ void main() {
       tester.getTopLeft(find.byKey(const Key('nav-tag-work'))).dy,
       lessThan(tester.getTopLeft(find.byKey(const Key('nav-tag-garden'))).dy),
     );
+  });
+
+  testWidgets('drag the line before the detail pane to resize it', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await addTask(tester, 'Wide notes');
+    await tester.tap(find.text('Wide notes'));
+    await settle(tester);
+    double width() => tester.getSize(find.byType(DetailPane)).width;
+    Future<void> reset() async {
+      // Double-click: back to the default, which also leaves desk.json at it.
+      await tester.tap(find.byKey(const Key('detail-resize')));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.byKey(const Key('detail-resize')));
+      await settle(tester);
+    }
+
+    await reset();
+    final before = width();
+    expect(before, closeTo(340, 1));
+    await tester.drag(
+      find.byKey(const Key('detail-resize')),
+      const Offset(-120, 0),
+    );
+    await settle(tester);
+    expect(width(), closeTo(before + 120, 1));
+    // The task list keeps its minimum: a huge drag stops short.
+    await tester.drag(
+      find.byKey(const Key('detail-resize')),
+      const Offset(-2000, 0),
+    );
+    await settle(tester);
+    expect(
+      tester.getSize(find.byType(TaskListPane)).width,
+      greaterThanOrEqualTo(299),
+    );
+    await reset();
+    expect(width(), closeTo(340, 1));
+  });
+
+  testWidgets('pick a parent task, then go up to it', (tester) async {
+    final db = await pumpApp(tester);
+    await addTask(tester, 'Plan trip');
+    await addTask(tester, 'Book hotel');
+    final inbox = await db.inbox();
+    final hotel = inbox.firstWhere((t) => t.title == 'Book hotel');
+    final trip = inbox.firstWhere((t) => t.title == 'Plan trip');
+    await tester.tap(find.text('Book hotel'));
+    await settle(tester);
+    expect(find.byKey(const Key('detail-up')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('detail-parent')));
+    await settle(tester);
+    await tester.enterText(find.byKey(const Key('parent-search')), 'plan');
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('parent-Plan trip')));
+    await settle(tester);
+    expect((await db.task(id: hotel.id))!.parentTitle, 'Plan trip');
+
+    // Up the tree: the parent opens, listing the subtask.
+    await tester.tap(find.byKey(const Key('detail-up')));
+    await settle(tester);
+    final d = (await db.task(id: trip.id))!;
+    expect(d.subtasks.single.title, 'Book hotel');
+    expect(find.byKey(const Key('detail-up')), findsNothing);
+
+    // Back down, then make it top-level again.
+    await tester.tap(
+      find.descendant(
+        of: find.byType(DetailPane),
+        matching: find.text('Book hotel'),
+      ),
+    );
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('detail-parent-clear')));
+    await settle(tester);
+    expect((await db.task(id: hotel.id))!.row.parentId, isNull);
+  });
+
+  testWidgets('Show in Calendar off keeps a task off the calendar', (
+    tester,
+  ) async {
+    final db = await pumpApp(tester);
+    await addTask(tester, 'Secret plan');
+    final id = (await db.inbox()).single.id;
+    expect((await db.unscheduled()).map((t) => t.id), [id]);
+    await tester.tap(find.text('Secret plan'));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('detail-in-calendar')));
+    await settle(tester);
+    expect((await db.task(id: id))!.inCalendar, isFalse);
+    expect(await db.unscheduled(), isEmpty);
+    expect(find.text('Kept off the calendar'), findsOneWidget);
   });
 
   testWidgets('detail: start date, repeat and reminders', (tester) async {

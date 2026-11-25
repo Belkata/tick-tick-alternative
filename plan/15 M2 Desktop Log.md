@@ -244,3 +244,10 @@ Time-dependent reads (`tasks`, `sidebar`, `run_filter`…) carry the caller's `n
 - The drop logic is in `app/lib/desk/tag_order.dart` (unit tests in `app/test/tag_order_test.dart`); the sidebar shows the new order at once and the reload confirms it. Integration test: "arrange tags by dragging them in the sidebar".
 - Lists and filters can't be arranged yet; they have `sort_key` too, so the same approach would fit.
 - ⏸ Checked by tests only, not by eye in the running app.
+
+## Resizable detail pane and the Parent field (2026-11-25, on the Arch laptop, at the user's request)
+- **The detail pane is resizable** on wide windows: drag the line between the task list and the detail (the line turns teal under the pointer); double-click it for the default width. The list keeps at least 300 px and the detail at least 260. The width is per device, in `desk.json` next to the app's support files (`DeskPrefs`, like `CalendarPrefs`), never synced.
+- **Parent** in the detail pane: tap it for a picker with search, listing the open tasks this one may go under (not itself or its subtasks, nor so deep that it would pass 3 levels: `Store::parent_candidates`, API `ParentCandidates`). "No parent" or the × makes it top-level. Bridge: `TaskDb.parentCandidates`, `setParent`.
+- **Going up the tree:** a subtask's detail starts with "↑ <parent title>"; tapping it opens the parent (`TaskDetail.parent_title`). Subtasks were already tappable going down.
+- Integration tests: "drag the line before the detail pane to resize it", "pick a parent task, then go up to it", "Show in Calendar off keeps a task off the calendar" (plan/18).
+- ⚠️ The resize test writes the real `desk.json` (path_provider isn't faked in integration tests); it resets it to the default at the end.

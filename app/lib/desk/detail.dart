@@ -64,6 +64,25 @@ class DetailPane extends StatelessWidget {
         key: ValueKey('detail-$id'),
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
         children: [
+          // A subtask: one tap goes up the tree.
+          if (r.parentId != null)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const Key('detail-up'),
+                onPressed: () => c.select(r.parentId),
+                icon: Icon(Icons.arrow_upward, size: 14, color: s.mute),
+                label: Text(
+                  d.parentTitle ?? 'Parent task',
+                  overflow: TextOverflow.ellipsis,
+                  style: manrope(12, FontWeight.w600, color: s.mute),
+                ),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+              ),
+            ),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -183,6 +202,68 @@ class DetailPane extends StatelessWidget {
               ],
             ),
           ),
+          prop(
+            'Parent',
+            Row(
+              children: [
+                Flexible(
+                  child: InkWell(
+                    key: const Key('detail-parent'),
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: () => _pickParent(context, id, r.parentId),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        d.parentTitle ?? 'None',
+                        overflow: TextOverflow.ellipsis,
+                        style: manrope(
+                          13,
+                          d.parentTitle == null
+                              ? FontWeight.w500
+                              : FontWeight.w600,
+                          color: d.parentTitle == null ? s.mute : s.fg,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (r.parentId != null)
+                  IconButton(
+                    key: const Key('detail-parent-clear'),
+                    tooltip: 'Make it a top-level task',
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(Icons.close, size: 14, color: s.mute),
+                    onPressed: () =>
+                        c.run(() => db.setParent(id: id, parentId: null)),
+                  ),
+              ],
+            ),
+          ),
+          prop(
+            'Calendar',
+            Row(
+              children: [
+                Transform.scale(
+                  scale: 0.8,
+                  alignment: Alignment.centerLeft,
+                  child: Switch(
+                    key: const Key('detail-in-calendar'),
+                    value: d.inCalendar,
+                    onChanged: (v) =>
+                        c.run(() => db.setInCalendar(id: id, visible: v)),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    d.inCalendar
+                        ? 'Shown in Calendar'
+                        : 'Kept off the calendar',
+                    style: manrope(12.5, FontWeight.w500, color: s.mute),
+                  ),
+                ),
+              ],
+            ),
+          ),
           heading('Checklist'),
           for (final item in d.checklist)
             Row(
@@ -294,6 +375,22 @@ class DetailPane extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Pick the task this one goes under. "No parent" makes it top-level.
+  Future<void> _pickParent(
+    BuildContext context,
+    String id,
+    String? current,
+  ) async {
+    final rows = await c.run(() => c.db.parentCandidates(id: id));
+    if (rows == null || !context.mounted) return;
+    final picked = await showDialog<({String? id})>(
+      context: context,
+      builder: (_) => _ParentPicker(rows: rows, current: current),
+    );
+    if (picked == null || picked.id == current) return;
+    await c.run(() => c.db.setParent(id: id, parentId: picked.id));
   }
 
   static String _path(List<NavItem> tags, NavItem t) {
@@ -689,6 +786,104 @@ class _AddReminder extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The Parent picker: open tasks this one may go under, with a search field.
+/// Pops `(id: null)` for "No parent".
+class _ParentPicker extends StatefulWidget {
+  const _ParentPicker({required this.rows, required this.current});
+
+  final List<TaskRow> rows;
+  final String? current;
+
+  @override
+  State<_ParentPicker> createState() => _ParentPickerState();
+}
+
+class _ParentPickerState extends State<_ParentPicker> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    final q = _query.trim().toLowerCase();
+    final rows = [
+      for (final r in widget.rows)
+        if (q.isEmpty || r.title.toLowerCase().contains(q)) r,
+    ];
+    Widget option(String? id, String title, {String? sub, Key? key}) =>
+        ListTile(
+          key: key,
+          dense: true,
+          selected: id == widget.current,
+          title: Text(
+            title,
+            overflow: TextOverflow.ellipsis,
+            style: manrope(13, FontWeight.w600, color: s.fg),
+          ),
+          subtitle: sub == null
+              ? null
+              : Text(sub, style: manrope(11.5, FontWeight.w500, color: s.mute)),
+          onTap: () => Navigator.pop(context, (id: id)),
+        );
+    return AlertDialog(
+      title: Text('Parent task', style: manrope(16, FontWeight.w800)),
+      contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      content: SizedBox(
+        width: 380,
+        height: 420,
+        child: Column(
+          children: [
+            TextField(
+              key: const Key('parent-search'),
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'Search tasks',
+                prefixIcon: Icon(Icons.search, size: 18),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _query = v),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView(
+                children: [
+                  if (q.isEmpty)
+                    option(
+                      null,
+                      'No parent',
+                      sub: 'A top-level task',
+                      key: const Key('parent-none'),
+                    ),
+                  for (final r in rows)
+                    option(
+                      r.id,
+                      r.title,
+                      sub: r.listName,
+                      key: Key('parent-${r.title}'),
+                    ),
+                  if (rows.isEmpty && q.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'No task matches',
+                        style: manrope(13, FontWeight.w500, color: s.mute),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 }
