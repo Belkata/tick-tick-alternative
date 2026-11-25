@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:tick_alt/main.dart';
 import 'package:tick_alt/src/rust/api/tasks.dart';
 import 'package:tick_alt/src/rust/frb_generated.dart';
@@ -23,10 +24,17 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<TaskDb> pumpCalendar(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1400, 900);
+  Future<TaskDb> pumpCalendar(
+    WidgetTester tester, {
+    Size size = const Size(1400, 900),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    // Start from no saved view or Unscheduled source (calendar.json).
+    final support = await getApplicationSupportDirectory();
+    final prefs = File('${support.path}/calendar.json');
+    if (prefs.existsSync()) prefs.deleteSync();
     final dir = await Directory.systemTemp.createTemp('tt-cal');
     final db = await TaskDb.open(path: '${dir.path}/tt.db');
     final report = await db.add(title: 'Write report');
@@ -34,6 +42,10 @@ void main() {
     await db.add(title: 'Plan trip');
     await tester.pumpWidget(TickAltApp(db: db));
     await settle(tester);
+    if (size.width < 760) {
+      await tester.tap(find.byKey(const Key('open-drawer')));
+      await settle(tester);
+    }
     await tester.tap(find.text('Calendar'));
     await settle(tester);
     return db;
@@ -51,17 +63,20 @@ void main() {
     await settle(tester);
   }
 
-  testWidgets('shows blocks and the Unscheduled panel; the sidebar folds to a rail', (
+  testWidgets(
+    'shows blocks and the Unscheduled panel; the sidebar folds to a rail',
+    (tester) async {
+      await pumpCalendar(tester);
+      expect(find.text('Write report'), findsOneWidget);
+      expect(find.text('Unscheduled'), findsOneWidget);
+      expect(find.text('Plan trip'), findsOneWidget);
+      expect(find.byKey(const Key('rail-unfold')), findsOneWidget);
+    },
+  );
+
+  testWidgets('drag a task in from the panel, then drop it back', (
     tester,
   ) async {
-    await pumpCalendar(tester);
-    expect(find.text('Write report'), findsOneWidget);
-    expect(find.text('Unscheduled'), findsOneWidget);
-    expect(find.text('Plan trip'), findsOneWidget);
-    expect(find.byKey(const Key('rail-unfold')), findsOneWidget);
-  });
-
-  testWidgets('drag a task in from the panel, then drop it back', (tester) async {
     final db = await pumpCalendar(tester);
     final rows = await db.unscheduled();
     final trip = rows.single;
@@ -79,7 +94,11 @@ void main() {
       untilMs: day.add(const Duration(days: 1)).millisecondsSinceEpoch,
     );
     final placed = items.where((i) => i.taskId == trip.id).single;
-    expect(placed.endAt - placed.startAt, 30 * 60 * 1000, reason: 'default length');
+    expect(
+      placed.endAt - placed.startAt,
+      30 * 60 * 1000,
+      reason: 'default length',
+    );
     expect(await db.unscheduled(), isEmpty);
     // The dropped task opens in the detail pane.
     expect(find.byKey(const Key('cal-back-to-unscheduled')), findsOneWidget);
@@ -110,4 +129,47 @@ void main() {
     await settle(tester);
     expect(find.text('Write report'), findsWidgets);
   });
+
+  testWidgets(
+    'phone: Day view, week strip, drawer drag, two taps for detail, quick add',
+    (tester) async {
+      final db = await pumpCalendar(tester, size: const Size(412, 880));
+      final now = DateTime.now();
+      final day = DateTime(now.year, now.month, now.day);
+      expect(find.byKey(Key('strip-${day.day}')), findsOneWidget);
+      expect(find.byKey(const Key('cal-drawer')), findsOneWidget);
+      expect(find.text('Write report'), findsOneWidget);
+
+      // Open the drawer, then drag its card onto the day.
+      await tester.tap(find.byKey(const Key('cal-drawer-handle')));
+      await settle(tester);
+      final trip = (await db.unscheduled()).single;
+      final card = tester.getCenter(find.byKey(Key('unscheduled-${trip.id}')));
+      final block = tester.getCenter(find.text('Write report'));
+      await mouseDrag(tester, card, block + const Offset(0, 50));
+      final items = await db.calendar(
+        fromMs: day.millisecondsSinceEpoch,
+        untilMs: day.add(const Duration(days: 1)).millisecondsSinceEpoch,
+      );
+      expect(items.where((i) => i.taskId == trip.id), hasLength(1));
+
+      // The dropped block is selected; tapping it opens the detail page.
+      await tester.tap(find.text('Plan trip'));
+      await settle(tester);
+      expect(find.byType(BackButton), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
+      await settle(tester);
+
+      // Quick add lands in Unscheduled.
+      await tester.tap(find.byKey(const Key('cal-fab')));
+      await settle(tester);
+      await tester.enterText(
+        find.byKey(const Key('cal-quick-add')),
+        'Call mum',
+      );
+      await tester.tap(find.byKey(const Key('cal-quick-add-ok')));
+      await settle(tester);
+      expect((await db.unscheduled()).map((r) => r.title), ['Call mum']);
+    },
+  );
 }
