@@ -134,8 +134,11 @@ Always start with `source scripts/env.sh`. It sets up rustup, which is keg-only 
 | macOS app + DMG (daemon bundled) | `scripts/build-macos.sh` (`--no-dmg` for the .app only) → `dist/tick-alt-<version>-macos.dmg` |
 | macOS LaunchAgent | `scripts/install-launch-agent.sh ["/Applications/Tick Alt.app"]` (`--remove` to undo) |
 | Publish a test APK | bump `version:` in `app/pubspec.yaml`, build the release APK, then `gh release create vX.Y.Z <apk> --prerelease` (see v0.1.0) |
+| Update this laptop (daemon, `tt`, app) | `scripts/update-desktop.sh`: rebuilds only what changed (daemon and `tt` with `--profile fast`, the app as a Flutter release build), backs up the DB, restarts the daemon and relaunches the app. `--all` rebuilds everything, `--no-restart` only builds |
 
 The first Gradle build takes about 6 minutes, because cargokit compiles Rust for each Android ABI. Long builds are best run in the background.
+
+**Build speed (Arch laptop).** `[profile.dev]` keeps line tables only, and `[profile.fast]` (release with `opt-level = 2` and incremental) is the daily driver for `tt-daemon` and `tt`; `release` is untouched (Flutter's release builds and the APK use it). mold and sccache are set in `~/.cargo/config.toml`, which is **not** in the repo: CI and the Mac don't have them, and a repo-wide linker setting would break CI's host builds. After a fresh `pacman -S mold sccache`, the first build is cold. Check the cache with `sccache --show-stats`. For quick loops use `cargo test -p <crate>` or `cargo check -p <crate>`, and `flutter run -d linux` against a test daemon for UI work; run the whole workspace only before committing.
 
 ## Gotchas (each one cost time; details in `plan/13 M0 Spike Log.md`)
 
