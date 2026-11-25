@@ -10,13 +10,24 @@ import 'sidebar.dart';
 import 'task_list.dart';
 import 'theme.dart';
 
-/// Extra full-pane screens reachable from the sidebar (the calendar and sync spikes).
+/// Extra full-pane screens reachable from the sidebar (the calendar, Devices).
 class ShellPage {
-  const ShellPage(this.label, this.icon, this.builder);
+  const ShellPage(
+    this.label,
+    this.icon,
+    this.builder, {
+    this.railSidebar = false,
+  });
 
   final String label;
   final IconData icon;
-  final WidgetBuilder builder;
+
+  /// Gets the shell's controller, for pages that show or select tasks.
+  final Widget Function(BuildContext context, DeskController c) builder;
+
+  /// On wide windows, fold the sidebar to an icon rail while this page is open, so the
+  /// page gets the room (the calendar's seven columns, plan/18).
+  final bool railSidebar;
 }
 
 /// M2 window: sidebar | task list | detail on wide windows (plan/08), and a single
@@ -38,8 +49,11 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
   final _titleFocus = FocusNode(debugLabel: 'detail-title');
   final _scaffold = GlobalKey<ScaffoldState>();
 
-  /// Index into [DeskShell.pages] when a spike screen is open instead of the tasks.
+  /// Index into [DeskShell.pages] when a page is open instead of the tasks.
   int? _page;
+
+  /// The user unfolded the sidebar while a rail page is open.
+  bool _railOpen = false;
 
   /// At or above this width the three panes sit side by side.
   static const wide = 760.0;
@@ -153,6 +167,102 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
     if (_page != null) setState(() => _page = null);
   }
 
+  /// The folded sidebar: Inbox, the extra pages, and » to unfold it.
+  Widget _rail() {
+    final s = context.soft;
+    Widget item(
+      String tip,
+      IconData icon,
+      bool on,
+      VoidCallback onTap, {
+      Key? key,
+      int? count,
+    }) => Tooltip(
+      message: tip,
+      child: InkWell(
+        key: key,
+        borderRadius: BorderRadius.circular(11),
+        onTap: onTap,
+        child: Container(
+          width: 40,
+          height: 36,
+          decoration: on
+              ? BoxDecoration(
+                  color: s.panel,
+                  borderRadius: BorderRadius.circular(11),
+                  boxShadow: s.cardShadow
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x14141E3C),
+                            blurRadius: 3,
+                            offset: Offset(0, 1),
+                          ),
+                        ]
+                      : null,
+                )
+              : null,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(icon, size: 18, color: on ? s.selFg : s.mute),
+              if (count != null && count > 0)
+                Positioned(
+                  right: 2,
+                  top: 2,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: s.accent,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: manrope(
+                        9,
+                        FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return Container(
+      width: 60,
+      color: s.side,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Column(
+        children: [
+          item('Inbox', Icons.inbox_outlined, false, () {
+            c.open(const TaskView(kind: ViewKind.inbox));
+            _showTasks();
+          }, count: c.sidebar?.inbox),
+          const SizedBox(height: 6),
+          for (var i = 0; i < widget.pages.length; i++) ...[
+            item(
+              widget.pages[i].label,
+              widget.pages[i].icon,
+              _page == i,
+              () => setState(() => _page = i),
+            ),
+            const SizedBox(height: 6),
+          ],
+          const Spacer(),
+          item(
+            'Show the sidebar',
+            Icons.keyboard_double_arrow_right,
+            false,
+            () => setState(() => _railOpen = true),
+            key: const Key('rail-unfold'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openRow(String id) {
     c.select(id);
     _keys.requestFocus();
@@ -188,7 +298,10 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
             lead: Icon(widget.pages[i].icon, size: 16, color: s.mute),
             selected: _page == i,
             onTap: () {
-              setState(() => _page = i);
+              setState(() {
+                _page = i;
+                _railOpen = false;
+              });
               if (inDrawer) Navigator.of(context).pop();
             },
           ),
@@ -231,7 +344,9 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
             final isWide = box.maxWidth >= wide;
             final page = _page == null
                 ? null
-                : widget.pages[_page!].builder(context);
+                : widget.pages[_page!].builder(context, c);
+            final rail =
+                _page != null && widget.pages[_page!].railSidebar && !_railOpen;
             if (isWide) {
               final sideW = box.maxWidth >= 1100 ? 230.0 : 200.0;
               final detailW = box.maxWidth >= 1100 ? 340.0 : 290.0;
@@ -239,7 +354,10 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
                 body: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(width: sideW, child: _sidebar(inDrawer: false)),
+                    if (rail)
+                      _rail()
+                    else
+                      SizedBox(width: sideW, child: _sidebar(inDrawer: false)),
                     VerticalDivider(width: 1, color: s.line),
                     if (page != null)
                       Expanded(child: page)
