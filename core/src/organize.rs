@@ -140,6 +140,55 @@ fn walk_tags<'a>(
     }
 }
 
+/// Shared by `place_list` and `place_filter`: siblings are every live, unarchived row of
+/// `table`, ordered as shown (arranged first, then by name).
+pub(crate) fn place_among(
+    w: &mut crate::store::Writer<'_>,
+    entity: Entity,
+    table: &str,
+    what: &str,
+    id: &str,
+    before: Option<&str>,
+) -> Result<()> {
+    let extra = if table == "list" {
+        " AND archived = 0"
+    } else {
+        ""
+    };
+    let mut stmt = w.conn.prepare(&format!(
+        "SELECT id, sort_key FROM {table} WHERE deleted = 0{extra} \
+         ORDER BY sort_key = '', sort_key, lower(name), id"
+    ))?;
+    let mut others: Vec<(String, String)> = stmt
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+    drop(stmt);
+    others.retain(|(t, _)| t != id);
+    let at = match before {
+        None => others.len(),
+        Some(b) => others.iter().position(|(t, _)| t == b).ok_or_else(|| {
+            Error::Invalid(format!("{what} {b} isn't another {what} to put it before"))
+        })?,
+    };
+    let arranged =
+        others.iter().all(|(_, k)| !k.is_empty()) && others.windows(2).all(|p| p[0].1 < p[1].1);
+    if arranged {
+        let a = at.checked_sub(1).map(|i| others[i].1.as_str());
+        let b = others.get(at).map(|(_, k)| k.as_str());
+        let key = key_between(a, b);
+        if a.is_none_or(|a| a < key.as_str()) && b.is_none_or(|b| key.as_str() < b) {
+            return w.set(entity, id, "sort_key", key.as_str());
+        }
+    }
+    others.insert(at, (id.to_string(), String::new()));
+    for ((t, old), key) in others.iter().zip(spread_keys(others.len())) {
+        if *old != key {
+            w.set(entity, t, "sort_key", key.as_str())?;
+        }
+    }
+    Ok(())
+}
+
 /// The live siblings of `id` (itself included), in display order. Like [load_tags],
 /// a tag whose parent is gone counts as top-level.
 fn tag_siblings(conn: &Connection, id: &str) -> Result<Vec<(String, String)>> {
@@ -277,7 +326,8 @@ impl Store {
     pub fn lists(&self, include_archived: bool) -> Result<Vec<List>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, color, icon, archived FROM list \
-             WHERE deleted = 0 AND (archived = 0 OR ?1) ORDER BY sort_key, lower(name), id",
+             WHERE deleted = 0 AND (archived = 0 OR ?1) \
+             ORDER BY sort_key = '', sort_key, lower(name), id",
         )?;
         let rows = stmt.query_map([include_archived], |r| {
             Ok(List {
@@ -451,6 +501,14 @@ impl Store {
                 }
             }
             Ok(())
+        })
+    }
+
+    /// Arrange a list: right before `before`, or last with `None` (see `place_tag`).
+    pub fn place_list(&self, id: &str, before: Option<&str>) -> Result<()> {
+        self.write(|w| {
+            require_list(w.conn, id)?;
+            place_among(w, Entity::List, "list", "list", id, before)
         })
     }
 
@@ -639,6 +697,62 @@ mod tests {
         assert_eq!(paths(&s)[..2], ["shed", "alpha"]);
         assert!(s.place_tag(&kitchen, Some(&work)).is_err(), "not a sibling");
         assert!(s.place_tag(&work, Some(&work)).is_err(), "itself");
+    }
+
+    #[test]
+    fn lists_and_filters_arrange_like_tags() {
+        let s = Store::open_in_memory().unwrap();
+        let names = |s: &Store| -> Vec<String> {
+            s.lists(false)
+                .unwrap()
+                .into_iter()
+                .map(|l| l.name)
+                .collect()
+        };
+        let a = s.create_list("Alpha").unwrap();
+        let b = s.create_list("Beta").unwrap();
+        let c = s.create_list("Gamma").unwrap();
+        assert_eq!(names(&s), ["Alpha", "Beta", "Gamma"]);
+        s.place_list(&c, Some(&a)).unwrap();
+        assert_eq!(names(&s), ["Gamma", "Alpha", "Beta"]);
+        s.place_list(&c, None).unwrap();
+        assert_eq!(names(&s), ["Alpha", "Beta", "Gamma"]);
+        let d = s.create_list("Delta").unwrap();
+        assert_eq!(names(&s).last().unwrap(), "Delta");
+        let before = s.ops().unwrap().len();
+        s.place_list(&d, Some(&b)).unwrap();
+        assert_eq!(s.ops().unwrap().len(), before + 1);
+        assert_eq!(names(&s), ["Alpha", "Delta", "Beta", "Gamma"]);
+        assert!(s.place_list(&a, Some(&a)).is_err());
+        assert!(s.place_list("nope", None).is_err());
+
+        let rule: crate::FilterRule =
+            serde_json::from_value(serde_json::json!({"field":"list","op":"is","value":a}))
+                .unwrap();
+        let mk = |n: &str| {
+            s.save_filter(&crate::Filter {
+                name: n.into(),
+                icon: None,
+                rule: rule.clone(),
+                sort: vec![],
+                group: None,
+                show_completed: false,
+            })
+            .unwrap()
+        };
+        let f1 = mk("One");
+        let f2 = mk("Two");
+        let fnames = |s: &Store| -> Vec<String> {
+            s.filters()
+                .unwrap()
+                .into_iter()
+                .map(|f| f.filter.name)
+                .collect()
+        };
+        assert_eq!(fnames(&s), ["One", "Two"]);
+        s.place_filter(&f2, Some(&f1)).unwrap();
+        assert_eq!(fnames(&s), ["Two", "One"]);
+        assert!(s.place_filter("nope", None).is_err());
     }
 
     #[test]

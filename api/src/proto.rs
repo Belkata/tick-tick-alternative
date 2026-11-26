@@ -241,6 +241,7 @@ api! {
         => |s| s.set_list_archived(&id, archived);
     write SetListStyle set_list_style(id: String, color: Option<String>, icon: Option<String>) -> ()
         => |s| s.set_list_style(&id, color.as_deref(), icon.as_deref());
+    write PlaceList place_list(id: String, before: Option<String>) -> () => |s| s.place_list(&id, before.as_deref());
     write DeleteList delete_list(id: String) -> () => |s| s.delete_list(&id);
     write SetTaskList set_task_list(task_id: String, list_id: Option<String>) -> ()
         => |s| s.set_task_list(&task_id, list_id.as_deref());
@@ -279,6 +280,7 @@ api! {
         => |s| s.run_rule(&rule, &sort, show_completed, now_ms, tz.tz());
     write SaveFilter save_filter(filter: Filter) -> String => |s| s.save_filter(&filter);
     write UpdateFilter update_filter(id: String, filter: Filter) -> () => |s| s.update_filter(&id, &filter);
+    write PlaceFilter place_filter(id: String, before: Option<String>) -> () => |s| s.place_filter(&id, before.as_deref());
     write DeleteFilter delete_filter(id: String) -> () => |s| s.delete_filter(&id);
 
     // ----- Paired devices (local to this device; sync itself is SyncPair/SyncNow…) -----
