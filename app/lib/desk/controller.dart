@@ -10,8 +10,25 @@ import 'task_sort.dart';
 /// Every write goes through the bridge; its change stream triggers a reload, so the
 /// panes stay live (and will for writes from other processes once the socket lands).
 class DeskController extends ChangeNotifier {
-  DeskController(this.db) {
+  DeskController(this.db, {DateTime Function() now = DateTime.now})
+    : _now = now {
     _sub = db.changes().listen((_) => reload());
+    _armMidnight();
+  }
+
+  final DateTime Function() _now;
+  Timer? _midnight;
+
+  /// "Today", "Overdue" and the due-date groups change at local midnight with no
+  /// write to trigger a reload, so reload then (a long-open desktop window).
+  void _armMidnight() {
+    final n = _now();
+    final next = DateTime(n.year, n.month, n.day + 1);
+    // A second of slack, so a timer that fires a hair early doesn't re-arm on the same day.
+    _midnight = Timer(next.difference(n) + const Duration(seconds: 1), () {
+      reload();
+      _armMidnight();
+    });
   }
 
   final TaskDb db;
@@ -42,6 +59,7 @@ class DeskController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _midnight?.cancel();
     _sub.cancel();
     super.dispose();
   }
