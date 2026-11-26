@@ -3,7 +3,7 @@
 //! process makes to the file, bumps the change version and is broadcast to subscribers.
 
 use std::future::Future;
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{FileTypeExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -12,12 +12,16 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use serde_json::Value;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::{broadcast, oneshot};
 use utre_core::Store;
 
 use crate::proto::{self, Event, Hello, Reply, Request};
+
+/// Longest request line accepted. Requests are small JSON objects (a task's notes are the
+/// biggest thing in one), so this only stops a client from making the daemon buffer forever.
+const MAX_LINE: usize = 16 << 20;
 
 /// How often the DB thread checks for commits by other processes.
 const POLL: Duration = Duration::from_secs(1);
@@ -117,7 +121,15 @@ fn db_thread(
         match jobs.recv_timeout(POLL) {
             Ok(Job { req, reply }) => {
                 let write = req.is_write();
-                let result = proto::handle(&store, req).map_err(|e| e.to_string());
+                // A panic in one request must not stop the thread that owns the database:
+                // the daemon would keep running with every later call failing.
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    proto::handle(&store, req)
+                }))
+                .unwrap_or_else(|_| {
+                    Err(utre_core::Error::Invalid("internal error (request panicked)".into()))
+                })
+                .map_err(|e| e.to_string());
                 if write && result.is_ok() {
                     changed();
                     let _ = writes.send(());
@@ -141,6 +153,9 @@ fn db_thread(
 /// a live daemon already listening there is an error.
 pub fn bind(path: &Path) -> anyhow::Result<UnixListener> {
     if path.exists() {
+        if !std::fs::symlink_metadata(path)?.file_type().is_socket() {
+            anyhow::bail!("{} exists and isn't a socket; not replacing it", path.display());
+        }
         if std::os::unix::net::UnixStream::connect(path).is_ok() {
             anyhow::bail!("a daemon is already listening on {}", path.display());
         }
@@ -188,8 +203,25 @@ async fn connection(
     sync: Option<Arc<dyn SyncControl>>,
 ) -> anyhow::Result<()> {
     let (read, mut write) = stream.into_split();
-    let mut lines = BufReader::new(read).lines();
-    while let Some(line) = lines.next_line().await? {
+    let mut reader = BufReader::new(read);
+    let mut buf = Vec::new();
+    loop {
+        buf.clear();
+        // Read up to MAX_LINE + 1 bytes: a line that needs more is too long.
+        let n = (&mut reader)
+            .take(MAX_LINE as u64 + 1)
+            .read_until(b'\n', &mut buf)
+            .await?;
+        if n == 0 {
+            return Ok(());
+        }
+        if buf.last() != Some(&b'\n') && n > MAX_LINE {
+            let mut out = serde_json::to_string(&Reply::Err("request too long".into()))?;
+            out.push('\n');
+            let _ = write.write_all(out.as_bytes()).await;
+            return Ok(());
+        }
+        let line = String::from_utf8_lossy(&buf);
         let reply = match serde_json::from_str::<Request>(&line) {
             Err(e) => Reply::Err(format!("bad request: {e}")),
             Ok(Request::Hello) => Reply::Ok(serde_json::to_value(db.hello())?),
@@ -221,7 +253,6 @@ async fn connection(
         out.push('\n');
         write.write_all(out.as_bytes()).await?;
     }
-    Ok(())
 }
 
 /// A subscribed connection: push one line per change until the client hangs up.
