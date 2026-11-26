@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../src/rust/api/tasks.dart';
 import 'controller.dart';
+import 'date_picker.dart';
 import 'markdown.dart';
 import 'sidebar.dart' show askText;
 import 'task_list.dart';
@@ -49,33 +50,55 @@ class DetailPane extends StatelessWidget {
     final checked = d.checklist.where((i) => i.done).length;
     final subsDone = d.subtasks.where((t) => t.done).length;
 
+    // The picker starts from the stored dates. The bridge gives the start date
+    // only as a label, so it is read back from that.
+    final dueMs = r.dueAt;
+    final dueWhen = dueMs == null ? null : whenFromMs(dueMs, r.allDay);
+    final startWhen = parseWhenLabel(d.startLabel, DateTime.now());
+
     final dateRows = <Widget>[
       _PropRow(
         icon: Icons.event_outlined,
         label: 'Due',
-        child: _EditField(
-          key: const Key('detail-due'),
-          value: r.dueLabel ?? '',
-          hint: 'fri 14:30',
-          style: manrope(
-            13,
-            FontWeight.w700,
-            color: r.overdue ? s.late : (r.dueToday ? s.today : s.fg),
+        child: _DateField(
+          pickKey: const Key('detail-due-pick'),
+          title: 'Due date',
+          current: dueWhen,
+          other: startWhen == null ? null : WhenLimit(startWhen, 'start'),
+          isStart: false,
+          onPicked: (p) => c.run(() => db.setDue(id: id, text: p.text)),
+          field: _EditField(
+            key: const Key('detail-due'),
+            value: r.dueLabel ?? '',
+            hint: 'fri 14:30',
+            style: manrope(
+              13,
+              FontWeight.w700,
+              color: r.overdue ? s.late : (r.dueToday ? s.today : s.fg),
+            ),
+            inline: true,
+            onSave: (v) => c.run(() => db.setDue(id: id, text: v)),
           ),
-          inline: true,
-          onSave: (v) => c.run(() => db.setDue(id: id, text: v)),
         ),
       ),
       _PropRow(
         icon: Icons.play_circle_outline,
         label: 'Start',
-        child: _EditField(
-          key: const Key('detail-start'),
-          value: d.startLabel ?? '',
-          hint: 'optional',
-          style: manrope(13, FontWeight.w600, color: s.fg),
-          inline: true,
-          onSave: (v) => c.run(() => db.setStart(id: id, text: v)),
+        child: _DateField(
+          pickKey: const Key('detail-start-pick'),
+          title: 'Start date',
+          current: startWhen,
+          other: dueWhen == null ? null : WhenLimit(dueWhen, 'due'),
+          isStart: true,
+          onPicked: (p) => c.run(() => db.setStart(id: id, text: p.text)),
+          field: _EditField(
+            key: const Key('detail-start'),
+            value: d.startLabel ?? '',
+            hint: 'optional',
+            style: manrope(13, FontWeight.w600, color: s.fg),
+            inline: true,
+            onSave: (v) => c.run(() => db.setStart(id: id, text: v)),
+          ),
         ),
       ),
       _PropRow(
@@ -554,6 +577,60 @@ class _EditFieldState extends State<_EditField> {
       textInputAction: TextInputAction.done,
       onSubmitted: (_) => _save(),
       decoration: plain,
+    );
+  }
+}
+
+/// A date field's text box (typing like `fri 14:30` still works) with a button
+/// that opens the date and time picker.
+class _DateField extends StatelessWidget {
+  const _DateField({
+    required this.field,
+    required this.pickKey,
+    required this.title,
+    required this.current,
+    required this.other,
+    required this.isStart,
+    required this.onPicked,
+  });
+
+  final Widget field;
+  final Key pickKey;
+  final String title;
+  final When? current;
+  final WhenLimit? other;
+  final bool isStart;
+  final Future<void>? Function(PickedWhen) onPicked;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    final touch = isTouch(context);
+    return Row(
+      children: [
+        Expanded(child: field),
+        IconButton(
+          key: pickKey,
+          tooltip: 'Pick a date',
+          iconSize: 18,
+          constraints: BoxConstraints.tightFor(
+            width: touch ? 48 : 32,
+            height: touch ? 48 : 32,
+          ),
+          padding: EdgeInsets.zero,
+          icon: Icon(Icons.edit_calendar_outlined, color: s.accent),
+          onPressed: () async {
+            final picked = await showWhenPicker(
+              context,
+              title: title,
+              isStart: isStart,
+              initial: current,
+              other: other,
+            );
+            if (picked != null) await onPicked(picked);
+          },
+        ),
+      ],
     );
   }
 }
