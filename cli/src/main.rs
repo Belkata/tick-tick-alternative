@@ -322,6 +322,12 @@ enum ListsCmd {
         #[arg(long)]
         undo: bool,
     },
+    /// Arrange a list: before another one, or last without one.
+    Order {
+        name: String,
+        #[arg(long)]
+        before: Option<String>,
+    },
     /// Delete a list; its tasks stay, with no list.
     Rm {
         name: String,
@@ -336,6 +342,12 @@ enum FilterCmd {
         rule: String,
         #[arg(long)]
         show_completed: bool,
+    },
+    /// Arrange a filter: before another one, or last without one.
+    Order {
+        name: String,
+        #[arg(long)]
+        before: Option<String>,
     },
     /// Show a filter's rule as JSON.
     Show {
@@ -1062,6 +1074,10 @@ impl Ctx {
             Some(ListsCmd::Archive { name, undo }) => {
                 s.set_list_archived(&self.list_id(&name)?, !undo)?
             }
+            Some(ListsCmd::Order { name, before }) => {
+                let before = before.map(|b| self.list_id(&b)).transpose()?;
+                s.place_list(&self.list_id(&name)?, before.as_deref())?
+            }
             Some(ListsCmd::Rm { name }) => {
                 s.delete_list(&self.list_id(&name)?)?;
                 println!("Deleted {name}; its tasks have no list now.");
@@ -1267,6 +1283,10 @@ impl Ctx {
                 def.icon = icon.filter(|i| !i.trim().is_empty());
                 s.update_filter(&f.id, &def)?;
                 println!("Filter {name} icon updated.");
+            }
+            Some(FilterCmd::Order { name, before }) => {
+                let before = before.map(|b| find(&b)).transpose()?;
+                s.place_filter(&find(&name)?.id, before.as_ref().map(|f| f.id.as_str()))?
             }
             Some(FilterCmd::Rm { name }) => {
                 s.delete_filter(&find(&name)?.id)?;

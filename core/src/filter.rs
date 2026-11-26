@@ -512,6 +512,16 @@ impl Store {
         })
     }
 
+    /// Arrange a saved filter: right before `before`, or last with `None`.
+    pub fn place_filter(&self, id: &str, before: Option<&str>) -> Result<()> {
+        if load_filter(&self.conn, id)?.is_none() {
+            return Err(Error::NotFound(format!("filter {id}")));
+        }
+        self.write(|w| {
+            crate::organize::place_among(w, Entity::Filter, "filter", "filter", id, before)
+        })
+    }
+
     pub fn delete_filter(&self, id: &str) -> Result<()> {
         if load_filter(&self.conn, id)?.is_none() {
             return Err(Error::NotFound(format!("filter {id}")));
@@ -523,7 +533,7 @@ impl Store {
     pub fn filters(&self) -> Result<Vec<SavedFilter>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, icon, rule, sort, grp, show_completed FROM filter \
-             WHERE deleted = 0 ORDER BY sort_key, lower(name), id",
+             WHERE deleted = 0 ORDER BY sort_key = '', sort_key, lower(name), id",
         )?;
         let rows = stmt.query_map([], row_to_filter)?;
         rows.map(|r| r?).collect()
