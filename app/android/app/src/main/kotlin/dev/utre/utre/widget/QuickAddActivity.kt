@@ -14,10 +14,7 @@ import android.widget.TextView
 import dev.utre.utre.sync.SyncWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.TimeZone
 
 /**
@@ -26,8 +23,6 @@ import java.util.TimeZone
  * filter asks for, else the Inbox. No parsing, as in the app (plan/01).
  */
 class QuickAddActivity : Activity() {
-    private val scope = MainScope()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val source = Source(intent.getStringExtra(KIND) ?: "inbox", intent.getStringExtra(ID) ?: "")
@@ -42,18 +37,23 @@ class QuickAddActivity : Activity() {
             setSelectAllOnFocus(true)
         }
         val add = Button(this).apply { text = "Add" }
+        var submitted = false
         val submit = {
             val title = input.text.toString().trim()
             if (title.isEmpty()) {
                 finish()
-            } else {
+            } else if (!submitted) {
+                // Enter on the keyboard and the button must not both add the task.
+                submitted = true
                 add.isEnabled = false
-                scope.launch {
-                    withContext(Dispatchers.IO) { addTask(applicationContext, source, title) }
-                    TaskListWidget.refreshAll(applicationContext)
-                    SyncWorker.syncSoon(applicationContext)
-                    finish()
+                val app = applicationContext
+                // Not tied to this Activity: a rotation or a back press mustn't drop the redraw and sync.
+                CoroutineScope(Dispatchers.IO).launch {
+                    addTask(app, source, title)
+                    TaskListWidget.refreshAll(app)
+                    SyncWorker.syncSoon(app)
                 }
+                finish()
             }
         }
         add.setOnClickListener { submit() }
@@ -84,11 +84,6 @@ class QuickAddActivity : Activity() {
         )
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
         input.requestFocus()
-    }
-
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
     }
 
     companion object {
