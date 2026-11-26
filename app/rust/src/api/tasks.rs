@@ -180,6 +180,8 @@ pub struct _GcalEvent {
     pub all_day: bool,
     pub html_link: Option<String>,
     pub color: Option<String>,
+    pub location: Option<String>,
+    pub description: Option<String>,
 }
 
 #[frb(mirror(SyncOutcome))]

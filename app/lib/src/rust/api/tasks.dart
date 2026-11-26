@@ -397,6 +397,8 @@ class GcalEvent {
   final bool allDay;
   final String? htmlLink;
   final String? color;
+  final String? location;
+  final String? description;
 
   const GcalEvent({
     required this.calendarId,
@@ -407,6 +409,8 @@ class GcalEvent {
     required this.allDay,
     this.htmlLink,
     this.color,
+    this.location,
+    this.description,
   });
 
   @override
@@ -418,7 +422,9 @@ class GcalEvent {
       endAt.hashCode ^
       allDay.hashCode ^
       htmlLink.hashCode ^
-      color.hashCode;
+      color.hashCode ^
+      location.hashCode ^
+      description.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -432,7 +438,9 @@ class GcalEvent {
           endAt == other.endAt &&
           allDay == other.allDay &&
           htmlLink == other.htmlLink &&
-          color == other.color;
+          color == other.color &&
+          location == other.location &&
+          description == other.description;
 }
 
 class GooglePushStatus {
