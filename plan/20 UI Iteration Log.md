@@ -151,3 +151,12 @@ Left: page routes (detail on phones) keep Material's default transition.
   - All-day tasks missing in Day and Month came from a zero-length fixture, not a time-zone bug (the core sends full local days, `core/src/calendar.rs::block`). `TaskEvent` now stretches empty all-day blocks as a guard. Month "+N" is correct.
   - Tiles under 60 px are one compact line. A shared `agoText` (`app/lib/desk/ago.dart`) fixes "1 days ago".
   - `bottomSheetTheme` removes the green surface tint from every bottom sheet. The phone view picker has an `arrow_drop_down` icon. Goldens regenerated.
+
+## Round 10: checkbox alignment and typing smoothness (2026-11-26, v0.8.4; PRs 40)
+- **Alignment:** `FirstLineAlign` (`theme.dart`) centres the done checkbox on the title's first line in `TaskCard` everywhere, the Unscheduled cards, the detail title and the notes checklists, with a 2 px optical nudge on the large detail title.
+- **Typing lag:** the user reported it; it was **not reproduced** (Xvfb, about 700 tasks, no per-keystroke daemon traffic, builds about 1 ms). Defensive fixes instead:
+  - change-driven reloads are coalesced, and reloads that change nothing don't notify;
+  - quick add rebuilds only when the field flips between empty and non-empty;
+  - `DebouncedEdit` for title and notes: saves after 300 ms, and flushes on blur, Enter, task switch and dispose. Synced values never overwrite unsaved typing. This also fixed a blur writing stale text over a newer synced value.
+  - Worst frame under visible writes went from 53 to 38 ms. `fake_async` is a new dev dependency.
+- **Remaining suspects for the lag:** GPU raster on Intel UHD (Mesa EGL), or GTK-on-Wayland input and frame pacing under Hyprland. No IME is running. Check these first if it comes back.
