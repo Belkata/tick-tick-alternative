@@ -250,7 +250,7 @@ void main() {
     await settle(tester);
     final above = tester.getTopLeft(find.byKey(const Key('nav-tag-garden')));
     final g = await tester.startGesture(
-      tester.getCenter(find.byKey(const Key('drag-tag-work'))),
+      tester.getCenter(find.byKey(const Key('drag-tags-work'))),
     );
     for (var i = 0; i < 10; i++) {
       await g.moveBy(const Offset(0, -6));
@@ -265,11 +265,68 @@ void main() {
     // Done leaves arranging; the order stays.
     await tester.tap(find.byKey(const Key('arrange-tags')));
     await settle(tester);
-    expect(find.byKey(const Key('drag-tag-work')), findsNothing);
+    expect(find.byKey(const Key('drag-tags-work')), findsNothing);
     expect(
       tester.getTopLeft(find.byKey(const Key('nav-tag-work'))).dy,
       lessThan(tester.getTopLeft(find.byKey(const Key('nav-tag-garden'))).dy),
     );
+  });
+
+  testWidgets('arrange lists by dragging, filters by Alt+Up', (tester) async {
+    final db = await pumpApp(tester);
+    await db.createList(name: 'Alpha');
+    await db.createList(name: 'Beta');
+    for (final n in ['One', 'Two']) {
+      await db.saveFilter(
+        json: '{"name":"$n","rule":{"field":"priority","op":"is","value":3}}',
+      );
+    }
+    await settle(tester);
+    Future<List<String>> lists() async => [
+      for (final t in (await db.sidebar()).lists) t.name,
+    ];
+    Future<List<String>> filters() async => [
+      for (final t in (await db.sidebar()).filters) t.name,
+    ];
+    expect(await lists(), ['Alpha', 'Beta']);
+
+    await tester.tap(find.byKey(const Key('arrange-lists')));
+    await settle(tester);
+    // Built-ins stay put and have no handle.
+    expect(find.byKey(const Key('nav-inbox')), findsOneWidget);
+    final above = tester.getTopLeft(find.byKey(const Key('nav-list-Alpha')));
+    final g = await tester.startGesture(
+      tester.getCenter(find.byKey(const Key('drag-lists-Beta'))),
+    );
+    for (var i = 0; i < 10; i++) {
+      await g.moveBy(const Offset(0, -6));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await g.moveTo(Offset(above.dx + 40, above.dy - 4));
+    await tester.pump(const Duration(milliseconds: 100));
+    await g.up();
+    await settle(tester);
+    expect(await lists(), ['Beta', 'Alpha']);
+    await tester.tap(find.byKey(const Key('arrange-lists')));
+    await settle(tester);
+    expect(find.byKey(const Key('drag-lists-Beta')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('arrange-filters')));
+    await settle(tester);
+    Focus.of(
+      tester.element(
+        find.descendant(
+          of: find.byKey(const Key('nav-filter-Two')),
+          matching: find.text('Two'),
+        ),
+      ),
+    ).requestFocus();
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await settle(tester);
+    expect(await filters(), ['Two', 'One']);
   });
 
   testWidgets('one sort for every view, then drag in manual order', (

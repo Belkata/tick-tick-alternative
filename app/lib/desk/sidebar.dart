@@ -2,6 +2,8 @@ import 'dart:io';
 
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 
 import '../src/rust/api/tasks.dart';
 import 'controller.dart';
@@ -131,17 +133,27 @@ class DeskSidebar extends StatelessWidget {
             count: sb?.inbox,
           ),
           ...top,
-          section(
-            'Lists',
-            action: _SmallButton(
-              key: const Key('new-list'),
-              icon: Icons.add,
-              tooltip: 'New list',
-              onTap: () => _newList(context),
+          _ArrangeSection(
+            c: c,
+            items: sb?.lists ?? const <NavItem>[],
+            noun: 'lists',
+            place: (id, before) => c.db.placeList(id: id, before: before),
+            header: (arrange) => section(
+              'Lists',
+              action: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _SmallButton(
+                    key: const Key('new-list'),
+                    icon: Icons.add,
+                    tooltip: 'New list',
+                    onTap: () => _newList(context),
+                  ),
+                  if ((sb?.lists.length ?? 0) > 1) arrange,
+                ],
+              ),
             ),
-          ),
-          for (final l in sb?.lists ?? const <NavItem>[])
-            nav(
+            tile: (l, trail) => nav(
               TaskView(kind: ViewKind.list, id: l.id),
               l.name,
               lead: emojiOr(
@@ -155,39 +167,56 @@ class DeskSidebar extends StatelessWidget {
                       ),
               ),
               count: l.count,
+              trail: trail,
               key: Key('nav-list-${l.name}'),
               onEdit: () => showStyleDialog(context, c, item: l, isTag: false),
             ),
-          section(
-            'Filters',
-            action: _SmallButton(
-              key: const Key('new-filter'),
-              icon: Icons.add,
-              tooltip: 'New filter',
-              onTap: () => showFilterBuilder(context, c),
-            ),
           ),
-          if (sb != null && sb.filters.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 12, 6),
-              child: Text(
-                'Save a search with +',
-                style: manrope(11.5, FontWeight.w500, color: s.mute),
+          _ArrangeSection(
+            c: c,
+            items: sb?.filters ?? const <NavItem>[],
+            noun: 'filters',
+            place: (id, before) => c.db.placeFilter(id: id, before: before),
+            empty: sb == null
+                ? null
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 12, 6),
+                    child: Text(
+                      'Save a search with +',
+                      style: manrope(11.5, FontWeight.w500, color: s.mute),
+                    ),
+                  ),
+            header: (arrange) => section(
+              'Filters',
+              action: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _SmallButton(
+                    key: const Key('new-filter'),
+                    icon: Icons.add,
+                    tooltip: 'New filter',
+                    onTap: () => showFilterBuilder(context, c),
+                  ),
+                  if ((sb?.filters.length ?? 0) > 1) arrange,
+                ],
               ),
             ),
-          for (final f in sb?.filters ?? const <NavItem>[])
-            nav(
+            tile: (f, trail) => nav(
               TaskView(kind: ViewKind.filter, id: f.id),
               f.name,
               lead: emojiOr(f.icon, icon(Icons.filter_alt_outlined)),
               count: f.count,
+              trail: trail,
               key: Key('nav-filter-${f.name}'),
               onEdit: () => showFilterBuilder(context, c, filterId: f.id),
             ),
+          ),
           if ((sb?.tags ?? const []).isNotEmpty)
-            _TagSection(
+            _ArrangeSection(
               c: c,
-              tags: sb!.tags,
+              items: sb!.tags,
+              noun: 'tags',
+              place: (id, before) => c.db.placeTag(id: id, before: before),
               header: (action) => section('Tags', action: action),
               tile: (t, trail) => nav(
                 TaskView(kind: ViewKind.tag, id: t.id),
@@ -225,62 +254,86 @@ class DeskSidebar extends StatelessWidget {
   }
 }
 
-/// The Tags tree. Its header button switches to arranging: each row gets a drag
-/// handle, and a tag moves with the tags under it, among its siblings.
-class _TagSection extends StatefulWidget {
-  const _TagSection({
+/// A sidebar section that can be arranged: its header button switches to arranging, each
+/// row gets a drag handle (and Alt+Up/Down or screen-reader actions), and an item moves
+/// among its siblings (a tag with the tags under it). Used for Lists, Filters and Tags.
+class _ArrangeSection extends StatefulWidget {
+  const _ArrangeSection({
     required this.c,
-    required this.tags,
+    required this.items,
     required this.header,
     required this.tile,
+    required this.noun,
+    required this.place,
+    this.empty,
   });
 
   final DeskController c;
-  final List<NavItem> tags;
+  final List<NavItem> items;
   final Widget Function(Widget action) header;
-  final Widget Function(NavItem tag, Widget? trail) tile;
+  final Widget Function(NavItem item, Widget? trail) tile;
+
+  /// "lists", "filters" or "tags": the button's tooltip and key (`arrange-lists`).
+  final String noun;
+
+  /// Persists a move: `id` goes right before `before`, or last with null.
+  final Future<void> Function(String id, String? before) place;
+
+  /// Shown under the header when there are no items.
+  final Widget? empty;
 
   @override
-  State<_TagSection> createState() => _TagSectionState();
+  State<_ArrangeSection> createState() => _ArrangeSectionState();
 }
 
-class _TagSectionState extends State<_TagSection> {
+class _ArrangeSectionState extends State<_ArrangeSection> {
   bool _arranging = false;
 
   /// The order after a drop, shown until the sidebar reloads with it.
   List<NavItem>? _moved;
 
   @override
-  void didUpdateWidget(_TagSection old) {
+  void didUpdateWidget(_ArrangeSection old) {
     super.didUpdateWidget(old);
-    if (!identical(old.tags, widget.tags)) _moved = null;
+    if (!identical(old.items, widget.items)) _moved = null;
   }
 
-  void _drop(List<NavItem> tags, int from, int to) {
-    final move = tagDrop(tags, from, to);
+  void _drop(List<NavItem> items, int from, int to) {
+    final move = tagDrop(items, from, to);
     if (move == null) return;
-    setState(() => _moved = applyTagMove(tags, move.id, move.before));
-    widget.c.run(() => widget.c.db.placeTag(id: move.id, before: move.before));
+    setState(() => _moved = applyTagMove(items, move.id, move.before));
+    widget.c.run(() => widget.place(move.id, move.before));
+  }
+
+  void _step(List<NavItem> items, int i, int dir) {
+    final to = tagStep(items, i, dir);
+    if (to != null) _drop(items, i, to);
   }
 
   @override
   Widget build(BuildContext context) {
     final s = context.soft;
-    final tags = _moved ?? widget.tags;
+    final items = _moved ?? widget.items;
     final header = widget.header(
       _SmallButton(
-        key: const Key('arrange-tags'),
+        key: Key('arrange-${widget.noun}'),
         icon: _arranging ? Icons.check : Icons.swap_vert,
-        tooltip: _arranging ? 'Done arranging' : 'Arrange tags',
+        tooltip: _arranging ? 'Done arranging' : 'Arrange ${widget.noun}',
         onTap: () => setState(() => _arranging = !_arranging),
       ),
     );
     if (!_arranging) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [header, for (final t in tags) widget.tile(t, null)],
+        children: [
+          header,
+          if (items.isEmpty) ?widget.empty,
+          for (final t in items) widget.tile(t, null),
+        ],
       );
     }
+    // Touch devices get a 48 px handle.
+    final size = Platform.isAndroid ? 48.0 : 28.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -289,25 +342,51 @@ class _TagSectionState extends State<_TagSection> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           buildDefaultDragHandles: false,
-          itemCount: tags.length,
+          itemCount: items.length,
           // onReorderItem's index counts after the lift; tagDrop wants it before.
           onReorderItem: (from, to) =>
-              _drop(tags, from, to < from ? to : to + 1),
+              _drop(items, from, to < from ? to : to + 1),
           proxyDecorator: (child, _, _) =>
               Material(color: Colors.transparent, child: child),
           itemBuilder: (context, i) => KeyedSubtree(
-            key: ValueKey(tags[i].id),
-            child: widget.tile(
-              tags[i],
-              ReorderableDragStartListener(
-                index: i,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.grab,
-                  child: Icon(
-                    Icons.drag_indicator,
-                    key: Key('drag-tag-${tags[i].name}'),
-                    size: 16,
-                    color: s.mute,
+            key: ValueKey(items[i].id),
+            child: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(
+                  LogicalKeyboardKey.arrowUp,
+                  alt: true,
+                ): () =>
+                    _step(items, i, -1),
+                const SingleActivator(
+                  LogicalKeyboardKey.arrowDown,
+                  alt: true,
+                ): () =>
+                    _step(items, i, 1),
+              },
+              child: Semantics(
+                customSemanticsActions: {
+                  const CustomSemanticsAction(label: 'Move up'): () =>
+                      _step(items, i, -1),
+                  const CustomSemanticsAction(label: 'Move down'): () =>
+                      _step(items, i, 1),
+                },
+                child: widget.tile(
+                  items[i],
+                  ReorderableDragStartListener(
+                    index: i,
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.grab,
+                      child: SizedBox(
+                        width: size,
+                        height: size,
+                        child: Icon(
+                          Icons.drag_indicator,
+                          key: Key('drag-${widget.noun}-${items[i].name}'),
+                          size: 16,
+                          color: s.mute,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
