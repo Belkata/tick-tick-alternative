@@ -54,8 +54,9 @@ Back to [[00 Overview]] · [[10 Roadmap]]. How M1 was built, and where it differ
 ## Automatic reminder at due time (2026-11-26, v0.8.2, PR 36)
 - `reminder::auto_due_reminder`, called in the same `Store::write` as the due change from `set_schedule`, `set_task_due` and `create_task`. When a local edit takes due from none or all-day to timed and the task has no live reminders, it adds one relative reminder at offset 0. Time tweaks on an already-timed due add nothing, so a deleted auto reminder stays deleted until the date is cleared and set again. Existing reminders are untouched.
 - When due becomes all-day or is cleared and the only live reminder is the auto one, it is removed (relative reminders on all-day tasks fire at 09:00 local, `ALL_DAY_REMINDER_TIME`).
-- Not triggered by remote ops, `utre import ticktick` (`create_task_with(.., false)`), recurrence advancing, start-date edits, or calendar `place_block`/`unschedule`. With a start date, relative reminders still anchor to the start.
+- Not triggered by remote ops, `utre import ticktick` (`create_task_with(.., false)`), recurrence advancing, or start-date edits on an already-timed task (calendar drag does trigger it, see below). With a start date, relative reminders still anchor to the start.
 - The auto reminder id is UUIDv5(task id + "/auto-due"), so concurrent creation on two devices converges to one row (`uuid` crate `v5` feature). No schema, wire or bridge change.
+- Calendar drag follows the same rule (v0.8.3): `place_block` and `unschedule` call `auto_due_reminder` in their own `Store::write`. "Timed" is judged by the anchor (start, else due), because a dragged-on unscheduled task has a start and no due. A first drop on a time slot adds the reminder, which fires at the block's start; moving or resizing adds nothing; a drop on the all-day row or `unschedule` removes the auto reminder if it is the only live one. User-added reminders are never touched.
 - Unverified: a real alarm on the phone; detail pane refresh in the running app.
 
 ## Known gaps, for later milestones
