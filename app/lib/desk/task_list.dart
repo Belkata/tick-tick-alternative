@@ -405,6 +405,10 @@ class _TaskCardState extends State<TaskCard> {
   Widget build(BuildContext context) {
     final s = context.soft;
     final row = widget.row;
+    final touch = switch (Theme.of(context).platform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
     final dueColor = row.done
         ? s.mute
         : row.overdue
@@ -487,18 +491,23 @@ class _TaskCardState extends State<TaskCard> {
                   ),
                 ),
               ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44),
+                constraints: BoxConstraints(minHeight: touch ? 48 : 44),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
+                  padding: EdgeInsets.fromLTRB(touch ? 0 : 8, 4, 12, 4),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: touch
+                        ? CrossAxisAlignment.center
+                        : CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: EdgeInsets.only(top: meta.isEmpty ? 3 : 5),
+                        padding: EdgeInsets.only(
+                          top: touch ? 0 : (meta.isEmpty ? 3 : 5),
+                        ),
                         child: PriorityCheck(
                           key: Key('check-${row.id}'),
                           priority: row.priority,
                           done: row.done,
+                          hit: touch ? 15.5 : 3,
                           onTap: widget.onCheck,
                         ),
                       ),

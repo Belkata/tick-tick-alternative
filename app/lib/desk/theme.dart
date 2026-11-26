@@ -223,12 +223,17 @@ class PriorityCheck extends StatelessWidget {
     required this.done,
     required this.onTap,
     this.size = 17,
+    this.hit = 3,
   });
 
   final int priority;
   final bool done;
   final VoidCallback onTap;
   final double size;
+
+  /// Space around the box that still counts as the tap (3 with a mouse; a touch screen
+  /// wants a 48 px target).
+  final double hit;
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +246,7 @@ class PriorityCheck extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(6),
         child: Padding(
-          padding: const EdgeInsets.all(3),
+          padding: EdgeInsets.all(hit),
           child: Container(
             width: size,
             height: size,
