@@ -26,7 +26,8 @@ int? parseDurationText(String input) {
     final mm = int.parse(m!.group(2)!);
     if (mm >= 60) return null;
     min = int.parse(m.group(1)!) * 60 + mm;
-  } else if ((m = RegExp(r'^(\d{1,3})[.,](\d{1,2})h(?:ours?)?$').firstMatch(t)) !=
+  } else if ((m = RegExp(r'^(\d{1,3})[.,](\d{1,2})h(?:ours?)?$')
+          .firstMatch(t)) !=
       null) {
     final frac = m!.group(2)!;
     final scale = frac.length == 1 ? 10 : 100;
@@ -36,9 +37,8 @@ int? parseDurationText(String input) {
       ).firstMatch(t)) !=
       null) {
     min = int.parse(m!.group(1)!) * 60 + int.parse(m.group(2) ?? '0');
-  } else if ((m = RegExp(
-        r'^(\d{1,6})(?:m|min|mins|minutes)?$',
-      ).firstMatch(t)) !=
+  } else if ((m = RegExp(r'^(\d{1,6})(?:m|min|mins|minutes)?$')
+          .firstMatch(t)) !=
       null) {
     min = int.parse(m!.group(1)!);
   }
@@ -223,7 +223,9 @@ class _DurationPickerPanelState extends State<DurationPickerPanel> {
               isDense: true,
               hintText: '90, 1h30, 1:30, 45m',
               labelText: 'Length',
-              errorText: _bad ? 'Try 90, 45m, 1h30 or 1:30 (up to a week).' : null,
+              errorText: _bad
+                  ? 'Try 90, 45m, 1h30 or 1:30 (up to a week).'
+                  : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
