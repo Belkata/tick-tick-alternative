@@ -274,7 +274,7 @@ impl Store {
                 schedule: sched,
                 tags,
             };
-            let task = self.create_task(&new)?;
+            let task = self.create_task_with(&new, false)?;
             let id = task.id;
             if let Some(c) = created {
                 self.write(|w| w.set(Entity::Task, &id, "created_at", c))?;
