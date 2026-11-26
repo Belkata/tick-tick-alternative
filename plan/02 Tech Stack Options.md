@@ -126,3 +126,5 @@ Before committing, a short **spike (milestone M0 in [[10 Roadmap]])** checks:
 > | `kalender` | 0.34.0 | candidate for the week grid |
 > | `home_widget` | 0.10.0 | only if the widget reads data via Flutter |
 > | `local_notifier` | 0.1.6 | last release 2024-04: likely replace with own notifications |
+> | `play-services-auth` | 22.0.0 | M5b slice 5 (checked 2026-11-26 on Google Maven, released 2026-08): Google Identity `AuthorizationClient` gives the phone its Google Calendar access tokens (no refresh token, no client secret) |
+> | `rustls` / `webpki-roots` | 0.23 / 1 | M5b slice 5, Android only in `utre-google`: reqwest trusts the bundled roots, because its default platform verifier needs a Java-side setup the app doesn't have |
