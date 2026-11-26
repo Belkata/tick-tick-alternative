@@ -397,6 +397,25 @@ void main() {
       });
     }
 
+    for (final touch in [false, true]) {
+      testWidgets('large text (2x) does not overflow, touch: $touch', (
+        t,
+      ) async {
+        t.platformDispatcher.textScaleFactorTestValue = 2;
+        addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
+        await open(
+          t,
+          initial: When(
+            DateTime(2026, 11, 26),
+            const TimeOfDay(hour: 9, minute: 0),
+          ),
+          platform: touch ? TargetPlatform.android : TargetPlatform.linux,
+        );
+        expect(t.takeException(), isNull);
+        expect(find.byKey(const Key('when-done')), findsOneWidget);
+      });
+    }
+
     testWidgets('desktop uses a dialog', (t) async {
       await open(t, brightness: Brightness.dark);
       expect(find.byType(Dialog), findsOneWidget);
