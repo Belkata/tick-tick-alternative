@@ -1498,7 +1498,7 @@ class _CalendarPageState extends State<CalendarPage> {
   Widget _panel(SoftColors s) {
     return _unscheduleTarget(
       (hover) => AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: motion(context, 120),
         decoration: BoxDecoration(
           color: hover ? s.accent.withValues(alpha: 0.08) : s.bg,
           border: hover ? Border.all(color: s.accent, width: 2) : null,
