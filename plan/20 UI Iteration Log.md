@@ -47,3 +47,12 @@ Changes:
 - Empty states: a soft icon disc, the old headline and a one-line hint per view.
 
 Before / after (Work list, dark): `attachments/ui1-list-before.jpg`, `attachments/ui1-list-after.jpg`.
+
+## Round 2: detail pane priority and phone tap targets
+
+- The four small bordered priority chips are now one segmented control across the pane (flag icon
+  and name, the picked one fills in its priority colour). Keys `priority-0..3` are unchanged.
+- On touch platforms the task checkbox keeps its look but its tap target is 48 x 48 and rows are at
+  least 48 high; the check is centred on the row there (`PriorityCheck.hit`).
+
+Before / after: `attachments/ui2-detail-before.jpg`, `attachments/ui2-detail-after.jpg`.

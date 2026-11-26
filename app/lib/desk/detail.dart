@@ -887,35 +887,65 @@ class _PriorityPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.soft;
     const names = ['None', 'Low', 'Med', 'High'];
-    return Wrap(
-      spacing: 4,
-      runSpacing: 4,
-      children: [
-        for (var p = 0; p < 4; p++)
-          InkWell(
-            key: Key('priority-$p'),
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => onPick(p),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: p == value
-                    ? s.priority(p).withValues(alpha: 0.14)
-                    : null,
-                border: Border.all(color: p == value ? s.priority(p) : s.line),
-              ),
-              child: Text(
-                names[p],
-                style: manrope(
-                  12,
-                  p == value ? FontWeight.w700 : FontWeight.w500,
-                  color: p == 0 ? s.fg : s.priority(p),
+    // One segmented control: the picked priority fills with its colour.
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: s.side,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Row(
+        children: [
+          for (var p = 0; p < 4; p++)
+            Expanded(
+              child: Semantics(
+                selected: p == value,
+                button: true,
+                label: 'Priority ${names[p]}',
+                child: InkWell(
+                  key: Key('priority-$p'),
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => onPick(p),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    height: 32,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: p == value
+                          ? (p == 0
+                                ? s.panel
+                                : s.priority(p).withValues(alpha: 0.16))
+                          : null,
+                      border: p == value
+                          ? Border.all(color: p == 0 ? s.line : s.priority(p))
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (p > 0) ...[
+                          Icon(Icons.flag, size: 12, color: s.priority(p)),
+                          const SizedBox(width: 3),
+                        ],
+                        Text(
+                          names[p],
+                          style: manrope(
+                            12.5,
+                            p == value ? FontWeight.w700 : FontWeight.w500,
+                            color: p == 0 || p != value
+                                ? (p == value ? s.fg : s.mute)
+                                : s.priority(p),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
