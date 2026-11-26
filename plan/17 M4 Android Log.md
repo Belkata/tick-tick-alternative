@@ -67,4 +67,11 @@ Back to [[00 Overview]] · [[10 Roadmap]] · [[07 Android App & Widget]] · [[16
 - **Release key and CI secrets:** the user creates the key and adds the secrets (plan/07). Moving from debug-signed to release-signed means one more uninstall.
 - The Spike 2 relay flakiness on Android (relay in about 1 of 4 launches) didn't show here: pairing and syncs reached the laptop every time on the emulator. Real phone on mobile data: still to try.
 - Flutter warns about migrating the Android build to built-in Kotlin. It isn't blocking (the Compose plugin order in plan/13 depends on today's setup).
-- Widget polish (choosing a list or filter, scrolling, **+** quick add, midnight refresh): left out of this push by the user.
+- Widget polish (choosing a list or filter, scrolling, **+** quick add, midnight refresh): left out of this push by the user. Done 2026-11-26, see below.
+
+## Widget polish (2026-11-26)
+- **Source per widget:** `WidgetConfigActivity` (placement and "reconfigure" on Android 12+) lists Inbox, lists, tags and saved filters from the core (`WidgetDb.sources`); the choice lives in the widget's Glance state (`source_kind`, `source_id`). A deleted list, tag or filter falls back to the Inbox. The launcher's pin flow on the emulator didn't run the config screen (the widget came up as Inbox), so reconfigure from the widget's long-press menu. Not checked on the Xiaomi.
+- **List:** `WidgetDb.tasks(kind, id, tz)` returns rows already labelled by the core (due label, overdue, due today, up to 2 tag colours), sorted like the app (the device's sort). Soft colours (light and dark), priority on the checkbox border, due text red when overdue and teal when today. Empty state: "All clear".
+- **+** opens `QuickAddActivity`, a small dialog (no app start). It adds through `WidgetDb.addIn`, so the task lands in the shown list or tag, or gets what a filter asks for (as the app's quick add does), then refreshes the widgets and syncs soon.
+- **Midnight:** `WidgetRefresh` sets an inexact alarm at the next local midnight + 5 s. `DATE_CHANGED`, `TIMEZONE_CHANGED`, `TIME_SET`, boot and app update also redraw and re-arm (and reschedule reminders). Test: `WidgetRefreshTest` (zones, DST).
+- **Open:** tapping a row starts the app with `dev.utre.OPEN_TASK` and the task id. `MainActivity` keeps it (`takeOpenTask` / `openTask` on the `utre/widget` channel), but the Dart UI doesn't select the task yet, so for now the tap only opens the app.
