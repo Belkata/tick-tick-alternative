@@ -14,7 +14,9 @@ set -euo pipefail
 cmd="${1:-}"; name="${2:-}"
 [ -n "$cmd" ] && [ -n "$name" ] || { sed -n '2,10p' "$0"; exit 2; }
 
-repo="$(git rev-parse --show-toplevel)"
+# The main checkout, even when run from inside a worktree (whose --show-toplevel is the worktree).
+common="$(git rev-parse --path-format=absolute --git-common-dir)"
+repo="$(dirname "$common")"
 wt_root="$(dirname "$repo")/utre-wt"
 wt="$wt_root/$name"
 branch="agent/$name"
