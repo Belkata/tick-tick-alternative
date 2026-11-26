@@ -354,6 +354,7 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
     );
     return DeskSidebar(
       c: c,
+      viewSelected: _page == null,
       onPicked: () {
         _showTasks();
         if (inDrawer) Navigator.of(context).pop();
@@ -417,46 +418,53 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
               final detailW =
                   (_prefs.detailWidth ?? (box.maxWidth >= 1100 ? 340.0 : 290.0))
                       .clamp(_minDetail, maxDetail);
+              // SafeArea only matters on Android tablets and foldables (edge-to-edge);
+              // on desktop the insets are zero.
               return Scaffold(
-                body: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (rail)
-                      _rail()
-                    else
-                      SizedBox(width: sideW, child: _sidebar(inDrawer: false)),
-                    VerticalDivider(width: 1, color: s.line),
-                    if (page != null)
-                      Expanded(child: page)
-                    else ...[
-                      Expanded(
-                        child: TaskListPane(
-                          c: c,
-                          addFocus: _addFocus,
-                          onOpen: _openRow,
+                body: SafeArea(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (rail)
+                        _rail()
+                      else
+                        SizedBox(
+                          width: sideW,
+                          child: _sidebar(inDrawer: false),
                         ),
-                      ),
-                      _ResizeHandle(
-                        color: s.line,
-                        onStart: () => _dragFrom = detailW,
-                        onDrag: (dx) => setState(
-                          () => _prefs.detailWidth = (_dragFrom - dx).clamp(
-                            _minDetail,
-                            maxDetail,
+                      VerticalDivider(width: 1, color: s.line),
+                      if (page != null)
+                        Expanded(child: page)
+                      else ...[
+                        Expanded(
+                          child: TaskListPane(
+                            c: c,
+                            addFocus: _addFocus,
+                            onOpen: _openRow,
                           ),
                         ),
-                        onDone: _prefs.save,
-                        onReset: () {
-                          setState(() => _prefs.detailWidth = null);
-                          _prefs.save();
-                        },
-                      ),
-                      SizedBox(
-                        width: detailW,
-                        child: DetailPane(c: c, titleFocus: _titleFocus),
-                      ),
+                        _ResizeHandle(
+                          color: s.line,
+                          onStart: () => _dragFrom = detailW,
+                          onDrag: (dx) => setState(
+                            () => _prefs.detailWidth = (_dragFrom - dx).clamp(
+                              _minDetail,
+                              maxDetail,
+                            ),
+                          ),
+                          onDone: _prefs.save,
+                          onReset: () {
+                            setState(() => _prefs.detailWidth = null);
+                            _prefs.save();
+                          },
+                        ),
+                        SizedBox(
+                          width: detailW,
+                          child: DetailPane(c: c, titleFocus: _titleFocus),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               );
             }

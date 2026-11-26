@@ -18,6 +18,7 @@ class DeskSidebar extends StatelessWidget {
     this.onPicked,
     this.top = const [],
     this.extras = const [],
+    this.viewSelected = true,
   });
 
   final DeskController c;
@@ -30,6 +31,9 @@ class DeskSidebar extends StatelessWidget {
 
   /// Entries under the views, e.g. the Devices and sync spike screens.
   final List<Widget> extras;
+
+  /// False while a full-pane page (Calendar, Devices) is open: no task view is current then.
+  final bool viewSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +56,7 @@ class DeskSidebar extends StatelessWidget {
       count: count,
       trail: trail,
       depth: depth,
-      selected: c.view == v,
+      selected: viewSelected && c.view == v,
       onTap: () {
         c.open(v);
         onPicked?.call();
