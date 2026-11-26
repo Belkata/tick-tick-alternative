@@ -62,6 +62,7 @@ pub struct _TaskRow {
     pub due_label: Option<String>,
     pub overdue: bool,
     pub due_today: bool,
+    pub duration_min: Option<i64>,
     pub done: bool,
     pub deleted: bool,
     pub repeating: bool,
@@ -597,6 +598,15 @@ impl TaskDb {
     /// Make a task a subtask of `parent_id`, or top-level with `None`.
     pub fn set_parent(&self, id: String, parent_id: Option<String>) -> anyhow::Result<()> {
         self.write(Request::SetParent { id, parent_id }).map(drop)
+    }
+
+    /// Set the task's length in minutes (calendar block and Google event length), or clear it.
+    pub fn set_duration(&self, id: String, minutes: Option<i64>) -> anyhow::Result<()> {
+        self.write(Request::SetTaskDuration {
+            id,
+            duration_min: minutes,
+        })
+        .map(drop)
     }
 
     /// "Show in Calendar": keep a task on the calendar and its Unscheduled panel, or off.

@@ -180,6 +180,9 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Set the due date from text like `fri`, `tomorrow 14:30` or `2026-12-01`, or clear it.
   Future<void> setDue({required String id, String? text});
 
+  /// Set the task's length in minutes (calendar block and Google event length), or clear it.
+  Future<void> setDuration({required String id, PlatformInt64? minutes});
+
   /// "Show in Calendar": keep a task on the calendar and its Unscheduled panel, or off.
   Future<void> setInCalendar({required String id, required bool visible});
 
@@ -855,6 +858,7 @@ class TaskRow {
   final String? dueLabel;
   final bool overdue;
   final bool dueToday;
+  final PlatformInt64? durationMin;
   final bool done;
   final bool deleted;
   final bool repeating;
@@ -875,6 +879,7 @@ class TaskRow {
     this.dueLabel,
     required this.overdue,
     required this.dueToday,
+    this.durationMin,
     required this.done,
     required this.deleted,
     required this.repeating,
@@ -897,6 +902,7 @@ class TaskRow {
       dueLabel.hashCode ^
       overdue.hashCode ^
       dueToday.hashCode ^
+      durationMin.hashCode ^
       done.hashCode ^
       deleted.hashCode ^
       repeating.hashCode ^
@@ -921,6 +927,7 @@ class TaskRow {
           dueLabel == other.dueLabel &&
           overdue == other.overdue &&
           dueToday == other.dueToday &&
+          durationMin == other.durationMin &&
           done == other.done &&
           deleted == other.deleted &&
           repeating == other.repeating &&
