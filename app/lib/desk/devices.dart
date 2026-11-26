@@ -364,7 +364,12 @@ class _DevicesPageState extends State<DevicesPage> {
     return Container(
       color: s.bg,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          18,
+          24,
+          24 + MediaQuery.viewPaddingOf(context).bottom,
+        ),
         children: body,
       ),
     );

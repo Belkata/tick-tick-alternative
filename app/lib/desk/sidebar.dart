@@ -163,6 +163,14 @@ class DeskSidebar extends StatelessWidget {
               onTap: () => showFilterBuilder(context, c),
             ),
           ),
+          if (sb != null && sb.filters.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 12, 6),
+              child: Text(
+                'Save a search with +',
+                style: manrope(11.5, FontWeight.w500, color: s.mute),
+              ),
+            ),
           for (final f in sb?.filters ?? const <NavItem>[])
             nav(
               TaskView(kind: ViewKind.filter, id: f.id),
