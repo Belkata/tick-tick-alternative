@@ -315,6 +315,7 @@ async fn run() -> Result<()> {
     } else {
         let g = google::GoogleService::new(db_file.clone());
         g.spawn_poll();
+        g.spawn_push(db.subscribe());
         Some(g)
     };
     tokio::spawn({

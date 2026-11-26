@@ -145,6 +145,10 @@ macro_rules! api {
             GoogleSignOut,
             /// Fetch Google's calendars and events now.
             GoogleSync,
+            /// What pushing tasks to Google did last ([`GooglePushStatus`]).
+            GooglePushStatus,
+            /// Push tasks to Google's "Tasks" calendar now ([`GooglePushStatus`]).
+            GooglePushNow,
             $( $variant { $($f: $w),* }, )*
         }
 
@@ -155,7 +159,7 @@ macro_rules! api {
                     Request::Hello | Request::Subscribe => false,
                     // Sync writes reach the file through the sync node's own connection.
                     Request::SyncPair | Request::SyncJoin { .. } | Request::SyncNow | Request::SyncStatus => false,
-                    Request::GoogleStatus | Request::GoogleSignIn | Request::GoogleSignOut | Request::GoogleSync => false,
+                    Request::GoogleStatus | Request::GoogleSignIn | Request::GoogleSignOut | Request::GoogleSync | Request::GooglePushStatus | Request::GooglePushNow => false,
                     $( Request::$variant { .. } => api!(@is_write $rw), )*
                 }
             }
@@ -170,7 +174,7 @@ macro_rules! api {
                 Request::SyncPair | Request::SyncJoin { .. } | Request::SyncNow | Request::SyncStatus => {
                     return Err(utre_core::Error::Invalid("sync runs in utre-daemon, which isn't serving this database".into()))
                 }
-                Request::GoogleStatus | Request::GoogleSignIn | Request::GoogleSignOut | Request::GoogleSync => {
+                Request::GoogleStatus | Request::GoogleSignIn | Request::GoogleSignOut | Request::GoogleSync | Request::GooglePushStatus | Request::GooglePushNow => {
                     return Err(utre_core::Error::Invalid("Google runs in utre-daemon, which isn't serving this database".into()))
                 }
                 $( Request::$variant { $($f),* } => {
@@ -288,6 +292,8 @@ api! {
     read GcalCalendars gcal_calendars() -> Vec<GcalCalendar> => |s| s.gcal_calendars();
     write GcalSelect gcal_select(calendar_id: String, selected: bool) -> ()
         => |s| s.gcal_select(&calendar_id, selected);
+    read GcalPushEnabled gcal_push_enabled() -> bool => |s| s.gcal_push_enabled();
+    write GcalPushSet gcal_push_set(enabled: bool) -> () => |s| s.gcal_set_push(enabled);
     read GcalEvents gcal_events(from: i64, until: i64, tz: TzName) -> Vec<GcalEvent>
         => |s| s.gcal_events(from, until, tz.tz());
 
@@ -370,6 +376,22 @@ pub struct SyncStatus {
     /// Epoch ms of the last round that reached at least one device.
     pub last_sync_ms: Option<i64>,
     /// Why the last round failed, if it reached nobody.
+    pub last_error: Option<String>,
+}
+
+/// What `google_push_status` and `google_push_now` answer: tasks out to Google (plan/19).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct GooglePushStatus {
+    /// This device pushes (the "Send timed tasks to Google" switch).
+    pub enabled: bool,
+    /// Epoch ms of the last push that went through without errors.
+    pub last_push_ms: Option<i64>,
+    /// Events created, updated and deleted by the last push, and how many were up to date.
+    pub created: usize,
+    pub updated: usize,
+    pub deleted: usize,
+    pub unchanged: usize,
+    /// Why the last push failed, if it did.
     pub last_error: Option<String>,
 }
 

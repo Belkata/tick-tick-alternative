@@ -23,7 +23,9 @@ use serde::de::DeserializeOwned;
 use utre_core::Store;
 
 pub use client::{Client, Disconnected};
-pub use proto::{Event, GoogleStatus, Hello, Request, SyncOutcome, SyncStatus, TzName};
+pub use proto::{
+    Event, GooglePushStatus, GoogleStatus, Hello, Request, SyncOutcome, SyncStatus, TzName,
+};
 pub use views::{
     CalendarItem, ChecklistRow, NavItem, ReminderRow, Sidebar, TagChip, TaskDetail, TaskRow,
     TaskView, ViewKind,
@@ -158,6 +160,16 @@ impl Api {
     /// Fetch Google's calendars and events now.
     pub fn google_sync(&self) -> anyhow::Result<()> {
         self.call(Request::GoogleSync)
+    }
+
+    /// What pushing tasks to Google did last.
+    pub fn google_push_status(&self) -> anyhow::Result<GooglePushStatus> {
+        self.call(Request::GooglePushStatus)
+    }
+
+    /// Push tasks to Google's "Tasks" calendar now.
+    pub fn google_push_now(&self) -> anyhow::Result<GooglePushStatus> {
+        self.call(Request::GooglePushNow)
     }
 
     /// Opened directly but the daemon now serves this file: switch to it. True if it switched.

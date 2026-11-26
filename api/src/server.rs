@@ -202,7 +202,9 @@ async fn connection(
                 | Request::GoogleStatus
                 | Request::GoogleSignIn
                 | Request::GoogleSignOut
-                | Request::GoogleSync),
+                | Request::GoogleSync
+                | Request::GooglePushStatus
+                | Request::GooglePushNow),
             ) => match &sync {
                 Some(s) => match s.handle(req).await {
                     Ok(v) => Reply::Ok(v),
