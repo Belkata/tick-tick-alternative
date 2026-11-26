@@ -325,6 +325,12 @@ impl Store {
     }
 
     pub fn create_task(&self, new: &NewTask) -> Result<Task> {
+        self.create_task_with(new, true)
+    }
+
+    /// `create_task`, with the choice of adding the automatic at-due-time reminder
+    /// (`reminder::auto_due_reminder`). Imports pass `false`: they bring their own reminders.
+    pub(crate) fn create_task_with(&self, new: &NewTask, auto_reminder: bool) -> Result<Task> {
         let title = new.title.trim();
         if title.is_empty() {
             return Err(Error::Invalid("a task needs a title".into()));
@@ -357,6 +363,9 @@ impl Store {
             }
             if new.schedule != Schedule::default() {
                 write_schedule(w, &id, &new.schedule)?;
+                if auto_reminder {
+                    crate::reminder::auto_due_reminder(w, &id, (None, false), &new.schedule)?;
+                }
             }
             for tag in &new.tags {
                 crate::organize::require_tag(w.conn, tag)?;
@@ -500,8 +509,10 @@ impl Store {
     /// Set or clear when a task happens. `None` clears every date field.
     pub fn set_schedule(&self, id: &str, schedule: Option<&Schedule>) -> Result<()> {
         self.write(|w| {
-            require_task(w.conn, id)?;
-            write_schedule(w, id, schedule.unwrap_or(&Schedule::default()))
+            let t = require_task(w.conn, id)?;
+            let new = schedule.cloned().unwrap_or_default();
+            write_schedule(w, id, &new)?;
+            crate::reminder::auto_due_reminder(w, id, (t.due_at, t.all_day), &new)
         })
     }
 
@@ -519,7 +530,8 @@ impl Store {
             if !s.all_day && s.tz.is_none() {
                 s.tz = Some("UTC".into());
             }
-            write_schedule(w, id, &s)
+            write_schedule(w, id, &s)?;
+            crate::reminder::auto_due_reminder(w, id, (t.due_at, t.all_day), &s)
         })
     }
 
