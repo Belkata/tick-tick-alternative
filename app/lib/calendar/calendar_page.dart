@@ -481,9 +481,16 @@ class _CalendarPageState extends State<CalendarPage> {
             child: LayoutBuilder(
               builder: (context, box) {
                 _sheetHeight = box.maxHeight;
+                // The Month grid runs to its edge, so the add button would sit on the
+                // last row's right-hand cell: end the grid above the button instead.
+                final month =
+                    _calendar.viewConfiguration is MonthViewConfiguration;
                 return Stack(
                   children: [
-                    Positioned.fill(bottom: _peek - 8, child: _kalender(s)),
+                    Positioned.fill(
+                      bottom: _peek - 8 + (month ? 80 : 0),
+                      child: _kalender(s),
+                    ),
                     Positioned(
                       right: 16,
                       bottom: _peek + 16,
