@@ -85,5 +85,5 @@ A phone only accepts an update signed with the same key as the installed app, so
   keyAlias=utre
   keyPassword=…
   ```
-- CI (`.github/workflows/android-release.yml`, on `v*` tags): set the repository secrets `ANDROID_KEYSTORE_BASE64` (`base64 -w0 ~/utre-release.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. Without them the workflow fails instead of publishing an APK signed with a throwaway key.
+- CI (`.github/workflows/android-release.yml`, on `v*` tags): set the repository secrets `ANDROID_KEYSTORE_BASE64` (`base64 -w0 ~/utre-release.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. Without them the workflow skips cleanly (v0.8.0) instead of publishing an APK signed with a throwaway key.
 - Switching an installed phone from a debug-signed APK to the release key needs one uninstall (local data is lost; sync brings it back from a paired device).
