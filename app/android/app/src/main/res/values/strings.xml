@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="task_list_widget_description">Your Inbox. Tick a task to complete it.</string>
+    <string name="task_list_widget_description">Your Inbox, or a list, tag or filter you choose. Tick a task to complete it.</string>
 </resources>
