@@ -82,6 +82,18 @@ class WidgetBridge {
   /// `cancelled`, `not_configured` or `error: ...`; null off Android.
   static Future<String?> googleSignIn() => _call<String>('googleSignIn');
 
+  /// Opens [url] in the Google Calendar app only (an ACTION_VIEW pinned to its package).
+  /// False when the app is missing, can't take the link, or off Android.
+  static Future<bool> openInCalendarApp(String url) async {
+    if (!supported) return false;
+    try {
+      return await _channel.invokeMethod<bool>('openInCalendarApp', url) ??
+          false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
   /// Ask the launcher to place the widget. Returns false if the launcher can't.
   static Future<bool> pin() async {
     if (!supported) return false;
