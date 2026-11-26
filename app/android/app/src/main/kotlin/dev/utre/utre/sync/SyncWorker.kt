@@ -24,6 +24,8 @@ import dev.utre.utre.widget.TaskListWidget
 import dev.utre.utre.widget.UtreCore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
@@ -55,7 +57,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         try {
             // The job may run with no Activity: install the Google service so the fetch below works.
             GoogleAuth.init(ctx)
-            val summary = backgroundSync(UtreCore.dbPath(ctx), keyPath(ctx), deviceName())
+            // The Rust round can't be cancelled and blocks its thread until it ends. One at a
+            // time, so the periodic job, expedited jobs and a replaced worker never overlap.
+            val summary = syncLock.withLock { backgroundSync(UtreCore.dbPath(ctx), keyPath(ctx), deviceName()) }
             android.util.Log.i("Utre", "background sync: $summary")
         } catch (e: CancellationException) {
             throw e
@@ -71,6 +75,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         private const val NAME = "utre-sync"
         private const val SYNC_CHANNEL = "sync"
 
+        /** Serialises the native sync rounds of every worker in this process. */
+        private val syncLock = Mutex()
+
         fun enqueue(context: Context) {
             val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -81,7 +88,14 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
         /**
          * One sync as soon as the network allows (plan/07: after an edit made outside the
-         * app, e.g. a widget tick or a reminder's Done). Edits close together share one job.
+         * app, e.g. a widget tick or a reminder's Done).
+         *
+         * APPEND_OR_REPLACE, not REPLACE: REPLACE cancels the running worker, but its native
+         * round keeps going, so the new worker would start a second round on top of it. Appending
+         * queues the new run behind the running one (an edit made mid-round may have missed it,
+         * so it can't be dropped, which rules out KEEP) and, unlike plain APPEND, starts afresh
+         * when the previous run failed or was cancelled. The lock in doWork also covers the
+         * 15-minute periodic job, which is a different unique work name.
          */
         fun syncSoon(context: Context) {
             val request = OneTimeWorkRequestBuilder<SyncWorker>()
@@ -89,7 +103,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
             WorkManager.getInstance(context)
-                .enqueueUniqueWork("$NAME-soon", ExistingWorkPolicy.REPLACE, request)
+                .enqueueUniqueWork("$NAME-soon", ExistingWorkPolicy.APPEND_OR_REPLACE, request)
         }
 
         /** The node key lives next to the database, as on desktop (utre.db -> utre.key). */
