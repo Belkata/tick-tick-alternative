@@ -30,6 +30,17 @@ The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manro
 > `plan/00 Overview.md`. The sync ALPN (`tickalt/sync/1`) and the `tt1`/`tt2` ticket prefixes keep their old
 > spelling on purpose (wire protocol).
 
+## Latest session (2026-11-26 night, Arch laptop, multi-agent run; released as v0.7.0)
+
+Done by parallel agents in worktrees, each as a PR with green CI, merged by the integrator:
+- **CI** (`ci.yml`, caches saved only from `main`) and the multi-agent workflow below; **network_sim fixed** (PRs 2 and 8: after compaction a replica remembers the HLC of dropped ops, so vectors may differ in a counter or even a whole device; state equality and "nothing owed" are still asserted).
+- **Renamed to Utre** (PR 3): CLI `utre`, crates `utre-*`, `dev.utre.utre`, `utre.service`, data in `~/.local/share/utre` (migrated on first start). Old-to-new table in `plan/00 Overview.md`.
+- **Subtask cycles resolve convergently** (PR 4, schema v9, `task.parent_raw` plus derived effective parent). **Tasks out to Google** (PR 5; off until switched on per device; repeats go as a window of single events). **Widget polish** (PR 6). **Google events on the phone** (PR 7).
+- **Running here:** `utre.service` runs this checkout's `target/fast/utre-daemon` on `utre.db` (schema v9); the old DB is backed up in `~/.local/share/tick-alt/backups/tt-v8-pre-utre-*.db`. Phone and Mac are still listed as peers (same sync node id).
+- **Needs the user:** install the v0.7.0 APK (new package id: uninstall the old app, re-pair); the Mac needs `Utre.app` (new app, remove the old LaunchAgent); an **Android OAuth client** for `dev.utre.utre` (steps in `plan/19` slice 5 and PR 7) before Google works on the phone; Google tasks-out and the phone sign-in are only tested against a fake Google.
+- **Open:** the UI-iteration agent's rounds (`plan/20`, if it merged any); the widget's "Reconfigure" menu and the midnight alarm firing are untested on the real phone; keychain for Google tokens.
+
+
 ## Where things stand (handoff, 2026-11-25 evening: the Arch laptop)
 
 **Latest session (Arch laptop, 2026-11-25 evening; released as v0.4.0, v0.4.1, v0.5.0 to v0.5.4; everything pushed):**
