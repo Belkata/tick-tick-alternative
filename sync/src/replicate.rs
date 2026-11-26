@@ -31,10 +31,15 @@ pub const SYNC_ALPN: &[u8] = b"tickalt/sync/1";
 /// 2: sessions end with a `Trust` frame (trust sharing, plan/05 pairing step 4).
 const PROTO: u32 = 2;
 const PAIR_PREFIX: &str = "tt2";
-/// Ops per frame.
+/// Ops per frame, at most.
 const BATCH: usize = 500;
+/// A frame's ops stop growing once their JSON passes this (a frame over [`MAX_FRAME`]
+/// is refused by the receiver, so 500 ops carrying long notes must be split).
+const BATCH_BYTES: usize = 1 << 20;
 /// Longest frame accepted (an untrusted peer gets one frame at most).
 const MAX_FRAME: u64 = 8 << 20;
+/// How long the serving side waits for a connection's first frame.
+const FIRST_FRAME_WAIT: Duration = Duration::from_secs(30);
 /// How long a pairing ticket stays valid.
 pub const PAIR_TTL: Duration = Duration::from_secs(300);
 
@@ -264,7 +269,10 @@ impl Replicator {
         let (mut send, recv) = conn.accept_bi().await?;
         let mut recv = BufReader::new(recv);
         let my_addr = None; // The dialer already knows how to reach us.
-        let first = read_frame(&mut recv).await?;
+        // Anyone who can reach the endpoint may connect: don't wait forever for a first frame.
+        let first = tokio::time::timeout(FIRST_FRAME_WAIT, read_frame(&mut recv))
+            .await
+            .context("no first frame from the peer in time")??;
         let theirs = match first {
             Frame::Pair { secret, name, addr } => {
                 if !self.redeem(&secret) {
@@ -382,7 +390,7 @@ impl Replicator {
         let sent = missing.len();
         let replica = self.replica.clone();
         let sending = async {
-            for chunk in missing.chunks(BATCH) {
+            for chunk in batches(&missing) {
                 write_frame(
                     send,
                     &Frame::Ops {
@@ -507,6 +515,25 @@ async fn read_frame(recv: &mut BufReader<RecvStream>) -> Result<Frame> {
     serde_json::from_slice(&line).context("bad frame")
 }
 
+/// Split ops into frames of at most [`BATCH`] ops and about [`BATCH_BYTES`] of JSON.
+/// A single op bigger than that still goes alone.
+fn batches(ops: &[Op]) -> Vec<&[Op]> {
+    let mut out = Vec::new();
+    let (mut start, mut bytes) = (0, 0);
+    for (i, op) in ops.iter().enumerate() {
+        let size = op.value.to_string().len() + op.entity_id.len() + op.field.len() + 100;
+        if i > start && (i - start >= BATCH || bytes + size > BATCH_BYTES) {
+            out.push(&ops[start..i]);
+            (start, bytes) = (i, 0);
+        }
+        bytes += size;
+    }
+    if start < ops.len() {
+        out.push(&ops[start..]);
+    }
+    out
+}
+
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -519,6 +546,9 @@ pub(crate) fn hex(bytes: &[u8]) -> String {
 }
 
 pub(crate) fn unhex(s: &str) -> Result<Vec<u8>> {
+    if !s.is_ascii() {
+        bail!("not hex"); // Also keeps the byte slicing below on character boundaries.
+    }
     if !s.len().is_multiple_of(2) {
         bail!("odd length; was it cut off?");
     }
@@ -526,4 +556,47 @@ pub(crate) fn unhex(s: &str) -> Result<Vec<u8>> {
         .step_by(2)
         .map(|i| u8::from_str_radix(&s[i..i + 2], 16).context("not hex"))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use utre_core::oplog::Entity;
+
+    fn op(i: u64, note: &str) -> Op {
+        Op {
+            hlc: Hlc {
+                wall: i,
+                counter: 0,
+                device: 1,
+            },
+            entity: Entity::Task,
+            entity_id: "t".into(),
+            field: "notes".into(),
+            value: serde_json::json!(note),
+        }
+    }
+
+    #[test]
+    fn batches_respect_count_and_size() {
+        let small: Vec<Op> = (0..1200).map(|i| op(i, "x")).collect();
+        let b = batches(&small);
+        assert_eq!(b.iter().map(|c| c.len()).collect::<Vec<_>>(), [500, 500, 200]);
+
+        // 40 ops of 100 KB: far over MAX_FRAME if sent as one frame, so they must split.
+        let note = "n".repeat(100_000);
+        let big: Vec<Op> = (0..40).map(|i| op(i, &note)).collect();
+        let b = batches(&big);
+        assert!(b.len() > 1);
+        assert_eq!(b.iter().map(|c| c.len()).sum::<usize>(), 40);
+        for chunk in &b {
+            let frame = serde_json::to_vec(&Frame::Ops { ops: chunk.to_vec() }).unwrap();
+            assert!((frame.len() as u64) < MAX_FRAME);
+        }
+
+        // One op over the limit goes alone; nothing yields no frames.
+        let huge = [op(1, &"n".repeat(2 << 20)), op(2, "x")];
+        assert_eq!(batches(&huge).iter().map(|c| c.len()).collect::<Vec<_>>(), [1, 1]);
+        assert!(batches(&[]).is_empty());
+    }
 }
