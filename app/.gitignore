@@ -46,3 +46,5 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+# Golden test failure images (see test/golden/README.md)
+/test/golden/failures/
