@@ -114,3 +114,9 @@ The same `CalendarPage`, with a phone layout below 760 px wide (phones, and narr
 - Every task has **Show in Calendar** (`task.in_calendar`, schema **v6**, on by default). Off keeps it out of `Store::calendar` (blocks and past occurrences) and the Unscheduled panel, whatever its source filter. A switch in the detail pane, shown only once the task has a start or due date (user's request); `tt edit <id> --calendar false`; `tt show` says "calendar hidden".
 - A build before v6 logs `in_calendar` ops it receives but rejects them (unknown field). The v6 migration replays those ops (`oplog::replay_field`), so the Mac on 0.3.0 catches up once it's updated. Until then it shows hidden tasks on its calendar.
 - `Task` deserialises a missing `in_calendar` as true, so an app talking to an older daemon still works (though it can't hide anything).
+
+## Unscheduled panel rule and drag preview (2026-11-26, v0.8.7; PR 43)
+- For **every source** (default, list, tag, saved filter) the Unscheduled panel lists only **open tasks with no start, no due date and `in_calendar` on** (`api/src/views.rs` `unscheduled`). Dated tasks with `in_calendar` off stay out, as above.
+- Side effect: a saved filter like "Today" as the source shows only its undated tasks.
+- A dropped card leaves the panel at once (`calendar_page.dart` `_changed`, desktop and the phone drawer).
+- The drag preview from the panel uses the task's own length (`duration_min`, see plan/20 round 12), not the 30 min default.
