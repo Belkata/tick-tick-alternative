@@ -437,24 +437,50 @@ fn describe_addr(addr: &TransportAddr) -> String {
 }
 
 fn load_or_create_key(path: &Path) -> Result<SecretKey> {
-    match std::fs::read(path) {
-        Ok(bytes) => {
-            let arr: [u8; 32] = bytes
-                .as_slice()
-                .try_into()
-                .with_context(|| format!("{} is not a 32-byte key", path.display()))?;
-            Ok(SecretKey::from_bytes(&arr))
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            let key = SecretKey::generate();
-            if let Some(dir) = path.parent() {
-                std::fs::create_dir_all(dir)?;
-            }
-            write_private(path, &key.to_bytes())?;
-            Ok(key)
-        }
-        Err(e) => Err(e).with_context(|| format!("reading {}", path.display())),
+    let read = |path: &Path| -> Result<SecretKey> {
+        let bytes = std::fs::read(path).with_context(|| format!("reading {}", path.display()))?;
+        let arr: [u8; 32] = bytes
+            .as_slice()
+            .try_into()
+            .with_context(|| format!("{} is not a 32-byte key", path.display()))?;
+        Ok(SecretKey::from_bytes(&arr))
+    };
+    match std::fs::metadata(path) {
+        Ok(_) => return read(path),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e).with_context(|| format!("reading {}", path.display())),
     }
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    let key = SecretKey::generate();
+    // Write the whole key to a private temp file first, then publish it under its final
+    // name in one step, so another process never sees a half-written (empty) key.
+    let tmp = path.with_extension(format!(
+        "key-tmp-{}-{:x}",
+        std::process::id(),
+        rand_suffix()
+    ));
+    write_private(&tmp, &key.to_bytes())?;
+    let published = publish_new(&tmp, path);
+    let _ = std::fs::remove_file(&tmp);
+    match published {
+        Ok(()) => Ok(key),
+        // Someone else created it first: theirs is the key.
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => read(path),
+        Err(e) => Err(e).with_context(|| format!("creating {}", path.display())),
+    }
+}
+
+fn rand_suffix() -> u64 {
+    let mut b = [0u8; 8];
+    let _ = getrandom::fill(&mut b);
+    u64::from_le_bytes(b)
+}
+
+/// Give `tmp`'s contents the name `to`, failing with `AlreadyExists` if `to` exists.
+fn publish_new(tmp: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::hard_link(tmp, to)
 }
 
 #[cfg(unix)]
@@ -468,6 +494,7 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<()> {
         .open(path)
         .with_context(|| format!("creating {}", path.display()))?;
     f.write_all(bytes)?;
+    f.sync_all()?;
     Ok(())
 }
 
@@ -514,6 +541,29 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn racing_loaders_agree_and_never_see_a_partial_key() {
+        let dir = temp_dir("keyrace");
+        for round in 0..30 {
+            let path = dir.join(format!("k{round}"));
+            let barrier = std::sync::Arc::new(std::sync::Barrier::new(4));
+            let handles: Vec<_> = (0..4)
+                .map(|_| {
+                    let (path, barrier) = (path.clone(), barrier.clone());
+                    std::thread::spawn(move || {
+                        barrier.wait();
+                        load_or_create_key(&path).unwrap().to_bytes()
+                    })
+                })
+                .collect();
+            let keys: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+            assert!(keys.windows(2).all(|w| w[0] == w[1]), "round {round}");
+            assert_eq!(std::fs::read(&path).unwrap(), keys[0]);
+        }
+        let leftovers = std::fs::read_dir(&dir).unwrap().count();
+        assert_eq!(leftovers, 30, "no temp files left behind");
     }
 
     #[test]
