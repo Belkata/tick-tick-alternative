@@ -116,10 +116,18 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
   Future<void> _openFromWidget(String id) async {
     if (!mounted) return;
     // Another task's detail may be open already: start from the list.
+    _replacing = true;
     Navigator.of(context).popUntil((r) => r.isFirst);
     _showTasks();
-    if (!await c.showTask(id) || !mounted) return;
-    if (MediaQuery.sizeOf(context).width < wide) _pushDetail();
+    if (!await c.showTask(id) || !mounted) {
+      _replacing = false;
+      return;
+    }
+    if (MediaQuery.sizeOf(context).width < wide) {
+      _pushDetail();
+    } else {
+      _replacing = false;
+    }
   }
 
   Future<void> _addShared(String text) async {
@@ -303,18 +311,31 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
     if (MediaQuery.sizeOf(context).width < wide) _pushDetail();
   }
 
+  /// A widget tap is swapping the open detail for another: its pop must not clear the selection.
+  bool _replacing = false;
+
   void _pushDetail() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => Scaffold(
-          appBar: AppBar(backgroundColor: context.soft.panel),
-          body: ListenableBuilder(
-            listenable: c,
-            builder: (_, _) => DetailPane(c: c, titleFocus: _titleFocus),
+    _replacing = false;
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              appBar: AppBar(backgroundColor: context.soft.panel),
+              body: ListenableBuilder(
+                listenable: c,
+                builder: (_, _) => DetailPane(c: c, titleFocus: _titleFocus),
+              ),
+            ),
           ),
-        ),
-      ),
-    );
+        )
+        .then((_) {
+          // Back on the single-pane list nothing is open, so nothing stays tinted.
+          if (!_replacing &&
+              mounted &&
+              MediaQuery.sizeOf(context).width < wide) {
+            c.select(null);
+          }
+        });
   }
 
   Widget _sidebar({required bool inDrawer}) {
