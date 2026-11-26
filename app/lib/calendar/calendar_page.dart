@@ -16,7 +16,6 @@ import 'package:kalender/src/models/kalender_events/draggable_event.dart'
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
 import '../desk/controller.dart';
 import '../desk/detail.dart';
@@ -25,6 +24,7 @@ import '../desk/google_calendars.dart';
 import '../desk/theme.dart';
 import '../src/rust/api/tasks.dart';
 import 'calendar_prefs.dart';
+import 'google_event_details.dart';
 
 /// A block's end. The core always gives an all-day block its whole local day; a block
 /// with no length would be dropped by kalender's day, week and month layouts, so an
@@ -1380,63 +1380,13 @@ class _CalendarPageState extends State<CalendarPage> {
         : (day(start) == day(end)
               ? '${day(start)} · ${_hm(start)}–${_hm(end)}'
               : '${day(start)} ${_hm(start)} – ${day(end)} ${_hm(end)}');
-    showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        final s = ctx.soft;
-        return AlertDialog(
-          key: const Key('google-event-dialog'),
-          title: Text(g.summary, style: manrope(17, FontWeight.w800)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(when, style: manrope(13.5, FontWeight.w600)),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Container(
-                    width: 9,
-                    height: 9,
-                    decoration: BoxDecoration(
-                      color: hexColor(g.color, s.mute),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      e.calendar?.summary ?? 'Google Calendar',
-                      style: manrope(12.5, FontWeight.w500, color: s.mute),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'From Google Calendar. Change it there; Utre shows it read-only.',
-                style: manrope(12, FontWeight.w500, color: s.mute),
-              ),
-            ],
-          ),
-          actions: [
-            if (g.htmlLink != null)
-              TextButton.icon(
-                key: const Key('google-event-copy-link'),
-                icon: const Icon(Icons.link, size: 16),
-                label: const Text('Copy link'),
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: g.htmlLink!));
-                  _toast('Link to the event copied');
-                },
-              ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
+    showGoogleEventDetails(
+      context,
+      event: g,
+      calendarName: e.calendar?.summary,
+      when: when,
+      phone: _narrow,
+      onToast: _toast,
     );
   }
 
