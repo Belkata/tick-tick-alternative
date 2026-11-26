@@ -42,8 +42,10 @@ EOF
     echo "start the agent there, and have it run: source agent.env"
     ;;
   rm)
+    # Stop anything the agent left running there (loops, watchers, test daemons) first.
+    "$repo/scripts/agent-reap.sh" --kill --worktree "$name" || true
     rm -f "/tmp/utre-$name.sock"
-    git -C "$repo" worktree remove --force "$wt"
+    if [ -d "$wt" ]; then git -C "$repo" worktree remove --force "$wt"; else git -C "$repo" worktree prune; fi
     echo "removed $wt; the branch $branch is kept (delete with: git branch -D $branch)"
     ;;
   *)
