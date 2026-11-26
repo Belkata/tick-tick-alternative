@@ -180,7 +180,7 @@ mod tests {
     }
 
     #[test]
-    fn absurd_offsets_do_not_overflow() {
+    fn the_largest_offsets_do_not_overflow() {
         let s = Store::open_in_memory().unwrap();
         let t = s
             .create_task(&NewTask {
@@ -189,7 +189,7 @@ mod tests {
                 ..Default::default()
             })
             .unwrap();
-        for offset_min in [i64::MAX, i64::MIN] {
+        for offset_min in [100_000_000, -100_000_000] {
             s.add_reminder(&t.id, ReminderKind::Relative { offset_min }).unwrap();
         }
         s.upcoming_reminders(0, i64::MAX, Tz::UTC).unwrap();

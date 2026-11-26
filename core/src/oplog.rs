@@ -98,12 +98,19 @@ enum Kind {
     OptText,
     /// An integer in a range.
     Int(i64, i64),
-    OptInt,
+    /// Nullable integer within `lo..=hi`.
+    OptInt(i64, i64),
     Bool,
     Enum(&'static [&'static str]),
     /// Any JSON, stored as text (filter rules).
     Json,
 }
+
+/// Dates and times are epoch milliseconds; this is about the year 6400. Synced values are
+/// untrusted: anything wider could overflow the date arithmetic on the way to a panic.
+const INSTANT_LIMIT: i64 = 1 << 47;
+/// Durations and reminder offsets, in minutes (about 190 years). `* 60_000` stays in i64.
+const MINUTES_LIMIT: i64 = 100_000_000;
 
 const STATUSES: &[&str] = &["open", "done", "deleted"];
 const REPEAT_MODES: &[&str] = &["fixed", "after_completion"];
@@ -117,9 +124,10 @@ fn field_spec(entity: Entity, field: &str) -> Option<Kind> {
         (Entity::Task, "title" | "notes" | "sort_key") => Text,
         (Entity::Task, "list_id" | "parent_id" | "tz" | "repeat_rule" | "gcal_event_id") => OptText,
         (Entity::Task, "priority") => Int(0, 3),
-        (Entity::Task, "start_at" | "due_at" | "duration_min" | "completed_at" | "deleted_at") => {
-            OptInt
+        (Entity::Task, "start_at" | "due_at" | "completed_at" | "deleted_at") => {
+            OptInt(-INSTANT_LIMIT, INSTANT_LIMIT)
         }
+        (Entity::Task, "duration_min") => OptInt(0, MINUTES_LIMIT),
         (Entity::Task, "all_day" | "in_calendar") => Bool,
         (Entity::Task, "repeat_mode") => Enum(REPEAT_MODES),
         (Entity::Task, "status") => Enum(STATUSES),
@@ -142,12 +150,13 @@ fn field_spec(entity: Entity, field: &str) -> Option<Kind> {
 
         (Entity::Reminder, "task_id") => Text,
         (Entity::Reminder, "kind") => Enum(REMINDER_KINDS),
-        (Entity::Reminder, "offset_min" | "at") => OptInt,
+        (Entity::Reminder, "offset_min") => OptInt(-MINUTES_LIMIT, MINUTES_LIMIT),
+        (Entity::Reminder, "at") => OptInt(-INSTANT_LIMIT, INSTANT_LIMIT),
         (Entity::Reminder, "deleted") => Bool,
 
         (Entity::Completion, "task_id") => Text,
         (Entity::Completion, "completed_at") => Int(0, i64::MAX),
-        (Entity::Completion, "occurrence_at") => OptInt,
+        (Entity::Completion, "occurrence_at") => OptInt(-INSTANT_LIMIT, INSTANT_LIMIT),
 
         (Entity::Filter, "name" | "sort_key") => Text,
         (Entity::Filter, "icon" | "grp") => OptText,
@@ -162,7 +171,7 @@ fn to_sql(kind: Kind, v: &Value) -> Option<SqlValue> {
     Some(match (kind, v) {
         (Kind::Text, Value::String(s)) => SqlValue::Text(s.clone()),
         (Kind::OptText, Value::String(s)) => SqlValue::Text(s.clone()),
-        (Kind::OptText | Kind::OptInt, Value::Null) => SqlValue::Null,
+        (Kind::OptText | Kind::OptInt(..), Value::Null) => SqlValue::Null,
         (Kind::Int(lo, hi), Value::Number(n)) => {
             let i = n.as_i64()?;
             if i < lo || i > hi {
@@ -170,7 +179,13 @@ fn to_sql(kind: Kind, v: &Value) -> Option<SqlValue> {
             }
             SqlValue::Integer(i)
         }
-        (Kind::OptInt, Value::Number(n)) => SqlValue::Integer(n.as_i64()?),
+        (Kind::OptInt(lo, hi), Value::Number(n)) => {
+            let i = n.as_i64()?;
+            if i < lo || i > hi {
+                return None;
+            }
+            SqlValue::Integer(i)
+        }
         (Kind::Bool, Value::Bool(b)) => SqlValue::Integer(*b as i64),
         (Kind::Enum(allowed), Value::String(s)) if allowed.contains(&s.as_str()) => {
             SqlValue::Text(s.clone())
