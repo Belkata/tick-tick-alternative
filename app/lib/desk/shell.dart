@@ -221,53 +221,56 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
       int? count,
     }) => Tooltip(
       message: tip,
-      child: InkWell(
-        key: key,
-        borderRadius: BorderRadius.circular(11),
-        onTap: onTap,
-        child: Container(
-          width: 40,
-          height: 36,
-          decoration: on
-              ? BoxDecoration(
-                  color: s.panel,
-                  borderRadius: BorderRadius.circular(11),
-                  boxShadow: s.cardShadow
-                      ? const [
-                          BoxShadow(
-                            color: Color(0x14141E3C),
-                            blurRadius: 3,
-                            offset: Offset(0, 1),
-                          ),
-                        ]
-                      : null,
-                )
-              : null,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Icon(icon, size: 18, color: on ? s.selFg : s.mute),
-              if (count != null && count > 0)
-                Positioned(
-                  right: 2,
-                  top: 2,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: s.accent,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '$count',
-                      style: manrope(
-                        9,
-                        FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onPrimary,
+      child: FocusRing(
+        radius: 11,
+        child: InkWell(
+          key: key,
+          borderRadius: BorderRadius.circular(11),
+          onTap: onTap,
+          child: Container(
+            width: 40,
+            height: 36,
+            decoration: on
+                ? BoxDecoration(
+                    color: s.panel,
+                    borderRadius: BorderRadius.circular(11),
+                    boxShadow: s.cardShadow
+                        ? const [
+                            BoxShadow(
+                              color: Color(0x14141E3C),
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
+                            ),
+                          ]
+                        : null,
+                  )
+                : null,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(icon, size: 18, color: on ? s.selFg : s.mute),
+                if (count != null && count > 0)
+                  Positioned(
+                    right: 2,
+                    top: 2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: s.accent,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: manrope(
+                          9,
+                          FontWeight.w700,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -425,22 +428,28 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // One traversal group per pane, so Tab runs sidebar, then list,
+                      // then detail, instead of interleaving the panes row by row.
                       if (rail)
-                        _rail()
+                        FocusTraversalGroup(child: _rail())
                       else
                         SizedBox(
                           width: sideW,
-                          child: _sidebar(inDrawer: false),
+                          child: FocusTraversalGroup(
+                            child: _sidebar(inDrawer: false),
+                          ),
                         ),
                       VerticalDivider(width: 1, color: s.line),
                       if (page != null)
-                        Expanded(child: page)
+                        Expanded(child: FocusTraversalGroup(child: page))
                       else ...[
                         Expanded(
-                          child: TaskListPane(
-                            c: c,
-                            addFocus: _addFocus,
-                            onOpen: _openRow,
+                          child: FocusTraversalGroup(
+                            child: TaskListPane(
+                              c: c,
+                              addFocus: _addFocus,
+                              onOpen: _openRow,
+                            ),
                           ),
                         ),
                         _ResizeHandle(
@@ -460,7 +469,9 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
                         ),
                         SizedBox(
                           width: detailW,
-                          child: DetailPane(c: c, titleFocus: _titleFocus),
+                          child: FocusTraversalGroup(
+                            child: DetailPane(c: c, titleFocus: _titleFocus),
+                          ),
                         ),
                       ],
                     ],

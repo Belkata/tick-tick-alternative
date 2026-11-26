@@ -21,6 +21,7 @@ class SoftColors extends ThemeExtension<SoftColors> {
     required this.p2,
     required this.p3,
     required this.cardShadow,
+    required this.ring,
   });
 
   final Color bg,
@@ -38,6 +39,9 @@ class SoftColors extends ThemeExtension<SoftColors> {
       p3;
   final bool cardShadow;
 
+  /// The keyboard focus ring (teal, readable on the panels in both themes).
+  final Color ring;
+
   static const light = SoftColors(
     bg: Color(0xFFF7F8FB),
     side: Color(0xFFEEF1F7),
@@ -54,6 +58,7 @@ class SoftColors extends ThemeExtension<SoftColors> {
     p2: Color(0xFFEB9B2C),
     p3: Color(0xFFE2525C),
     cardShadow: true,
+    ring: Color(0xFF0B7A6D),
   );
 
   static const dark = SoftColors(
@@ -71,6 +76,7 @@ class SoftColors extends ThemeExtension<SoftColors> {
     p2: Color(0xFFEB9B2C),
     p3: Color(0xFFFF7880),
     cardShadow: false,
+    ring: Color(0xFF5FD4C4),
   );
 
   /// The checkbox border for a priority (0 none … 3 high).
@@ -104,6 +110,71 @@ TextStyle manrope(double size, FontWeight weight, {Color? color}) => TextStyle(
   color: color,
 );
 
+/// True while the keyboard is what moves focus (not a mouse or a finger).
+bool keyboardDriving() =>
+    FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+
+/// A teal ring around [child] while a descendant has keyboard focus, for the
+/// InkWell cards and rows that have no ring of their own. Invisible after a
+/// mouse click or a touch.
+class FocusRing extends StatefulWidget {
+  const FocusRing({
+    super.key,
+    required this.child,
+    this.radius = 10,
+    this.circle = false,
+  });
+
+  final Widget child;
+  final double radius;
+  final bool circle;
+
+  @override
+  State<FocusRing> createState() => _FocusRingState();
+}
+
+class _FocusRingState extends State<FocusRing> {
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    FocusManager.instance.addHighlightModeListener(_mode);
+  }
+
+  @override
+  void dispose() {
+    FocusManager.instance.removeHighlightModeListener(_mode);
+    super.dispose();
+  }
+
+  void _mode(FocusHighlightMode _) {
+    if (mounted && _focused) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final show = _focused && keyboardDriving();
+    final ring = context.soft.ring;
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (f) => setState(() => _focused = f),
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          shape: widget.circle ? BoxShape.circle : BoxShape.rectangle,
+          borderRadius: widget.circle
+              ? null
+              : BorderRadius.circular(widget.radius),
+          border: show ? Border.all(color: ring, width: 2) : null,
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
 ThemeData softTheme(Brightness brightness) {
   final c = brightness == Brightness.light ? SoftColors.light : SoftColors.dark;
   final scheme =
@@ -126,6 +197,18 @@ ThemeData softTheme(Brightness brightness) {
     extensions: [c],
     dividerColor: c.line,
     canvasColor: c.panel,
+    // Keyboard focus: Flutter shows these only while the keyboard is driving
+    // (FocusHighlightMode.traditional), never on mouse or touch.
+    focusColor: c.accent.withValues(alpha: 0.16),
+    iconButtonTheme: IconButtonThemeData(
+      style: ButtonStyle(
+        side: WidgetStateProperty.resolveWith(
+          (st) => st.contains(WidgetState.focused) && keyboardDriving()
+              ? BorderSide(color: c.ring, width: 2)
+              : null,
+        ),
+      ),
+    ),
     // Material 3 tints dialogs and menus with a grey-green surface; Soft wants the panel colour.
     dialogTheme: DialogThemeData(
       backgroundColor: c.panel,
@@ -276,29 +359,32 @@ class PriorityCheck extends StatelessWidget {
       button: true,
       label: done ? 'Mark as not done' : 'Mark as done',
       excludeSemantics: true,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Padding(
-          padding: EdgeInsets.all(hit),
-          child: AnimatedContainer(
-            duration: motion(context),
-            curve: Curves.easeOut,
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: done
-                  ? s.mute
-                  : (s.cardShadow ? Colors.white : Colors.transparent),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: edge, width: 1.6),
-            ),
-            // The tick pops in rather than appearing.
-            child: AnimatedScale(
+      child: FocusRing(
+        radius: 6,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: EdgeInsets.all(hit),
+            child: AnimatedContainer(
               duration: motion(context),
-              curve: Curves.easeOutBack,
-              scale: done ? 1 : 0,
-              child: Icon(Icons.check, size: size - 4, color: s.panel),
+              curve: Curves.easeOut,
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: done
+                    ? s.mute
+                    : (s.cardShadow ? Colors.white : Colors.transparent),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: edge, width: 1.6),
+              ),
+              // The tick pops in rather than appearing.
+              child: AnimatedScale(
+                duration: motion(context),
+                curve: Curves.easeOutBack,
+                scale: done ? 1 : 0,
+                child: Icon(Icons.check, size: size - 4, color: s.panel),
+              ),
             ),
           ),
         ),

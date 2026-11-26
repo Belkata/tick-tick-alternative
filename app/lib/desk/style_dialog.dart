@@ -114,21 +114,27 @@ class _StyleDialogState extends State<_StyleDialog> {
     final s = context.soft;
     Widget swatch(String? hex) {
       final on = _color == hex;
-      return InkWell(
-        key: Key('swatch-${hex ?? 'none'}'),
-        customBorder: const CircleBorder(),
-        onTap: () => setState(() => _color = hex),
-        child: Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: hex == null ? null : hexColor(hex, s.mute),
-            border: Border.all(color: on ? s.fg : s.line, width: on ? 2.5 : 1),
+      return FocusRing(
+        circle: true,
+        child: InkWell(
+          key: Key('swatch-${hex ?? 'none'}'),
+          customBorder: const CircleBorder(),
+          onTap: () => setState(() => _color = hex),
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: hex == null ? null : hexColor(hex, s.mute),
+              border: Border.all(
+                color: on ? s.fg : s.line,
+                width: on ? 2.5 : 1,
+              ),
+            ),
+            child: hex == null
+                ? Icon(Icons.block, size: 14, color: s.mute)
+                : null,
           ),
-          child: hex == null
-              ? Icon(Icons.block, size: 14, color: s.mute)
-              : null,
         ),
       );
     }

@@ -351,46 +351,48 @@ class NavTile extends StatelessWidget {
     final s = context.soft;
     return Padding(
       padding: EdgeInsets.only(left: 8.0 + depth * 16, right: 8, bottom: 2),
-      child: Material(
-        animationDuration: motion(context, 160),
-        color: selected ? s.panel : Colors.transparent,
-        elevation: selected && s.cardShadow ? 0.6 : 0,
-        shadowColor: const Color(0x22141E3C),
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
+      child: FocusRing(
+        child: Material(
+          animationDuration: motion(context, 160),
+          color: selected ? s.panel : Colors.transparent,
+          elevation: selected && s.cardShadow ? 0.6 : 0,
+          shadowColor: const Color(0x22141E3C),
           borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          onSecondaryTap: onEdit,
-          onLongPress: onEdit,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              children: [
-                SizedBox(width: 18, child: Center(child: lead)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    overflow: TextOverflow.ellipsis,
-                    style: manrope(
-                      13.5,
-                      selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected ? s.selFg : s.fg,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: onTap,
+            onSecondaryTap: onEdit,
+            onLongPress: onEdit,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  SizedBox(width: 18, child: Center(child: lead)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: manrope(
+                        13.5,
+                        selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected ? s.selFg : s.fg,
+                      ),
                     ),
                   ),
-                ),
-                if (trail != null)
-                  trail!
-                else if (count != null && count! > 0)
-                  Text(
-                    '$count',
-                    style: manrope(
-                      11,
-                      FontWeight.w600,
-                      color: selected ? s.selFg : s.mute,
+                  if (trail != null)
+                    trail!
+                  else if (count != null && count! > 0)
+                    Text(
+                      '$count',
+                      style: manrope(
+                        11,
+                        FontWeight.w600,
+                        color: selected ? s.selFg : s.mute,
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
