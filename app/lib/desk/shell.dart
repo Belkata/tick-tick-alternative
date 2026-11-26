@@ -486,6 +486,7 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
                             alignment: Alignment.centerLeft,
                             child: IconButton(
                               key: const Key('open-drawer'),
+                              tooltip: 'Menu',
                               icon: const Icon(Icons.menu),
                               onPressed: () =>
                                   _scaffold.currentState?.openDrawer(),
@@ -500,6 +501,7 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
                         onOpen: _openRow,
                         leading: IconButton(
                           key: const Key('open-drawer'),
+                          tooltip: 'Menu',
                           icon: const Icon(Icons.menu),
                           onPressed: () => _scaffold.currentState?.openDrawer(),
                         ),

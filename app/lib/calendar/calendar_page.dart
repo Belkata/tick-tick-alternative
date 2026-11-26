@@ -540,6 +540,7 @@ class _CalendarPageState extends State<CalendarPage> {
         children: [
           IconButton(
             key: const Key('open-drawer'),
+            tooltip: 'Menu',
             icon: Icon(Icons.menu, color: s.fg),
             onPressed: () => Scaffold.maybeOf(context)?.openDrawer(),
           ),
