@@ -461,7 +461,15 @@ class _GooglePageState extends State<GooglePage> {
         ),
       ]);
     }
-    return ListView(padding: const EdgeInsets.all(20), children: body);
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        18,
+        24,
+        24 + MediaQuery.viewPaddingOf(context).bottom,
+      ),
+      children: body,
+    );
   }
 }
 
