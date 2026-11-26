@@ -22,6 +22,7 @@ class GooglePage extends StatefulWidget {
 
 class _GooglePageState extends State<GooglePage> {
   GoogleStatus? _status;
+  GooglePushStatus? _push;
   List<GcalCalendar> _calendars = const [];
   String? _error;
   String? _signInUrl;
@@ -59,9 +60,11 @@ class _GooglePageState extends State<GooglePage> {
     try {
       final status = await db.googleStatus();
       final calendars = await db.gcalCalendars();
+      final push = status.signedIn ? await db.googlePushStatus() : null;
       if (!mounted) return;
       setState(() {
         _status = status;
+        _push = push;
         _calendars = calendars;
         _error = null;
         if (!status.signingIn) _signInUrl = null;
@@ -112,6 +115,20 @@ class _GooglePageState extends State<GooglePage> {
     // Showing a calendar: fetch its events now rather than at the next 5-minute poll.
     if (on) await db.googleSync();
   });
+
+  Future<void> _togglePush(bool on) => _run(() async {
+    await db.googlePushSet(enabled: on);
+    // Sending: don't wait for the daemon's next pass.
+    if (on) await db.googlePushNow();
+  });
+
+  String _pushLine(GooglePushStatus p) {
+    if (!p.enabled) return 'Off. Nothing is sent to Google.';
+    final when = p.lastPushMs == null
+        ? 'Not sent yet'
+        : 'Sent ${_ago(p.lastPushMs!)}';
+    return '$when. ${p.unchanged + p.created + p.updated} events on Google.';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -294,6 +311,55 @@ class _GooglePageState extends State<GooglePage> {
         const SizedBox(height: 10),
         Text(
           'Google events show read-only in the calendar. Edit them in Google Calendar.',
+          style: manrope(12, FontWeight.w500, color: s.mute),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          'Tasks to Google',
+          style: manrope(12, FontWeight.w700, color: s.mute),
+        ),
+        const SizedBox(height: 8),
+        if (_push != null)
+          _Card(
+            child: Row(
+              children: [
+                Icon(Icons.upload, color: s.accent),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Send timed tasks to Google',
+                        style: manrope(14, FontWeight.w700),
+                      ),
+                      Text(
+                        _pushLine(_push!),
+                        key: const Key('google-push-state'),
+                        style: manrope(12, FontWeight.w500, color: s.mute),
+                      ),
+                      if (_push!.lastError != null)
+                        Text(
+                          _push!.lastError!,
+                          style: manrope(12, FontWeight.w500, color: s.late),
+                        ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  key: const Key('google-push'),
+                  value: _push!.enabled,
+                  onChanged: _busy ? null : _togglePush,
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 10),
+        Text(
+          'Tasks with a date (all-day ones too) go to a calendar called “Tasks” '
+          'that Utre creates in your Google account: repeats as the next few '
+          'months of single events, done tasks with a ✓ for 30 days. It is '
+          'one-way: changes made to those events in Google are overwritten.',
           style: manrope(12, FontWeight.w500, color: s.mute),
         ),
       ]);

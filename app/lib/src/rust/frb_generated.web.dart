@@ -105,6 +105,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   GcalEvent dco_decode_gcal_event(dynamic raw);
 
   @protected
+  GooglePushStatus dco_decode_google_push_status(dynamic raw);
+
+  @protected
   GoogleStatus dco_decode_google_status(dynamic raw);
 
   @protected
@@ -297,6 +300,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   GcalEvent sse_decode_gcal_event(SseDeserializer deserializer);
+
+  @protected
+  GooglePushStatus sse_decode_google_push_status(SseDeserializer deserializer);
 
   @protected
   GoogleStatus sse_decode_google_status(SseDeserializer deserializer);
@@ -518,6 +524,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_gcal_event(GcalEvent self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_google_push_status(
+    GooglePushStatus self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_google_status(GoogleStatus self, SseSerializer serializer);

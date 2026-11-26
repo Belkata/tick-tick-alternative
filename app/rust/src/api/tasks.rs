@@ -136,7 +136,7 @@ pub struct _CalendarItem {
     pub icon: Option<String>,
 }
 
-pub use utre_api::{GoogleStatus, SyncOutcome, SyncStatus};
+pub use utre_api::{GooglePushStatus, GoogleStatus, SyncOutcome, SyncStatus};
 pub use utre_core::{GcalCalendar, GcalEvent, Peer};
 
 #[frb(mirror(GoogleStatus))]
@@ -145,6 +145,17 @@ pub struct _GoogleStatus {
     pub signed_in: bool,
     pub signing_in: bool,
     pub last_sync_ms: Option<i64>,
+    pub last_error: Option<String>,
+}
+
+#[frb(mirror(GooglePushStatus))]
+pub struct _GooglePushStatus {
+    pub enabled: bool,
+    pub last_push_ms: Option<i64>,
+    pub created: usize,
+    pub updated: usize,
+    pub deleted: usize,
+    pub unchanged: usize,
     pub last_error: Option<String>,
 }
 
@@ -670,6 +681,26 @@ impl TaskDb {
     /// Fetch Google's calendars and events now.
     pub fn google_sync(&self) -> anyhow::Result<()> {
         self.api.google_sync()
+    }
+
+    /// Whether this device sends tasks with a date to Google's "Tasks" calendar.
+    pub fn google_push_enabled(&self) -> anyhow::Result<bool> {
+        self.api.gcal_push_enabled()
+    }
+
+    /// Turn sending tasks to Google on or off (the daemon pushes after the change).
+    pub fn google_push_set(&self, enabled: bool) -> anyhow::Result<()> {
+        self.write(Request::GcalPushSet { enabled }).map(drop)
+    }
+
+    /// What the last push to Google did.
+    pub fn google_push_status(&self) -> anyhow::Result<GooglePushStatus> {
+        self.api.google_push_status()
+    }
+
+    /// Push tasks to Google's "Tasks" calendar now.
+    pub fn google_push_now(&self) -> anyhow::Result<GooglePushStatus> {
+        self.api.google_push_now()
     }
 
     /// Google's calendars as last fetched, with which ones are shown.
