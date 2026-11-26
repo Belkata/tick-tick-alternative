@@ -191,6 +191,25 @@ void main() {
       expect((await db.unscheduled()).map((r) => r.title), ['Call mum']);
     },
   );
+  testWidgets(
+    'phone: the 2 Days view shows today\'s block and the picker names it',
+    (tester) async {
+      await pumpCalendar(tester, size: const Size(412, 880));
+      await tester.tap(find.byKey(const Key('view-picker')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('view-2 Days')));
+      await settle(tester);
+      expect(find.text('2 Days ▾'), findsOneWidget);
+      expect(find.text('Write report'), findsOneWidget);
+      // Back to Day keeps working.
+      await tester.tap(find.byKey(const Key('view-picker')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('view-Day')));
+      await settle(tester);
+      expect(find.text('Day ▾'), findsOneWidget);
+    },
+  );
+
   // M5b (plan/19): Google's events come from the daemon's cache. Here the cache is filled
   // with the sqlite3 CLI, as the daemon's fetch would, so no Google account is needed.
   testWidgets('Google events show read-only; hidden calendars stay hidden', (
