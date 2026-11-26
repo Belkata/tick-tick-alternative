@@ -1,5 +1,7 @@
 package dev.utre.utre.sync
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -20,6 +22,7 @@ import dev.utre.utre.google.GoogleAuth
 import dev.utre.utre.reminders.Reminders
 import dev.utre.utre.widget.TaskListWidget
 import dev.utre.utre.widget.UtreCore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
@@ -32,8 +35,14 @@ import java.util.concurrent.TimeUnit
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     // Expedited work on Android 11 and older runs as a foreground service and needs this.
     override suspend fun getForegroundInfo(): ForegroundInfo {
-        Reminders.ensureChannel(applicationContext)
-        val n = NotificationCompat.Builder(applicationContext, "reminders")
+        // Its own quiet channel: this is not a reminder and must not pop up like one.
+        val nm = applicationContext.getSystemService(NotificationManager::class.java)
+        if (nm.getNotificationChannel(SYNC_CHANNEL) == null) {
+            nm.createNotificationChannel(
+                NotificationChannel(SYNC_CHANNEL, "Syncing", NotificationManager.IMPORTANCE_MIN),
+            )
+        }
+        val n = NotificationCompat.Builder(applicationContext, SYNC_CHANNEL)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Syncing tasks")
             .setSilent(true)
@@ -48,6 +57,8 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             GoogleAuth.init(ctx)
             val summary = backgroundSync(UtreCore.dbPath(ctx), keyPath(ctx), deviceName())
             android.util.Log.i("Utre", "background sync: $summary")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             android.util.Log.w("Utre", "background sync: ${e.message}")
         }
@@ -58,6 +69,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
     companion object {
         private const val NAME = "utre-sync"
+        private const val SYNC_CHANNEL = "sync"
 
         fun enqueue(context: Context) {
             val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
