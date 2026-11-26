@@ -53,7 +53,10 @@ TaskRow row(
   id: id,
   title: title,
   priority: priority,
-  dueAt: due == null ? null : ms(due),
+  // The core stores an all-day date as UTC midnight (task_sort.dart reads it back in UTC).
+  dueAt: due == null
+      ? null
+      : ms(allDay ? DateTime.utc(due.year, due.month, due.day) : due),
   allDay: allDay,
   dueLabel: dueLabel,
   overdue: overdue,
