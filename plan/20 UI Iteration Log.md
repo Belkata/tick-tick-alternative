@@ -137,3 +137,10 @@ One helper, `motion(context, ms)` in `theme.dart`, returns a zero duration when 
 Checked on the emulator: completing a task from the phone list leaves no stray tick at scale 0. Not verified: the look of the
 animations themselves (stills only), and that `disableAnimations` flips with Android's "remove animations" (Flutter reads it).
 Left: page routes (detail on phones) keep Material's default transition.
+
+## Round 8: date picker, Flutter review, focus ring, goldens, icon (2026-11-26, v0.8.0)
+- **Date and time picker** (`app/lib/desk/date_picker.dart`) for Due and Start: month grid (Monday first), Today / Tomorrow / Next week (the coming Monday) / No date, All day or Time with typed times, keyboard (PageUp/PageDown moves the selected day). A dialog on desktop, a bottom sheet on the phone. Start after due is blocked with an inline message; switching all-day and timed warns that the other date is cleared (the core needs both the same kind). `TaskDetail.start_at` (epoch ms, serde default for old daemons) feeds it; `row.all_day` is the single flag. The daemon needs the rebuild.
+- **Flutter review:** No date as a title-row button; dark-theme contrast through `onPrimary`; 2x text wraps; `DeskController` ignores late notifications after dispose; reload at midnight; narrow detail rows drop their icons; tooltips and semantics.
+- **Keyboard focus:** `FocusRing` and `SoftColors.ring`; Tab order grouped per pane.
+- **Golden tests:** 26, Linux-only, in `app/test/golden/` (procedure in its README), a `goldens` CI job, and a `Flutter (integration, Linux)` job under xvfb (not required). They exposed calendar bugs, fixed in the same release: all-day tasks missing in Day and Month, the "+N" count, narrow overlap columns, "1 days", a green-tinted dark picker.
+- **App icon "u-tick":** a teal u whose right arm is a tick, an amber sun in the bowl. Masters in `packaging/icon/`, `scripts/render-icons.sh` makes the Android adaptive and monochrome icons, the status-bar glyph `ic_stat_utre`, the Linux SVG and the macOS appiconset. Tray icons still use the old art.
