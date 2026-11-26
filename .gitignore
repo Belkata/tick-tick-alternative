@@ -30,6 +30,8 @@ local.properties
 *.jks
 # Release signing (app/android/key.properties points at the keystore; never commit either)
 key.properties
+# The Android OAuth client id for Google Calendar (plan/19); never commit it
+google.properties
 
 # Secrets
 .env

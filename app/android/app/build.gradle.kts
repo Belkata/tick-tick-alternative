@@ -16,6 +16,22 @@ val releaseKey = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
+// Google Calendar on the phone (plan/19 slice 5). The Android OAuth client id belongs to the
+// user's Google Cloud project, so it never goes in the repo: set utre.googleAndroidClientId
+// in ~/.gradle/gradle.properties or app/android/google.properties (git-ignored), pass
+// -Putre.googleAndroidClientId=..., or export UTRE_GOOGLE_ANDROID_CLIENT_ID. Google matches
+// the client by package name and signing key, so the id is only the switch that turns the
+// Google page on; without it the page says what is missing.
+val googleProps = Properties().apply {
+    val f = rootProject.file("google.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val googleAndroidClientId: String =
+    (findProperty("utre.googleAndroidClientId") as String?)
+        ?: googleProps.getProperty("utre.googleAndroidClientId")
+        ?: System.getenv("UTRE_GOOGLE_ANDROID_CLIENT_ID")
+        ?: ""
+
 android {
     namespace = "dev.utre.utre"
     compileSdk = flutter.compileSdkVersion
@@ -40,6 +56,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["googleAndroidClientId"] = googleAndroidClientId
     }
 
     signingConfigs {
@@ -83,6 +100,9 @@ dependencies {
 
     // Background sync (M4)
     implementation("androidx.work:work-runtime-ktx:2.12.0")
+
+    // Google Calendar (M5b): Google Identity's AuthorizationClient gives the phone access tokens
+    implementation("com.google.android.gms:play-services-auth:22.0.0")
 
     // UniFFI's Kotlin bindings call the Rust core through JNA
     implementation("net.java.dev.jna:jna:5.19.1@aar")

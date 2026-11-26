@@ -87,6 +87,10 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+        <!-- Whether this build has its Android OAuth client (see build.gradle.kts); empty = Google off. -->
+        <meta-data
+            android:name="dev.utre.google_android_client_id"
+            android:value="${googleAndroidClientId}" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
