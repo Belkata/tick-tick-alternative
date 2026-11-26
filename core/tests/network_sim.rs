@@ -138,11 +138,22 @@ proptest! {
                 // on which devices they cover and on every op that still exists, which
                 // `missing` below checks, but not on that counter. Harmless: no op is
                 // owed anywhere.
+                // A device may even be missing from one vector altogether: if compaction
+                // dropped every op it ever wrote, only the compacting replica remembers
+                // its clock. So a device found in just one vector must have no op left
+                // anywhere.
                 let mine = r.version_vector().unwrap();
-                prop_assert_eq!(
-                    mine.keys().collect::<Vec<_>>(),
-                    vv.keys().collect::<Vec<_>>()
-                );
+                for dev in mine.keys().chain(vv.keys()) {
+                    if mine.contains_key(dev) != vv.contains_key(dev) {
+                        for x in [&rs[0], r] {
+                            prop_assert!(
+                                x.ops().unwrap().iter().all(|o| o.hlc.device != *dev),
+                                "device {} is in one version vector only but still has ops",
+                                dev
+                            );
+                        }
+                    }
+                }
                 prop_assert!(missing(r, &rs[0]).is_empty());
             } else {
                 prop_assert_eq!(&r.version_vector().unwrap(), &vv);
