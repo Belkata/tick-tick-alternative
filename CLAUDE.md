@@ -30,7 +30,20 @@ The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manro
 > `plan/00 Overview.md`. The sync ALPN (`tickalt/sync/1`) and the `tt1`/`tt2` ticket prefixes keep their old
 > spelling on purpose (wire protocol).
 
-## Latest session (2026-11-26 night, Arch laptop, multi-agent run; released as v0.7.3)
+## Latest session (2026-11-26, Arch laptop, orchestrated multi-agent run; released as v0.8.0 and v0.8.1)
+
+Parallel agents in worktrees, each change a PR with green CI (PRs 19 to 35, all merged; nothing open).
+- **CI:** hardened, with blocking rustfmt, clippy and shellcheck, 26 Linux golden tests (`app/test/golden/`), and a non-required Linux integration job under xvfb.
+- **UI:** a date and time picker (dialog on desktop, bottom sheet on the phone), Rust, Android and Flutter review fixes, `start_at` and the keyboard focus ring, the new **u-tick icon** and tray icon (PR 33; plan/20 round 8 and 9), and calendar bugs the goldens found (PR 34: all-day in Day/Month, "+N", compact tiles, "1 days ago", sheet tint).
+- **Core:** the `network_sim` flake is explained and fixed (PR 32, a test bug: a ring plus compaction can strand a superseded op, so version vectors differ while state is identical; plan/16).
+- **Google calendars, choose which are visible** (PR 35, **schema v10**, per device, plan/19): desktop toolbar "Calendars" menu, phone "Google calendars..." sheet. An older build refuses a v10 DB.
+- **Running here:** `utre.service` runs this checkout's `target/fast/utre-daemon` on `utre.db` (schema v10; v9 backup `~/.local/share/utre/backups/utre-v9-pre-v10-*.db`); the desktop app was rebuilt at v0.8.1. **Phone:** v0.8.1 pre-release APK on GitHub, not installed yet (it upgrades its DB to v10 on first start; same debug key, updates in place). **The Mac is still on Tick Alt 0.3.0** (see v0.7.3 notes below: new app, remove the old LaunchAgent, `scripts/build-macos.sh`, `scripts/install-launch-agent.sh`).
+- **Open items:**
+  - Never tried on real hardware: the date picker sheet, the new launcher, themed and status-bar icons, the tray icon in waybar, the macOS menu-bar icon (unbuilt), the Google calendar picker with a real account, stale-reminder clearing across devices, and earlier items (widget Reconfigure and midnight refresh, tasks out to real Google, 2 Days and Month on the phone).
+  - Waiting on the user: GitHub settings, the plan/11 decisions (including the review recommendations), a release key plus the 4 CI secrets, a LICENSE name, Google consent screen "In production" and app verification, the Mac switch-over.
+- **Lessons:** agents occasionally leave test daemons running, so check `pgrep -af utre-daemon` and each one's `UTRE_DB` (in `/proc/<pid>/environ`) before a release; `gh pr merge --delete-branch` also removes the agent's worktree; `update-desktop.sh` backs up only `utre.db` (use `sqlite3 ... ".backup"` by hand before a schema change); test launches of the app need `UTRE_DB` and `UTRE_SOCKET`.
+
+## Previous session (2026-11-26 night, released as v0.7.3)
 
 Work was done by parallel agents in worktrees (CLAUDE.md "Multi-agent workflow"), each change a PR with green CI, merged by the integrator (the session the user talks to). PRs 1 to 18 are all merged; nothing is open.
 - **CI** (`ci.yml`; caches saved only from `main`) and the multi-agent workflow. **network_sim fixed** (PRs 2, 8): after `compact()` a replica remembers the HLC of dropped ops, so version vectors may differ in a counter or even a whole device; state equality and "nothing owed" are still asserted.
