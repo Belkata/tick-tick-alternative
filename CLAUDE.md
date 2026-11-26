@@ -30,16 +30,24 @@ The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manro
 > `plan/00 Overview.md`. The sync ALPN (`tickalt/sync/1`) and the `tt1`/`tt2` ticket prefixes keep their old
 > spelling on purpose (wire protocol).
 
-## Latest session (2026-11-26 night, Arch laptop, multi-agent run; released as v0.7.0)
+## Latest session (2026-11-26 night, Arch laptop, multi-agent run; released as v0.7.3)
 
-Done by parallel agents in worktrees, each as a PR with green CI, merged by the integrator:
-- **CI** (`ci.yml`, caches saved only from `main`) and the multi-agent workflow below; **network_sim fixed** (PRs 2 and 8: after compaction a replica remembers the HLC of dropped ops, so vectors may differ in a counter or even a whole device; state equality and "nothing owed" are still asserted).
-- **Renamed to Utre** (PR 3): CLI `utre`, crates `utre-*`, `dev.utre.utre`, `utre.service`, data in `~/.local/share/utre` (migrated on first start). Old-to-new table in `plan/00 Overview.md`.
-- **Subtask cycles resolve convergently** (PR 4, schema v9, `task.parent_raw` plus derived effective parent). **Tasks out to Google** (PR 5; off until switched on per device; repeats go as a window of single events). **Widget polish** (PR 6). **Google events on the phone** (PR 7).
-- **Running here:** `utre.service` runs this checkout's `target/fast/utre-daemon` on `utre.db` (schema v9); the old DB is backed up in `~/.local/share/tick-alt/backups/tt-v8-pre-utre-*.db`. Phone and Mac are still listed as peers (same sync node id).
-- **Needs the user:** install the v0.7.0 APK (new package id: uninstall the old app, re-pair); the Mac needs `Utre.app` (new app, remove the old LaunchAgent); an **Android OAuth client** for `dev.utre.utre` (steps in `plan/19` slice 5 and PR 7) before Google works on the phone; Google tasks-out and the phone sign-in are only tested against a fake Google.
-- **Open:** the UI-iteration agent's rounds (`plan/20`, if it merged any); the widget's "Reconfigure" menu and the midnight alarm firing are untested on the real phone; keychain for Google tokens.
-
+Work was done by parallel agents in worktrees (CLAUDE.md "Multi-agent workflow"), each change a PR with green CI, merged by the integrator (the session the user talks to). PRs 1 to 18 are all merged; nothing is open.
+- **CI** (`ci.yml`; caches saved only from `main`) and the multi-agent workflow. **network_sim fixed** (PRs 2, 8): after `compact()` a replica remembers the HLC of dropped ops, so version vectors may differ in a counter or even a whole device; state equality and "nothing owed" are still asserted.
+- **Renamed to Utre** (PR 3): CLI `utre`, crates `utre-*`, `dev.utre.utre`, `utre.service`, data in `~/.local/share/utre` (migrated by the daemon on first start). Old-to-new table in `plan/00 Overview.md`.
+- **Core:** subtask cycles resolve convergently (PR 4, schema **v9**, `task.parent_raw` plus a derived effective parent).
+- **Google (plan/19):** tasks out (PR 5: off until switched on per device, repeats go as a window of single events) and events on the phone (PR 7). **Phone sign-in works on a real phone (v0.7.1)**, using an Android OAuth client in the user's Cloud project (client id in the git-ignored `app/android/google.properties`; it is bound to package `dev.utre.utre` and the Arch laptop's debug key SHA-1, so a release key needs its own client). Tasks out has only run against a fake Google.
+- **Widget** (PR 6): source picker, scrolling list, **+** quick add, midnight refresh; a row tap opens the task.
+- **UI** (PRs 9 to 18, `plan/20 UI Iteration Log.md`): task cards with a facts line, due-date groups, segmented priority, 48 px touch targets, light-theme contrast (`UTRE_THEME=light|dark` forces a theme for QA), phone/tablet fixes, softer dialogs, subtle motion, Month grid ending above the add button, a **2 Days** view on the phone.
+- **Running here:** `utre.service` runs this checkout's `target/fast/utre-daemon` on `utre.db` (schema v9); the release desktop app was rebuilt from `main` at v0.7.1 (UI only since). Old DB backups: `~/.local/share/tick-alt/backups/tt-v8-pre-utre-*.db`. Phone and Mac are still listed as peers (same sync node id). `scripts/update-desktop.sh` rebuilds and restarts; after UI-only releases (0.7.2, 0.7.3) the desktop app was not rebuilt.
+- **Phone:** v0.7.3 pre-release on GitHub (`utre-0.7.3-arm64.apk`, same debug key, updates in place from v0.7.0 on). **The Mac is still on Tick Alt 0.3.0:** `Utre.app` is a new app (remove the old LaunchAgent `dev.tickalt.daemon` and `Tick Alt.app`, then `scripts/build-macos.sh` and `scripts/install-launch-agent.sh`).
+- **Open items:**
+  - Never tried on real hardware: widget Reconfigure menu, the midnight refresh firing, the 48 px touch layout, the 2 Days and Month changes on the phone, tasks out to a real Google account (and two devices pushing).
+  - Not seen visually: calendar current-time line, done and overlap states, hover/drag affordances on desktop, the Devices page with real peers, Google signed-in states on desktop.
+  - Google: put the consent screen **In production** (else refresh tokens last 7 days) and decide on app verification (plan/19 "Open"); tokens still in a file, not the keychain.
+  - Needs the user (plan/11): a release key plus the 4 CI secrets (plan/07), a LICENSE name, installing the PKGBUILD, M6 switch-over (TickTick import exists: `utre import ticktick`).
+  - Small: `resolve_parents` re-reads all task links on every parent op (fine at this size); the subagent worktrees under `.claude/worktrees/` can be removed (`git worktree prune`).
+- **Lessons:** Auto-fix events were unreliable, so wait with `gh pr checks <n> --watch`; `update-desktop.sh` backs up only `utre.db`, so back up by hand before any data-path change; a test launch of the app **must** set `UTRE_DB` and `UTRE_SOCKET`, or it opens the real DB (it happened once, no damage).
 
 ## Where things stand (handoff, 2026-11-25 evening: the Arch laptop)
 

@@ -50,6 +50,10 @@ Work happens on branch `worktree-google-calendar` (a git worktree under `.claude
    - **Needs the user (Google Cloud console):** create an OAuth client of type **Android** for package `dev.utre.utre` with the SHA-1 of the key that signs the APK (today the Arch laptop's debug key: `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android`; the release key later needs its own client). Same project as the desktop client; the consent screen needs the calendar scopes and the user as a test user. Put the new client's id in `google.properties` and build.
    - **Not tested:** the consent screen, silent token refresh and a real fetch on the phone (they need that client). Tested: the Rust authoriser and phone service against the fake Google, the Dart page states, and (below) the release build.
 
+## Status (2026-11-26, end of the multi-agent run)
+- Slices 1 to 5 are merged. **Phone sign-in was tried on the real phone with v0.7.1 and works** (Android client bound to `dev.utre.utre` and the Arch laptop's debug-key SHA-1). Slice 4 (tasks out) has not been tried against a real account yet.
+- A release key later needs its own Android OAuth client (new SHA-1).
+
 ## Open
 - Schema v8 means an older build refuses a v8 database (per device, so only a concern if a DB file is copied between machines).
 - **The app is unverified** (the user's call, 2026-11-26: fix later). Sign-in works now behind Google's "unverified app" warning (Advanced, then continue). Verification is Google's review process: https://support.google.com/cloud/answer/7454865. Check what it asks for the two scopes before starting; likely a verified domain (`utre.party` is live), the privacy policy and homepage already published, and a demo of the sign-in. Until then: the warning on every new device, and the 100-user cap (irrelevant here). Also check the consent screen is **In production**, or refresh tokens last 7 days.

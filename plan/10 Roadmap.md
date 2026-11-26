@@ -61,9 +61,9 @@ Split into **M5a** (local calendar on real tasks) and **M5b** (Google). Plan and
 
 - [ ] Week, Day and Month views (desktop and Android). All-day row, current-time line, overlap layout. ✅ Desktop (slice 3) and phone (slice 4) on the local calendar; see [[18 M5 Calendar Log]].
 - [x] Drag to schedule and resize. Unscheduled sidebar from a filter. ✅ Desktop panel and phone drawer (slices 3–4).
-- [ ] Google OAuth (desktop loopback PKCE, Android AuthorizationClient). Keychain storage.
-- [ ] Events in: calendar picker, incremental `syncToken` polling, cache.
-- [ ] Tasks out: "Tasks" calendar, deterministic event ids, idempotent push and reconcile.
+- [x] Google OAuth (desktop loopback PKCE, Android AuthorizationClient). ✅ Both work on real devices (2026-11-26). Keychain storage is still open.
+- [x] Events in: calendar picker, incremental `syncToken` polling, cache. ✅ Desktop and phone (plan/19 slices 2, 3, 5).
+- [ ] Tasks out: "Tasks" calendar, deterministic event ids, idempotent push and reconcile. 🟡 Code merged (plan/19 slice 4, PR 5), tested only against a fake Google: try it with a real account (switch on the Google page).
 - [ ] Put the OAuth app in production to avoid 7-day token expiry.
 
 **Exit:** the calendar replaces TickTick's for daily time-blocking.
