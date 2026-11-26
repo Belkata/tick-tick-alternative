@@ -1,5 +1,7 @@
 //! A Google session: sign in once, then ask for a valid access token whenever one is needed.
 
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -17,49 +19,34 @@ const SIGN_IN_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 /// Tries per request when Google says "slow down" (429, rate-limit 403, 5xx).
 const ATTEMPTS: u32 = 5;
 
-pub struct Session {
-    pub(crate) http: reqwest::Client,
-    pub(crate) endpoints: Endpoints,
+/// Where a session gets its access tokens. The desktop signs in through the browser and
+/// refreshes its own tokens ([`LoopbackAuthorizer`]); Android asks Google Play services
+/// ([`crate::android::AndroidAuthorizer`]).
+pub trait Authorizer: Send + Sync {
+    fn is_signed_in(&self) -> Result<bool>;
+    /// Forgets this device's tokens. (Revoking at Google is done in the user's account.)
+    fn sign_out(&self) -> Result<()>;
+    /// A valid access token, fresh when `force`d (after a 401). Answers
+    /// [`Error::SignedOut`] when the user has to sign in again.
+    fn access_token(&self, force: bool) -> BoxFuture<'_, Result<String>>;
+}
+
+pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+/// The desktop's authoriser: browser sign-in with a loopback redirect, then refresh tokens.
+pub struct LoopbackAuthorizer {
+    http: reqwest::Client,
+    endpoints: Endpoints,
     secrets: ClientSecrets,
     store: Arc<dyn TokenStore>,
     /// One refresh at a time, so concurrent requests don't each spend the refresh token.
     refreshing: tokio::sync::Mutex<()>,
-    /// First back-off delay; doubles on each retry. Tests shorten it.
-    pub retry_base: Duration,
 }
 
-impl Session {
-    pub fn new(secrets: ClientSecrets, store: Arc<dyn TokenStore>) -> Session {
-        Session::with_endpoints(secrets, store, Endpoints::default())
-    }
-
-    pub fn with_endpoints(
-        secrets: ClientSecrets,
-        store: Arc<dyn TokenStore>,
-        endpoints: Endpoints,
-    ) -> Session {
-        Session {
-            http: reqwest::Client::new(),
-            endpoints,
-            secrets,
-            store,
-            refreshing: tokio::sync::Mutex::new(()),
-            retry_base: Duration::from_secs(1),
-        }
-    }
-
-    pub fn is_signed_in(&self) -> Result<bool> {
-        Ok(self.store.load()?.is_some())
-    }
-
-    /// Forgets this device's tokens. (Revoking at Google is done in the user's account.)
-    pub fn sign_out(&self) -> Result<()> {
-        self.store.clear()
-    }
-
+impl LoopbackAuthorizer {
     /// Runs the browser sign-in. `open_browser` gets the URL to show the user (the caller
     /// decides how: `xdg-open`, `open`, a QR code). Returns once the tokens are saved.
-    pub async fn sign_in(&self, open_browser: impl FnOnce(&str)) -> Result<()> {
+    async fn sign_in(&self, open_browser: impl FnOnce(&str)) -> Result<()> {
         let loopback = Loopback::bind().await?;
         let redirect_uri = loopback.redirect_uri()?;
         let state = oauth::random_state()?;
@@ -87,10 +74,7 @@ impl Session {
         self.store.save(&tokens)
     }
 
-    /// A valid access token, refreshed if it is about to expire (or `force`d after a 401).
-    /// Clears the stored tokens and answers [`Error::SignedOut`] when Google refuses the
-    /// refresh token.
-    pub async fn access_token(&self, force: bool) -> Result<String> {
+    async fn token(&self, force: bool) -> Result<String> {
         let _one_at_a_time = self.refreshing.lock().await;
         let Some(tokens) = self.store.load()? else {
             return Err(Error::SignedOut);
@@ -116,6 +100,96 @@ impl Session {
             }
             Err(e) => Err(e),
         }
+    }
+}
+
+impl Authorizer for LoopbackAuthorizer {
+    fn is_signed_in(&self) -> Result<bool> {
+        Ok(self.store.load()?.is_some())
+    }
+
+    fn sign_out(&self) -> Result<()> {
+        self.store.clear()
+    }
+
+    /// Refreshes shortly before the access token expires, and clears the stored tokens
+    /// when Google refuses the refresh token.
+    fn access_token(&self, force: bool) -> BoxFuture<'_, Result<String>> {
+        Box::pin(self.token(force))
+    }
+}
+
+pub struct Session {
+    pub(crate) http: reqwest::Client,
+    pub(crate) endpoints: Endpoints,
+    auth: Arc<dyn Authorizer>,
+    /// Set for the desktop's browser sign-in; `None` when another authoriser (Android) owns it.
+    loopback: Option<Arc<LoopbackAuthorizer>>,
+    /// First back-off delay; doubles on each retry. Tests shorten it.
+    pub retry_base: Duration,
+}
+
+impl Session {
+    pub fn new(secrets: ClientSecrets, store: Arc<dyn TokenStore>) -> Session {
+        Session::with_endpoints(secrets, store, Endpoints::default())
+    }
+
+    pub fn with_endpoints(
+        secrets: ClientSecrets,
+        store: Arc<dyn TokenStore>,
+        endpoints: Endpoints,
+    ) -> Session {
+        let http = crate::http_client();
+        let loopback = Arc::new(LoopbackAuthorizer {
+            http: http.clone(),
+            endpoints: endpoints.clone(),
+            secrets,
+            store,
+            refreshing: tokio::sync::Mutex::new(()),
+        });
+        Session {
+            http,
+            endpoints,
+            auth: loopback.clone(),
+            loopback: Some(loopback),
+            retry_base: Duration::from_secs(1),
+        }
+    }
+
+    /// A session whose tokens come from `auth` (Android's Google Play services).
+    pub fn with_authorizer(auth: Arc<dyn Authorizer>, endpoints: Endpoints) -> Session {
+        Session {
+            http: crate::http_client(),
+            endpoints,
+            auth,
+            loopback: None,
+            retry_base: Duration::from_secs(1),
+        }
+    }
+
+    pub fn is_signed_in(&self) -> Result<bool> {
+        self.auth.is_signed_in()
+    }
+
+    /// Forgets this device's tokens. (Revoking at Google is done in the user's account.)
+    pub fn sign_out(&self) -> Result<()> {
+        self.auth.sign_out()
+    }
+
+    /// Runs the desktop's browser sign-in (see [`LoopbackAuthorizer`]). Android signs in
+    /// through its own consent screen instead and never calls this.
+    pub async fn sign_in(&self, open_browser: impl FnOnce(&str)) -> Result<()> {
+        match &self.loopback {
+            Some(l) => l.sign_in(open_browser).await,
+            None => Err(Error::SignIn(
+                "this device signs in through its own consent screen".into(),
+            )),
+        }
+    }
+
+    /// A valid access token, refreshed if it is about to expire (or `force`d after a 401).
+    pub async fn access_token(&self, force: bool) -> Result<String> {
+        self.auth.access_token(force).await
     }
 
     /// `GET {api_base}/{segments...}?{query}` with the bearer token. Retries a 401 once with

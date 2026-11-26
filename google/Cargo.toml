@@ -18,6 +18,10 @@ tokio = { version = "1", features = ["net", "io-util", "rt", "sync", "time"] }
 utre-core = { path = "../core" }
 url = "2"
 
+[target.'cfg(target_os = "android")'.dependencies]
+rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs", "std", "tls12"] }
+webpki-roots = "1"
+
 [dev-dependencies]
 chrono-tz = "0.10"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

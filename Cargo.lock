@@ -5375,6 +5375,7 @@ dependencies = [
  "chrono-tz",
  "getrandom 0.4.3",
  "reqwest",
+ "rustls",
  "serde",
  "serde_json",
  "sha2",
@@ -5382,6 +5383,7 @@ dependencies = [
  "tokio",
  "url",
  "utre-core",
+ "webpki-roots",
 ]
 
 [[package]]
