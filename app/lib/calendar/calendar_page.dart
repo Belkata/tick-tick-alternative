@@ -63,7 +63,9 @@ class TaskEvent extends KalenderEvent {
           taskId: row.id,
           title: row.title,
           startAt: at.millisecondsSinceEpoch,
-          endAt: at.add(const Duration(minutes: 30)).millisecondsSinceEpoch,
+          endAt: at
+              .add(Duration(minutes: row.durationMin ?? 30))
+              .millisecondsSinceEpoch,
           allDay: false,
           done: false,
           movable: true,

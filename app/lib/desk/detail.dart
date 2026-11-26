@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../src/rust/api/tasks.dart';
 import 'controller.dart';
 import 'date_picker.dart';
+import 'duration_picker.dart';
 import 'markdown.dart';
 import 'sidebar.dart' show askText;
 import 'task_list.dart';
@@ -100,6 +101,17 @@ class DetailPane extends StatelessWidget {
             inline: true,
             onSave: (v) => c.run(() => db.setStart(id: id, text: v)),
           ),
+        ),
+      ),
+      PropRow(
+        icon: Icons.timelapse_outlined,
+        label: 'Duration',
+        child: _DurationField(
+          minutes: r.durationMin,
+          // A timed task's block runs from its start (else due) for this long.
+          anchorMs: r.allDay ? null : (startMs ?? dueMs),
+          onPicked: (p) =>
+              c.run(() => db.setDuration(id: id, minutes: p.minutes)),
         ),
       ),
       PropRow(
@@ -671,6 +683,90 @@ class _DateField extends StatelessWidget {
             if (picked != null) await onPicked(picked);
           },
         ),
+      ],
+    );
+  }
+}
+
+/// The Duration row's value: "45 min", "1 h 30 min" or "No duration", with the block's
+/// time range under it when the task is timed. Tapping opens the picker.
+class _DurationField extends StatelessWidget {
+  const _DurationField({
+    required this.minutes,
+    required this.anchorMs,
+    required this.onPicked,
+  });
+
+  final int? minutes;
+  final int? anchorMs;
+  final Future<void>? Function(PickedDuration) onPicked;
+
+  static String _hm(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    final touch = isTouch(context);
+    final m = minutes;
+    final a = anchorMs;
+    String? range;
+    if (m != null && a != null) {
+      final start = DateTime.fromMillisecondsSinceEpoch(a);
+      final end = start.add(Duration(minutes: m));
+      range = '${_hm(start)} – ${_hm(end)}';
+    }
+    return Row(
+      children: [
+        Expanded(
+          child: FocusRing(
+            radius: 6,
+            child: InkWell(
+              key: const Key('detail-duration'),
+              borderRadius: BorderRadius.circular(6),
+              onTap: () async {
+                final picked = await showDurationPicker(context, initial: m);
+                if (picked != null) await onPicked(picked);
+              },
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: touch ? 10 : 4),
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  children: [
+                    Text(
+                      m == null ? 'No duration' : durationLabel(m),
+                      style: manrope(
+                        13,
+                        m == null ? FontWeight.w500 : FontWeight.w600,
+                        color: m == null ? s.mute : s.fg,
+                      ),
+                    ),
+                    if (range != null)
+                      Text(
+                        range,
+                        key: const Key('detail-duration-range'),
+                        style: manrope(11.5, FontWeight.w500, color: s.mute),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (m != null)
+          IconButton(
+            key: const Key('detail-duration-clear'),
+            tooltip: 'Clear the duration',
+            constraints: BoxConstraints.tightFor(
+              width: touch ? 48 : 32,
+              height: touch ? 48 : 32,
+            ),
+            padding: EdgeInsets.zero,
+            iconSize: 14,
+            icon: Icon(Icons.close, color: s.mute),
+            onPressed: () => onPicked(const PickedDuration.cleared()),
+          ),
       ],
     );
   }

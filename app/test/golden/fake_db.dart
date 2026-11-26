@@ -49,6 +49,7 @@ TaskRow row(
   int checkDone = 0,
   int checkTotal = 0,
   int subtasks = 0,
+  int? duration,
 }) => TaskRow(
   id: id,
   title: title,
@@ -61,6 +62,7 @@ TaskRow row(
   dueLabel: dueLabel,
   overdue: overdue,
   dueToday: dueToday,
+  durationMin: duration,
   done: done,
   deleted: false,
   repeating: repeating,
@@ -101,6 +103,7 @@ List<TaskRow> sampleTasks([DateTime? base]) {
       tags: [work, deepFocus],
       checkDone: 2,
       checkTotal: 5,
+      duration: 90,
     ),
     row(
       't3',
@@ -131,6 +134,7 @@ List<TaskRow> sampleTasks([DateTime? base]) {
       dueLabel: 'Sun 29 Nov 18:00',
       list: 'Home',
       subtasks: 3,
+      duration: 45,
     ),
     row(
       't6',
@@ -288,8 +292,9 @@ class FakeDb implements TaskDb {
   @override
   Future<List<TaskRow>> tasks({required TaskView view}) async =>
       switch (view.kind) {
-        ViewKind.completed => _tasks.where((t) => t.done).toList(),
-        _ => _tasks.where((t) => !t.done).toList(),
+        ViewKind.completed =>
+          _tasks.where((t) => t.done).map(_withDuration).toList(),
+        _ => _tasks.where((t) => !t.done).map(_withDuration).toList(),
       };
 
   @override
@@ -298,9 +303,41 @@ class FakeDb implements TaskDb {
     'priority_desc',
   ];
 
+  /// Lengths set through `setDuration`, by task id (`null` = cleared).
+  final Map<String, int?> durations = {};
+
+  TaskRow _withDuration(TaskRow r) {
+    if (!durations.containsKey(r.id)) return r;
+    return TaskRow(
+      id: r.id,
+      title: r.title,
+      priority: r.priority,
+      dueAt: r.dueAt,
+      allDay: r.allDay,
+      dueLabel: r.dueLabel,
+      overdue: r.overdue,
+      dueToday: r.dueToday,
+      durationMin: durations[r.id],
+      done: r.done,
+      deleted: r.deleted,
+      repeating: r.repeating,
+      listName: r.listName,
+      tags: r.tags,
+      checklistDone: r.checklistDone,
+      checklistTotal: r.checklistTotal,
+      subtasks: r.subtasks,
+      parentId: r.parentId,
+      whenLabel: r.whenLabel,
+    );
+  }
+
+  @override
+  Future<void> setDuration({required String id, int? minutes}) async =>
+      durations[id] = minutes;
+
   @override
   Future<TaskDetail?> task({required String id}) async =>
-      detailOf(_tasks.firstWhere((t) => t.id == id));
+      detailOf(_withDuration(_tasks.firstWhere((t) => t.id == id)));
 
   @override
   Future<List<CalendarItem>> calendar({

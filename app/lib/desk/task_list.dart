@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../src/rust/api/tasks.dart';
 import 'controller.dart';
+import 'duration_picker.dart' show durationShort;
 import 'task_sort.dart';
 import 'theme.dart';
 
@@ -488,6 +489,11 @@ class _TaskCardState extends State<TaskCard> {
               style: manrope(11.5, FontWeight.w600, color: dueColor),
             ),
           ],
+        ),
+      if (row.durationMin != null)
+        _Meta(
+          icon: Icons.timelapse_outlined,
+          text: durationShort(row.durationMin!),
         ),
       if (row.checklistTotal > 0)
         _Meta(
