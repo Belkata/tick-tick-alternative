@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:utre/desk/controller.dart';
 import 'package:utre/src/rust/api/tasks.dart';
 
+import 'golden/fake_db.dart';
+
 /// A core whose sidebar answers when the test says so.
 class _SlowDb implements TaskDb {
   final sidebarGate = Completer<Sidebar>();
@@ -20,6 +22,7 @@ class _SlowDb implements TaskDb {
 
 void main() {
   midnightTests();
+  changeTests();
   test('a reload that finishes after dispose does not notify', () async {
     final db = _SlowDb();
     final c = DeskController(db);
@@ -60,6 +63,58 @@ void midnightTests() {
     now = DateTime(2026, 11, 26, 23, 59, 30);
     await tester.pump(const Duration(seconds: 40));
     expect(db.sidebars, 1);
+    c.dispose();
+  });
+}
+
+class _ChangingDb extends FakeDb {
+  final events = StreamController<int>.broadcast();
+  int sidebars = 0;
+
+  /// When set, each sidebar call waits for it.
+  Completer<void>? gate;
+
+  @override
+  Stream<int> changes() => events.stream;
+
+  @override
+  Future<Sidebar> sidebar() async {
+    sidebars++;
+    await gate?.future;
+    return super.sidebar();
+  }
+}
+
+void changeTests() {
+  test('a change that alters nothing on screen does not notify', () async {
+    final db = _ChangingDb();
+    final c = DeskController(db);
+    await c.reload();
+    var notified = 0;
+    c.addListener(() => notified++);
+    db.events.add(1);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(db.sidebars, 2);
+    expect(notified, 0);
+    expect(c.unchangedReloads, 1);
+    c.dispose();
+  });
+
+  test('a burst of changes while reloading costs one more reload', () async {
+    final db = _ChangingDb();
+    final c = DeskController(db);
+    await c.reload();
+    db.sidebars = 0;
+    db.gate = Completer<void>();
+    for (var i = 0; i < 10; i++) {
+      db.events.add(i);
+    }
+    await Future<void>.delayed(Duration.zero);
+    expect(db.sidebars, 1);
+    db.gate!.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(db.sidebars, 2);
     c.dispose();
   });
 }
