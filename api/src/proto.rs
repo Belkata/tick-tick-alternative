@@ -222,6 +222,8 @@ api! {
     write SetPriority set_priority(id: String, priority: u8) -> () => |s| s.set_priority(&id, priority);
     write SetSchedule set_schedule(id: String, schedule: Option<Schedule>) -> ()
         => |s| s.set_schedule(&id, schedule.as_ref());
+    write SetTaskDuration set_task_duration(id: String, duration_min: Option<i64>) -> ()
+        => |s| s.set_task_duration(&id, duration_min);
     write SetTaskDue set_task_due(id: String, due_at: Option<i64>) -> () => |s| s.set_task_due(&id, due_at);
     write SetParent set_parent(id: String, parent_id: Option<String>) -> ()
         => |s| s.set_parent(&id, parent_id.as_deref());

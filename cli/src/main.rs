@@ -12,7 +12,7 @@ use show::{SHORT_ID_LEN, line, offset_label, parse_offset, priority_name, short_
 use utre_api::{Api, TaskView, ViewKind};
 use utre_core::{
     Filter, FilterRule, NewTask, ReminderKind, Repeat, RepeatMode, Schedule, Task, local_tz,
-    parse_when,
+    parse_duration, parse_when,
 };
 use utre_sync::replicate::SyncEvent;
 use utre_sync::{Relays, SyncNode};
@@ -217,9 +217,9 @@ struct TaskFields {
     /// Start date.
     #[arg(long)]
     start: Option<String>,
-    /// Length in minutes (calendar blocks).
+    /// Length: `90`, `45m`, `1h30`, `1:30`, or `none` to clear (calendar blocks).
     #[arg(long)]
-    duration: Option<i64>,
+    duration: Option<String>,
     /// none, low, medium, high (or 0–3).
     #[arg(long, short)]
     priority: Option<String>,
@@ -580,11 +580,10 @@ impl Ctx {
                 if no_date {
                     s.set_repeat(&id, None)?;
                     s.set_schedule(&id, None)?;
-                } else if fields.due.is_some()
-                    || fields.start.is_some()
-                    || fields.duration.is_some()
-                {
+                } else if fields.due.is_some() || fields.start.is_some() {
                     s.set_schedule(&id, Some(&self.schedule(&fields, Some(&task))?))?;
+                } else if let Some(d) = &fields.duration {
+                    s.set_task_duration(&id, parse_duration(d)?)?;
                 }
                 if let Some(show) = calendar {
                     s.set_in_calendar(&id, show)?;
@@ -864,8 +863,8 @@ impl Ctx {
         } else {
             Some(self.tz.name().to_string())
         };
-        if f.duration.is_some() {
-            s.duration_min = f.duration;
+        if let Some(d) = &f.duration {
+            s.duration_min = parse_duration(d)?;
         }
         Ok(s)
     }
@@ -945,7 +944,7 @@ impl Ctx {
             println!("  due       {}", when(d, t.all_day, self.now, self.tz));
         }
         if let Some(m) = t.duration_min {
-            println!("  duration  {m} min");
+            println!("  duration  {}", utre_core::duration_label(m));
         }
         if !t.in_calendar {
             println!("  calendar  hidden");
