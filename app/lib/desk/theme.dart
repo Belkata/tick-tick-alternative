@@ -216,6 +216,12 @@ ThemeData softTheme(Brightness brightness) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       titleTextStyle: manrope(17, FontWeight.w800, color: c.fg),
     ),
+    // Bottom sheets (the phone's date picker, menus) get the same untinted panel.
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: c.panel,
+      surfaceTintColor: Colors.transparent,
+      modalBackgroundColor: c.panel,
+    ),
     popupMenuTheme: PopupMenuThemeData(
       color: c.panel,
       surfaceTintColor: Colors.transparent,
