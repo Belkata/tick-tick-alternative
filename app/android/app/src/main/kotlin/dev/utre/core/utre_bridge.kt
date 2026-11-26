@@ -679,9 +679,15 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_utre_bridge_checksum_method_widgetdb_add(
     ): Int
+    external fun uniffi_utre_bridge_checksum_method_widgetdb_add_in(
+    ): Int
     external fun uniffi_utre_bridge_checksum_method_widgetdb_complete(
     ): Int
     external fun uniffi_utre_bridge_checksum_method_widgetdb_inbox(
+    ): Int
+    external fun uniffi_utre_bridge_checksum_method_widgetdb_sources(
+    ): Int
+    external fun uniffi_utre_bridge_checksum_method_widgetdb_tasks(
     ): Int
     external fun uniffi_utre_bridge_checksum_method_widgetdb_upcoming_reminders(
     ): Int
@@ -715,9 +721,15 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_utre_bridge_fn_method_widgetdb_add(`ptr`: Long,`title`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_utre_bridge_fn_method_widgetdb_add_in(`ptr`: Long,`kind`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`title`: RustBuffer.ByValue,`tz`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_utre_bridge_fn_method_widgetdb_complete(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
     external fun uniffi_utre_bridge_fn_method_widgetdb_inbox(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_utre_bridge_fn_method_widgetdb_sources(`ptr`: Long,`tz`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_utre_bridge_fn_method_widgetdb_tasks(`ptr`: Long,`kind`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`tz`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_utre_bridge_fn_method_widgetdb_upcoming_reminders(`ptr`: Long,`fromMs`: Long,`untilMs`: Long,`tz`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -848,10 +860,19 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_add() and 0xFFFF) != 16303) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_add_in() and 0xFFFF) != 7823) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_complete() and 0xFFFF) != 46071) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_inbox() and 0xFFFF) != 56612) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_sources() and 0xFFFF) != 25899) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_tasks() and 0xFFFF) != 26329) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_upcoming_reminders() and 0xFFFF) != 6560) {
@@ -1041,6 +1062,29 @@ public object FfiConverterUByte: FfiConverter<UByte, Byte> {
 
     override fun write(value: UByte, buf: ByteBuffer) {
         buf.put(value.toByte())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterUInt: FfiConverter<UInt, Int> {
+    override fun lift(value: Int): UInt {
+        return value.toUInt()
+    }
+
+    override fun read(buf: ByteBuffer): UInt {
+        return lift(buf.getInt())
+    }
+
+    override fun lower(value: UInt): Int {
+        return value.toInt()
+    }
+
+    override fun allocationSize(value: UInt) = 4UL
+
+    override fun write(value: UInt, buf: ByteBuffer) {
+        buf.putInt(value.toInt())
     }
 }
 
@@ -1248,6 +1292,12 @@ public interface WidgetDbInterface {
     fun `add`(`title`: kotlin.String): WidgetTask
     
     /**
+     * Quick add: the task lands in the source (list or tag, or what a filter asks for),
+     * else in the Inbox. Returns the new task's id.
+     */
+    fun `addIn`(`kind`: kotlin.String, `id`: kotlin.String, `title`: kotlin.String, `tz`: kotlin.String): kotlin.String
+    
+    /**
      * Returns false if the task was already done.
      */
     fun `complete`(`id`: kotlin.String): kotlin.Boolean
@@ -1256,6 +1306,17 @@ public interface WidgetDbInterface {
      * The Inbox, sorted like the app's views (the device's sort).
      */
     fun `inbox`(): List<WidgetTask>
+    
+    /**
+     * Everything a widget can show: the Inbox, then lists, tags and saved filters.
+     */
+    fun `sources`(`tz`: kotlin.String): List<WidgetSource>
+    
+    /**
+     * The open tasks of a source, sorted like the app's views. Fails if the list, tag or
+     * filter no longer exists (the widget then falls back to the Inbox).
+     */
+    fun `tasks`(`kind`: kotlin.String, `id`: kotlin.String, `tz`: kotlin.String): WidgetList
     
     /**
      * Reminders of open tasks firing in `[from_ms, until_ms)`, soonest first. `tz` is the
@@ -1384,6 +1445,28 @@ open class WidgetDb: Disposable, AutoCloseable, WidgetDbInterface
 
     
     /**
+     * Quick add: the task lands in the source (list or tag, or what a filter asks for),
+     * else in the Inbox. Returns the new task's id.
+     */
+    @Throws(CoreException::class)override fun `addIn`(`kind`: kotlin.String, `id`: kotlin.String, `title`: kotlin.String, `tz`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCallWithError(CoreException) { _status ->
+    UniffiLib.uniffi_utre_bridge_fn_method_widgetdb_add_in(
+        it,
+        
+        FfiConverterString.lower(`kind`),
+        FfiConverterString.lower(`id`),
+        FfiConverterString.lower(`title`),
+        FfiConverterString.lower(`tz`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Returns false if the task was already done.
      */
     @Throws(CoreException::class)override fun `complete`(`id`: kotlin.String): kotlin.Boolean {
@@ -1411,6 +1494,45 @@ open class WidgetDb: Disposable, AutoCloseable, WidgetDbInterface
     UniffiLib.uniffi_utre_bridge_fn_method_widgetdb_inbox(
         it,
         _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Everything a widget can show: the Inbox, then lists, tags and saved filters.
+     */
+    @Throws(CoreException::class)override fun `sources`(`tz`: kotlin.String): List<WidgetSource> {
+            return FfiConverterSequenceTypeWidgetSource.lift(
+    callWithHandle {
+    uniffiRustCallWithError(CoreException) { _status ->
+    UniffiLib.uniffi_utre_bridge_fn_method_widgetdb_sources(
+        it,
+        
+        FfiConverterString.lower(`tz`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * The open tasks of a source, sorted like the app's views. Fails if the list, tag or
+     * filter no longer exists (the widget then falls back to the Inbox).
+     */
+    @Throws(CoreException::class)override fun `tasks`(`kind`: kotlin.String, `id`: kotlin.String, `tz`: kotlin.String): WidgetList {
+            return FfiConverterTypeWidgetList.lift(
+    callWithHandle {
+    uniffiRustCallWithError(CoreException) { _status ->
+    UniffiLib.uniffi_utre_bridge_fn_method_widgetdb_tasks(
+        it,
+        
+        FfiConverterString.lower(`kind`),
+        FfiConverterString.lower(`id`),
+        FfiConverterString.lower(`tz`),_status)
 }
     }
     )
@@ -1493,6 +1615,47 @@ public object FfiConverterTypeWidgetDb: FfiConverter<WidgetDb, Long> {
 
 
 /**
+ * A source's tasks, with its name for the widget header.
+ */
+data class WidgetList (
+    var `name`: kotlin.String
+    , 
+    var `rows`: List<WidgetRow>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeWidgetList: FfiConverterRustBuffer<WidgetList> {
+    override fun read(buf: ByteBuffer): WidgetList {
+        return WidgetList(
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeWidgetRow.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: WidgetList) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterSequenceTypeWidgetRow.allocationSize(value.`rows`)
+    )
+
+    override fun write(value: WidgetList, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterSequenceTypeWidgetRow.write(value.`rows`, buf)
+    }
+}
+
+
+
+/**
  * A reminder for Android's AlarmManager.
  */
 data class WidgetReminder (
@@ -1541,6 +1704,149 @@ public object FfiConverterTypeWidgetReminder: FfiConverterRustBuffer<WidgetRemin
             FfiConverterString.write(value.`taskId`, buf)
             FfiConverterString.write(value.`title`, buf)
             FfiConverterLong.write(value.`fireAt`, buf)
+    }
+}
+
+
+
+/**
+ * One row of the widget's task list, already labelled by the core.
+ */
+data class WidgetRow (
+    var `id`: kotlin.String
+    , 
+    var `title`: kotlin.String
+    , 
+    /**
+     * 0 none, 1 low, 2 medium, 3 high.
+     */
+    var `priority`: kotlin.UByte
+    , 
+    /**
+     * `today`, `Fri 14:30`, `3 Dec`...
+     */
+    var `dueLabel`: kotlin.String?
+    , 
+    var `overdue`: kotlin.Boolean
+    , 
+    var `dueToday`: kotlin.Boolean
+    , 
+    /**
+     * `#rrggbb` of up to two coloured tags.
+     */
+    var `tagColors`: List<kotlin.String>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeWidgetRow: FfiConverterRustBuffer<WidgetRow> {
+    override fun read(buf: ByteBuffer): WidgetRow {
+        return WidgetRow(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: WidgetRow) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterUByte.allocationSize(value.`priority`) +
+            FfiConverterOptionalString.allocationSize(value.`dueLabel`) +
+            FfiConverterBoolean.allocationSize(value.`overdue`) +
+            FfiConverterBoolean.allocationSize(value.`dueToday`) +
+            FfiConverterSequenceString.allocationSize(value.`tagColors`)
+    )
+
+    override fun write(value: WidgetRow, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterUByte.write(value.`priority`, buf)
+            FfiConverterOptionalString.write(value.`dueLabel`, buf)
+            FfiConverterBoolean.write(value.`overdue`, buf)
+            FfiConverterBoolean.write(value.`dueToday`, buf)
+            FfiConverterSequenceString.write(value.`tagColors`, buf)
+    }
+}
+
+
+
+/**
+ * What a widget shows: the Inbox, or one list, tag or saved filter.
+ */
+data class WidgetSource (
+    /**
+     * `inbox`, `list`, `tag` or `filter`.
+     */
+    var `kind`: kotlin.String
+    , 
+    /**
+     * The list, tag or filter id; empty for the Inbox.
+     */
+    var `id`: kotlin.String
+    , 
+    var `name`: kotlin.String
+    , 
+    /**
+     * Open tasks it shows.
+     */
+    var `count`: kotlin.UInt
+    , 
+    /**
+     * Nesting level for tags; 0 otherwise.
+     */
+    var `depth`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeWidgetSource: FfiConverterRustBuffer<WidgetSource> {
+    override fun read(buf: ByteBuffer): WidgetSource {
+        return WidgetSource(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: WidgetSource) = (
+            FfiConverterString.allocationSize(value.`kind`) +
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterUInt.allocationSize(value.`count`) +
+            FfiConverterUInt.allocationSize(value.`depth`)
+    )
+
+    override fun write(value: WidgetSource, buf: ByteBuffer) {
+            FfiConverterString.write(value.`kind`, buf)
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterUInt.write(value.`count`, buf)
+            FfiConverterUInt.write(value.`depth`, buf)
     }
 }
 
@@ -1701,6 +2007,66 @@ public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
+    override fun read(buf: ByteBuffer): kotlin.String? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterString.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.String?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.String?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeWidgetReminder: FfiConverterRustBuffer<List<WidgetReminder>> {
     override fun read(buf: ByteBuffer): List<WidgetReminder> {
         val len = buf.getInt()
@@ -1719,6 +2085,62 @@ public object FfiConverterSequenceTypeWidgetReminder: FfiConverterRustBuffer<Lis
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeWidgetReminder.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeWidgetRow: FfiConverterRustBuffer<List<WidgetRow>> {
+    override fun read(buf: ByteBuffer): List<WidgetRow> {
+        val len = buf.getInt()
+        return List<WidgetRow>(len) {
+            FfiConverterTypeWidgetRow.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<WidgetRow>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeWidgetRow.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<WidgetRow>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeWidgetRow.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeWidgetSource: FfiConverterRustBuffer<List<WidgetSource>> {
+    override fun read(buf: ByteBuffer): List<WidgetSource> {
+        val len = buf.getInt()
+        return List<WidgetSource>(len) {
+            FfiConverterTypeWidgetSource.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<WidgetSource>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeWidgetSource.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<WidgetSource>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeWidgetSource.write(it, buf)
         }
     }
 }
