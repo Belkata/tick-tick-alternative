@@ -101,3 +101,27 @@ right cell when scrolled to the end, Devices only shows "Starting sync..." on th
 
 Before / after: `attachments/ui5-phone-detail-before.jpg`, `ui5-phone-detail-after-dark.jpg`,
 `ui5-phone-month-before.jpg`, `ui5-phone-month-after.jpg`; also `ui5-phone-week.jpg`, `ui5-phone-list-dark.jpg`.
+
+## Round 6: wide layouts, dialogs, sidebar state
+
+Method: the emulator again, resized to a tablet (`adb shell wm size 1920x1200; wm density 240`, undone at the end), because
+the Wayland desktop can't be clicked from a script here (Hyprland's `sendshortcut` does not deliver mouse buttons) and the
+wide shell, calendar and dialogs are the same widgets. Touch input, so hover states were not checked.
+- Edge-to-edge: on a wide Android window the status bar covered the sidebar title ("Utre") and the calendar header.
+  The wide shell is in a `SafeArea` (zero insets on desktop).
+- Two sidebar rows looked selected at once when a page (Calendar, Devices, Google) was open: the task view's tile stayed
+  lit. `DeskSidebar.viewSelected` is false while a page is open.
+- Dialogs and menus used Material 3's grey-green tinted surface, not the Soft panel. `dialogTheme`, `popupMenuTheme` and
+  `canvasColor` now use the panel colour with no tint and 18 / 12 px corners. The filter builder's rule group, which was
+  invisible against the tint, now reads as a bordered box.
+- Calendar: a 45 minute block in a narrow Week column showed "Review pu... 15:00" on one line after round 5's threshold
+  change; back to two lines (threshold 34 dp) with 2 dp top padding below 40 dp so the time is not clipped.
+Checked and fine: Week and Month on a wide window, the sort menu, the tag edit dialog, the detail pane inside the calendar,
+dark mode of the filter dialog and sidebar.
+
+Before / after: `attachments/ui6-wide-inset-before.jpg` / `ui6-wide-inset-after.jpg`, `ui6-filter-dialog-before.jpg` /
+`ui6-filter-dialog-after.jpg`, `ui6-sidebar-two-selected-before.jpg` / `ui6-sidebar-after-dark.jpg`, `ui6-calendar-week-wide.jpg`.
+
+Process note: a first desktop test launch without `$UTRE_DB` made the app open the real database directly (the
+daemon-or-file check compares paths), so for about 15 seconds it was open on the real file with no input sent. Always
+export `UTRE_DB` for the app as well as the daemon when testing on a desktop.
