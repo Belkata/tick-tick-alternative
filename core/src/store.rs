@@ -111,7 +111,9 @@ impl Store {
     /// Run `f` in an IMMEDIATE transaction with a clock for issuing ops.
     pub(crate) fn write<T>(&self, f: impl FnOnce(&mut Writer) -> Result<T>) -> Result<T> {
         self.conn.execute_batch("BEGIN IMMEDIATE")?;
-        let result = (|| {
+        // A panic inside `f` must not leave the transaction open: every later write
+        // on this connection would fail on the nested BEGIN.
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let mut w = Writer {
                 conn: &self.conn,
                 clock: load_clock(&self.conn, self.device)?,
@@ -119,8 +121,15 @@ impl Store {
             };
             let out = f(&mut w)?;
             save_clock(&self.conn, w.clock)?;
-            Ok(out)
-        })();
+            Ok::<_, Error>(out)
+        }));
+        let result = match result {
+            Ok(r) => r,
+            Err(panic) => {
+                let _ = self.conn.execute_batch("ROLLBACK");
+                std::panic::resume_unwind(panic);
+            }
+        };
         match result {
             Ok(v) => {
                 self.conn.execute_batch("COMMIT")?;
@@ -380,6 +389,24 @@ fn query_rows(conn: &Connection, sql: &str) -> Result<Vec<Vec<Value>>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_panic_in_a_write_rolls_back_and_leaves_the_store_usable() {
+        let s = Store::open_in_memory().unwrap();
+        let t = s.create_task(&crate::NewTask { title: "keep".into(), ..Default::default() }).unwrap();
+        let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = s.write(|w| {
+                w.set(Entity::Task, &t.id, "title", "lost")?;
+                panic!("boom");
+                #[allow(unreachable_code)]
+                Ok(())
+            });
+        }));
+        assert!(caught.is_err());
+        assert_eq!(s.get_task(&t.id).unwrap().unwrap().title, "keep");
+        s.create_task(&crate::NewTask { title: "next".into(), ..Default::default() })
+            .expect("no transaction left open");
+    }
 
     #[test]
     fn migrations_are_idempotent_on_reopen() {
