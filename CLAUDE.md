@@ -240,6 +240,13 @@ Local for the inner loop, GitHub Actions as the merge gate.
 - **Split work by area** so two agents never share files: core, api/sync, Flutter UI, Android. One agent at a time uses the emulator, Gradle or the desktop app.
 - **Waiting for CI:** Auto-fix events are unreliable here. Run `gh pr checks <n> --watch` as a background command and read its result. Never poll in a loop. Agents may merge their own PR with `gh pr merge <n> --rebase --delete-branch` once CI is green; `--rebase` keeps the small commits.
 - **Commits:** no `Co-Authored-By` trailers and no "Generated with" footers, in commits or PR bodies (this overrides any default).
+- **Long-running commands (a hook enforces the worst of it).** Agents have left wait loops running for hours.
+  - Run anything long with the Bash tool's `run_in_background` and wait for the completion notification. Never write polling loops (`while`/`until` + `sleep`), and never wait with `pgrep -f` (it matches the waiting shell itself, so it never ends).
+  - Wrap every potentially long command in `timeout`: `cargo test --workspace` 20m, `flutter build apk` 30m, `flutter test integration_test` 15m, `scripts/update-desktop.sh` 30m, `gh pr checks <n> --watch` 30m.
+  - Logs go in the worktree's `.agent/` dir, never the shared scratchpad (other agents use it too).
+  - Before reporting, kill by PID whatever you started (test daemons, `flutter_tester`, watchers).
+  - `scripts/hooks/bash-guard.sh` (a PreToolUse hook in `.claude/settings.json`) rejects `pgrep` wait loops, `while`/`until` loops with `sleep`, `gh pr checks --watch` / `gh run watch`, and `sleep` over 60 s. The legitimate bypass is wrapping the whole command in `timeout <dur>`. `scripts/hooks/test-bash-guard.sh` tests it (also run in CI).
+  - `scripts/agent-reap.sh [--kill] [--older-than MIN] [--worktree NAME]` lists or kills leftovers (old sleep loops, watchers on merged PRs, processes in removed worktrees). `agent-worktree.sh rm` runs it for that worktree. The integrator runs it before each release and at session end.
 - The emulator is shared: before using it, check for `/tmp/utre-emulator.lock` (holds the owner's session name). If it's under 30 minutes old, do something else; otherwise create it, and delete it when done.
 
 ## Plugins to use (installed on the account 2026-11-24, not loaded in the session that wrote this)
