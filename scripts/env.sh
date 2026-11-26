@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Source this before building: `source scripts/env.sh`
 # Toolchain locations on the dev Mac and the Arch laptop (see plan/13 M0 Spike Log.md).
 export PATH="$HOME/.cargo/bin:$PATH"
