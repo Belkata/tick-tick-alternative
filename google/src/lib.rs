@@ -8,9 +8,11 @@
 //! - [`tokens`]: where a device keeps its tokens (never synced between devices).
 //! - [`session`]: a signed-in session that keeps its access token fresh.
 //! - [`calendar`]: listing calendars and the incremental events fetch.
+//! - [`push`]: tasks out to the "Tasks" calendar.
 
 pub mod calendar;
 pub mod oauth;
+pub mod push;
 pub mod session;
 pub mod tokens;
 
@@ -19,6 +21,7 @@ mod testutil;
 
 pub use calendar::{EventSync, sync_calendars};
 pub use oauth::{ClientSecrets, Endpoints, SCOPES};
+pub use push::{PushReport, push_tasks};
 pub use session::Session;
 pub use tokens::{FileTokenStore, TokenStore, Tokens};
 
