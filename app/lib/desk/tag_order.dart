@@ -57,3 +57,22 @@ List<NavItem> applyTagMove(List<NavItem> tags, String id, String? before) {
   }
   return [...rest.sublist(0, at), ...block, ...rest.sublist(at)];
 }
+
+/// The drop index (see [tagDrop]) that moves the item at `i` one place up (`dir` -1) or
+/// down (+1) among its siblings, or null at the end. For keyboard and screen readers.
+int? tagStep(List<NavItem> tags, int i, int dir) {
+  if (i < 0 || i >= tags.length) return null;
+  final t = tags[i];
+  bool sibling(int j) =>
+      tags[j].depth == t.depth && _parent(tags[j]) == _parent(t);
+  if (dir < 0) {
+    for (var j = i - 1; j >= 0; j--) {
+      if (sibling(j)) return j;
+    }
+    return null;
+  }
+  for (var j = _subtreeEnd(tags, i); j < tags.length; j++) {
+    if (sibling(j)) return _subtreeEnd(tags, j);
+  }
+  return null;
+}

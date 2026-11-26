@@ -77,4 +77,14 @@ void main() {
     expect(tagDrop(tags, 1, 4), isNull, reason: 'right after its subtree');
     expect(tagDrop(tags, 3, tags.length), isNull, reason: 'already last child');
   });
+
+  test('tagStep moves one place among siblings', () {
+    // home (1) up goes before work (0); down goes after shed, past its subtree.
+    expect(tagStep(tags, 1, -1), 0);
+    expect(tagStep(tags, 1, 1), 5);
+    expect(tagStep(tags, 0, -1), isNull);
+    expect(tagStep(tags, 4, 1), isNull);
+    expect(tagStep(tags, 3, -1), 2);
+    expect(tagStep(tags, 3, 1), isNull);
+  });
 }
