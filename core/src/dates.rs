@@ -136,7 +136,13 @@ pub(crate) fn day_range(token: &str, today: NaiveDate) -> Result<DayRange> {
             if let Some(n) = t.strip_suffix('d').and_then(|n| n.parse::<i64>().ok())
                 && (t.starts_with('+') || t.starts_with('-'))
             {
-                return Ok(DayRange::one(today + chrono::Duration::days(n)));
+                // `Duration::days` and `date + Duration` panic when out of range, and filter
+                // rules arrive from other devices, so this must fail instead.
+                let day = chrono::Duration::try_days(n)
+                    .and_then(|d| today.checked_add_signed(d))
+                    .filter(|d| d.checked_add_days(Days::new(1)).is_some())
+                    .ok_or_else(bad)?;
+                return Ok(DayRange::one(day));
             }
             if let Ok(wd) = t.parse::<Weekday>() {
                 let ahead =
@@ -261,6 +267,14 @@ mod tests {
 
     fn d(s: &str) -> NaiveDate {
         NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap()
+    }
+
+    #[test]
+    fn huge_offsets_are_errors_not_panics() {
+        let today = d("2026-11-25");
+        for t in ["+99999999999999d", "-99999999999999d", "+9223372036854775807d", "+100000000d"] {
+            assert!(day_range(t, today).is_err(), "{t}");
+        }
     }
 
     #[test]
