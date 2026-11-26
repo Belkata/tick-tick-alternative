@@ -393,18 +393,24 @@ async fn run() -> Result<()> {
     let tz = TzName(local_tz().name().to_string());
     let mut last_check = now_ms();
     let mut tick = tokio::time::interval(TICK);
+    let mut sigterm =
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     loop {
         tokio::select! {
             _ = tick.tick() => {
                 // Fire reminders due since the last tick.
                 let (from, until) = (last_check, now_ms());
-                last_check = until;
                 let _ = tx.send(Cmd::SyncStatus);
                 let req = Request::UpcomingReminders { from, until, tz: tz.clone() };
                 match db.get::<Vec<ReminderFire>>(req).await {
-                    Ok(fires) => for f in fires {
-                        notify(tx.clone(), f.task_id, f.title);
-                    },
+                    Ok(fires) => {
+                        // Only a successful look moves the window on, so a failed one is
+                        // retried with the same start instead of losing its reminders.
+                        last_check = until;
+                        for f in fires {
+                            notify(tx.clone(), f.task_id, f.title);
+                        }
+                    }
                     Err(e) => eprintln!("reminders: {e:#}"),
                 }
             }
@@ -449,6 +455,8 @@ async fn run() -> Result<()> {
                 Cmd::Quit => break,
             },
             _ = tokio::signal::ctrl_c() => break,
+            // `systemctl --user stop` sends SIGTERM: shut the tray and sync node down cleanly too.
+            _ = sigterm.recv() => break,
         }
     }
     if let Some(h) = handle {
