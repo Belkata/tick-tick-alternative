@@ -650,6 +650,28 @@ internal open class UniffiForeignFutureResultVoid(
 internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
     fun callback(`callbackData`: Long,`result`: UniffiForeignFutureResultVoid.UniffiByValue,)
 }
+internal interface UniffiCallbackInterfaceAccessTokenSourceMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`stale`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "accessToken")
+internal open class UniffiVTableCallbackInterfaceAccessTokenSource(
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
+    @JvmField internal var `accessToken`: UniffiCallbackInterfaceAccessTokenSourceMethod0? = null,
+) : Structure() {
+    class UniffiByValue(
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+        `uniffiClone`: UniffiCallbackInterfaceClone? = null,
+        `accessToken`: UniffiCallbackInterfaceAccessTokenSourceMethod0? = null,
+    ): UniffiVTableCallbackInterfaceAccessTokenSource(`uniffiFree`,`uniffiClone`,`accessToken`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceAccessTokenSource) {
+        `uniffiFree` = other.`uniffiFree`
+        `uniffiClone` = other.`uniffiClone`
+        `accessToken` = other.`accessToken`
+    }
+
+}
 
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
@@ -676,6 +698,12 @@ internal object IntegrityCheckingUniffiLib {
 
     internal fun ensureInitialized() = Unit
     external fun uniffi_utre_bridge_checksum_func_background_sync(
+    ): Int
+    external fun uniffi_utre_bridge_checksum_func_google_init(
+    ): Int
+    external fun uniffi_utre_bridge_checksum_func_google_signed_in(
+    ): Int
+    external fun uniffi_utre_bridge_checksum_method_accesstokensource_access_token(
     ): Int
     external fun uniffi_utre_bridge_checksum_method_widgetdb_add(
     ): Int
@@ -709,10 +737,19 @@ internal object UniffiLib {
 
     init {
         Native.register(UniffiLib::class.java, findLibraryName(componentName = "utre_bridge"))
+        uniffiCallbackInterfaceAccessTokenSource.register(this)
         
     }
 
     internal fun ensureInitialized() = Unit
+    external fun uniffi_utre_bridge_fn_clone_accesstokensource(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_utre_bridge_fn_free_accesstokensource(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_utre_bridge_fn_init_callback_vtable_accesstokensource(`vtable`: UniffiVTableCallbackInterfaceAccessTokenSource,
+    ): Unit
+    external fun uniffi_utre_bridge_fn_method_accesstokensource_access_token(`ptr`: Long,`stale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_utre_bridge_fn_clone_widgetdb(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_utre_bridge_fn_free_widgetdb(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -735,6 +772,10 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_utre_bridge_fn_func_background_sync(`dbPath`: RustBuffer.ByValue,`keyPath`: RustBuffer.ByValue,`device`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_utre_bridge_fn_func_google_init(`dbPath`: RustBuffer.ByValue,`source`: Long,`configured`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_utre_bridge_fn_func_google_signed_in(`accessToken`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     external fun ffi_utre_bridge_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_utre_bridge_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -857,6 +898,15 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if ((lib.uniffi_utre_bridge_checksum_func_background_sync() and 0xFFFF) != 27317) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if ((lib.uniffi_utre_bridge_checksum_func_google_init() and 0xFFFF) != 2183) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_utre_bridge_checksum_func_google_signed_in() and 0xFFFF) != 39329) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_utre_bridge_checksum_method_accesstokensource_access_token() and 0xFFFF) != 28944) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if ((lib.uniffi_utre_bridge_checksum_method_widgetdb_add() and 0xFFFF) != 16303) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -972,7 +1022,38 @@ object UniffiWithHandle
  *
  * @suppress
  * */
-object NoHandle
+object NoHandle// Magic number for the Rust proxy to call using the same mechanism as every other method,
+// to free the callback once it's dropped by Rust.
+internal const val IDX_CALLBACK_FREE = 0
+// Callback return codes
+internal const val UNIFFI_CALLBACK_SUCCESS = 0
+internal const val UNIFFI_CALLBACK_ERROR = 1
+internal const val UNIFFI_CALLBACK_UNEXPECTED_ERROR = 2
+
+/**
+ * @suppress
+ */
+public abstract class FfiConverterCallbackInterface<CallbackInterface: Any>: FfiConverter<CallbackInterface, Long> {
+    internal val handleMap = UniffiHandleMap<CallbackInterface>()
+
+    internal fun drop(handle: Long) {
+        handleMap.remove(handle)
+    }
+
+    override fun lift(value: Long): CallbackInterface {
+        return handleMap.get(value)
+    }
+
+    override fun read(buf: ByteBuffer) = lift(buf.getLong())
+
+    override fun lower(value: CallbackInterface) = handleMap.insert(value)
+
+    override fun allocationSize(value: CallbackInterface) = 8UL
+
+    override fun write(value: CallbackInterface, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
 /**
  * The cleaner interface for Object finalization code to run.
  * This is the entry point to any implementation that we're using.
@@ -1188,6 +1269,330 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
         val byteBuf = toUtf8(value)
         buf.putInt(byteBuf.limit())
         buf.put(byteBuf)
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Implemented in Kotlin: Google Play services' `AuthorizationClient`, silently.
+ */
+public interface AccessTokenSource {
+    
+    /**
+     * `stale` is a token Google just refused; drop it before asking for a new one.
+     */
+    fun `accessToken`(`stale`: kotlin.String?): TokenAnswer
+    
+    companion object
+}
+
+/**
+ * Implemented in Kotlin: Google Play services' `AuthorizationClient`, silently.
+ */
+open class AccessTokenSourceImpl: Disposable, AutoCloseable, AccessTokenSource
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    /**
+     * Whether the current object has been destroyed and its reference is gone in the Rust side.
+     */
+    val uniffiIsDestroyed: Boolean get() = wasDestroyed.get()
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_utre_bridge_fn_free_accesstokensource(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_utre_bridge_fn_clone_accesstokensource(handle, status)
+        }
+    }
+
+    
+    /**
+     * `stale` is a token Google just refused; drop it before asking for a new one.
+     */override fun `accessToken`(`stale`: kotlin.String?): TokenAnswer {
+            return FfiConverterTypeTokenAnswer.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_utre_bridge_fn_method_accesstokensource_access_token(
+        it,
+        
+        FfiConverterOptionalString.lower(`stale`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfaceAccessTokenSource {
+    internal object `accessToken`: UniffiCallbackInterfaceAccessTokenSourceMethod0 {
+        override fun callback(`uniffiHandle`: Long,`stale`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeAccessTokenSource.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`accessToken`(
+                    FfiConverterOptionalString.lift(`stale`),
+                )
+            }
+            val writeReturn = { value: TokenAnswer -> uniffiOutReturn.setValue(FfiConverterTypeTokenAnswer.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypeAccessTokenSource.handleMap.remove(handle)
+        }
+    }
+
+    internal object uniffiClone: UniffiCallbackInterfaceClone {
+        override fun callback(handle: Long): Long {
+            return FfiConverterTypeAccessTokenSource.handleMap.clone(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfaceAccessTokenSource.UniffiByValue(
+        uniffiFree,
+        uniffiClone,
+        `accessToken`,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_utre_bridge_fn_init_callback_vtable_accesstokensource(vtable)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAccessTokenSource: FfiConverter<AccessTokenSource, Long> {
+    internal val handleMap = UniffiHandleMap<AccessTokenSource>()
+
+    override fun lower(value: AccessTokenSource): Long {
+        if (value is AccessTokenSourceImpl) {
+             // Rust-implemented object.  Clone the handle and return it
+            return value.uniffiCloneHandle()
+         } else {
+            // Kotlin object, generate a new vtable handle and return that.
+            return handleMap.insert(value)
+         }
+    }
+
+    override fun lift(value: Long): AccessTokenSource {
+        if ((value and 1.toLong()) == 0.toLong()) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return AccessTokenSourceImpl(UniffiWithHandle, value)
+        } else {
+            // Kotlin-generated handle, get the object from the handle map
+            return handleMap.remove(value)
+        }
+    }
+
+    override fun read(buf: ByteBuffer): AccessTokenSource {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: AccessTokenSource) = 8UL
+
+    override fun write(value: AccessTokenSource, buf: ByteBuffer) {
+        buf.putLong(lower(value))
     }
 }
 
@@ -1971,6 +2376,112 @@ public object FfiConverterTypeCoreError : FfiConverterRustBuffer<CoreException> 
 
 
 
+/**
+ * What Kotlin answers when asked for an access token (no UI).
+ */
+sealed class TokenAnswer {
+    
+    data class Token(
+        val `value`: kotlin.String) : TokenAnswer()
+        
+    {
+        
+
+        companion object
+    }
+    
+    /**
+     * The user has to consent again: never signed in, or revoked the access.
+     */
+    object ConsentNeeded : TokenAnswer()
+    
+    
+    /**
+     * A passing problem (no network, Play services busy). Stay signed in.
+     */
+    data class Unavailable(
+        val `message`: kotlin.String) : TokenAnswer()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTokenAnswer : FfiConverterRustBuffer<TokenAnswer>{
+    override fun read(buf: ByteBuffer): TokenAnswer {
+        return when(buf.getInt()) {
+            1 -> TokenAnswer.Token(
+                FfiConverterString.read(buf),
+                )
+            2 -> TokenAnswer.ConsentNeeded
+            3 -> TokenAnswer.Unavailable(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TokenAnswer): ULong = when(value) {
+        is TokenAnswer.Token -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`value`)
+            )
+        }
+        is TokenAnswer.ConsentNeeded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TokenAnswer.Unavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+        }
+    }
+
+    override fun write(value: TokenAnswer, buf: ByteBuffer) {
+        when(value) {
+            is TokenAnswer.Token -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`value`, buf)
+                Unit
+            }
+            is TokenAnswer.ConsentNeeded -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TokenAnswer.Unavailable -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 
 /**
  * @suppress
@@ -2189,6 +2700,37 @@ public object FfiConverterSequenceTypeWidgetTask: FfiConverterRustBuffer<List<Wi
 }
     )
     }
+    
+
+        /**
+         * Install the phone's Google service (Kotlin calls this at app and job start; the first
+         * call wins). `source` answers token requests; `configured` says whether this build has its
+         * Android OAuth client (plan/19 slice 5).
+         */ fun `googleInit`(`dbPath`: kotlin.String, `source`: AccessTokenSource, `configured`: kotlin.Boolean)
+        = 
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_utre_bridge_fn_func_google_init(
+    
+        
+        FfiConverterString.lower(`dbPath`),
+        FfiConverterTypeAccessTokenSource.lower(`source`),
+        FfiConverterBoolean.lower(`configured`),_status)
+}
+    
+    
+
+        /**
+         * The consent screen succeeded: remember the first access token (the app then fetches).
+         */
+    @Throws(CoreException::class) fun `googleSignedIn`(`accessToken`: kotlin.String)
+        = 
+    uniffiRustCallWithError(CoreException) { _status ->
+    UniffiLib.uniffi_utre_bridge_fn_func_google_signed_in(
+    
+        
+        FfiConverterString.lower(`accessToken`),_status)
+}
+    
     
 
 
