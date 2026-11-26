@@ -1084,6 +1084,8 @@ class _CalendarPageState extends State<CalendarPage> {
         }
         // Narrow blocks (side by side) keep the title and drop the time.
         final roomForTime = box.maxWidth >= 90;
+        // Under ~60 px a title wrapped over several lines breaks mid-word: one ellipsis line.
+        final slim = box.maxWidth < 60;
         if (short || i.allDay) {
           content = Row(
             children: [
@@ -1111,7 +1113,9 @@ class _CalendarPageState extends State<CalendarPage> {
           );
         } else {
           // As many title lines as fit above the time (16 px each).
-          final lines = ((box.maxHeight - 22) / 16).floor().clamp(1, 4);
+          final lines = slim
+              ? 1
+              : ((box.maxHeight - 22) / 16).floor().clamp(1, 4);
           content = ClipRect(
             child: OverflowBox(
               alignment: Alignment.topLeft,
@@ -1127,13 +1131,15 @@ class _CalendarPageState extends State<CalendarPage> {
                       ?rep,
                     ],
                   ),
-                  const SizedBox(height: 1),
-                  Text(
-                    time,
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
-                    style: manrope(11, FontWeight.w500, color: s.mute),
-                  ),
+                  if (!slim) ...[
+                    const SizedBox(height: 1),
+                    Text(
+                      time,
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                      style: manrope(11, FontWeight.w500, color: s.mute),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1156,9 +1162,9 @@ class _CalendarPageState extends State<CalendarPage> {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
-                      6,
+                      slim ? 3 : 6,
                       short || i.allDay ? 0 : (box.maxHeight < 40 ? 2 : 4),
-                      6,
+                      slim ? 2 : 6,
                       0,
                     ),
                     child: short || i.allDay
@@ -1229,7 +1235,11 @@ class _CalendarPageState extends State<CalendarPage> {
           );
         }
         final short = g.allDay || box.maxHeight < 34;
-        final lines = ((box.maxHeight - 22) / 16).floor().clamp(1, 4);
+        // Under ~60 px: one ellipsis line, no time.
+        final slim = box.maxWidth < 60;
+        final lines = slim
+            ? 1
+            : ((box.maxHeight - 22) / 16).floor().clamp(1, 4);
         final title = Text(
           g.summary,
           maxLines: short ? 1 : lines,
@@ -1250,9 +1260,9 @@ class _CalendarPageState extends State<CalendarPage> {
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
-                    6,
+                    slim ? 3 : 6,
                     short ? 0 : (box.maxHeight < 40 ? 2 : 4),
-                    6,
+                    slim ? 2 : 6,
                     0,
                   ),
                   child: short
@@ -1284,17 +1294,19 @@ class _CalendarPageState extends State<CalendarPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 title,
-                                const SizedBox(height: 1),
-                                Text(
-                                  time,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.clip,
-                                  style: manrope(
-                                    11,
-                                    FontWeight.w500,
-                                    color: s.mute,
+                                if (!slim) ...[
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    time,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.clip,
+                                    style: manrope(
+                                      11,
+                                      FontWeight.w500,
+                                      color: s.mute,
+                                    ),
                                   ),
-                                ),
+                                ],
                               ],
                             ),
                           ),
