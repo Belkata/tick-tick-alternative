@@ -70,10 +70,15 @@ class FakeGoogle implements GoogleSource {
                 summary: c.summary,
                 color: c.color,
                 selected: on,
+                primary: c.primary,
+                accessRole: c.accessRole,
               )
             : c,
     ];
   }
+
+  /// Tell listeners something changed, as the core's change stream does.
+  void pingChanges() => _changes.add(1);
 
   @override
   Stream<int> changes() => _changes.stream;
@@ -189,8 +194,14 @@ void main() {
           summary: 'Work',
           color: '#16a765',
           selected: true,
+          primary: true,
         ),
-        GcalCalendar(id: 'b', summary: 'Family', selected: false),
+        GcalCalendar(
+          id: 'b',
+          summary: 'Family',
+          selected: false,
+          primary: false,
+        ),
       ],
     );
     await show(tester, g);
