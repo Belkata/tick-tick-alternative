@@ -119,6 +119,8 @@ void main() {
       reason: 'default length',
     );
     expect(await db.unscheduled(), isEmpty);
+    // ...and its card is gone from the panel straight away.
+    expect(find.byKey(Key('unscheduled-${trip.id}')), findsNothing);
     // The dropped task opens in the detail pane.
     expect(find.byKey(const Key('cal-back-to-unscheduled')), findsOneWidget);
 

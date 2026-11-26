@@ -368,6 +368,15 @@ class _CalendarPageState extends State<CalendarPage> {
       _events.updateEvent(event: existing, updatedEvent: updated);
     }
     final item = updated.item;
+    // The card leaves the Unscheduled panel at once, not at the next reload.
+    if (fromPanel && mounted) {
+      setState(
+        () => _unscheduled = [
+          for (final r in _unscheduled)
+            if (r.id != item.taskId) r,
+        ],
+      );
+    }
     await c.run(
       () => db.placeBlock(
         id: item.taskId,
