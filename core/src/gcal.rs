@@ -873,6 +873,38 @@ mod tests {
     }
 
     #[test]
+    fn event_length_follows_the_duration() {
+        let s = Store::open_in_memory().unwrap();
+        let len = |e: &PushEvent| {
+            let at = |k: &str| {
+                chrono::DateTime::parse_from_rfc3339(e.body[k]["dateTime"].as_str().unwrap())
+                    .unwrap()
+                    .timestamp_millis()
+            };
+            (at("end") - at("start")) / 60_000
+        };
+        let a = dated(&s, "Dentist", NOW + 2 * DAY_MS, None);
+        assert_eq!(len(&s.gcal_push_plan(NOW).unwrap()[0]), DEFAULT_BLOCK_MIN);
+        let before =
+            s.gcal_push_plan(NOW).unwrap()[0].body["extendedProperties"]["private"]["tt_hash"]
+                .clone();
+        s.set_task_duration(&a.id, Some(45)).unwrap();
+        let plan = s.gcal_push_plan(NOW).unwrap();
+        assert_eq!(len(&plan[0]), 45);
+        assert_ne!(
+            plan[0].body["extendedProperties"]["private"]["tt_hash"],
+            before
+        );
+        // Every occurrence of a repeating task gets the same length.
+        let r = dated(&s, "Water plants", NOW + DAY_MS, Some("FREQ=DAILY"));
+        s.set_task_duration(&r.id, Some(20)).unwrap();
+        let base = task_event_id(&r.id).unwrap();
+        let plan = s.gcal_push_plan(NOW).unwrap();
+        let occ: Vec<_> = plan.iter().filter(|e| e.id.starts_with(&base)).collect();
+        assert!(occ.len() > 100 && occ.iter().all(|e| len(e) == 20));
+    }
+
+    #[test]
     fn repeats_become_a_window_of_occurrences() {
         let s = Store::open_in_memory().unwrap();
         let t = dated(&s, "Water plants", NOW + DAY_MS, Some("FREQ=DAILY"));
