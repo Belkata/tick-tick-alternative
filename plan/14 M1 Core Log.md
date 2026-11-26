@@ -52,9 +52,12 @@ Back to [[00 Overview]] · [[10 Roadmap]]. How M1 was built, and where it differ
 - **Spike databases migrate:** v1 rows get ops backfilled. Tested on the Spike 2 Mac DB: 3 tasks became 21 ops.
 
 ## Known gaps, for later milestones
-- **Subtask cycles from concurrent moves aren't resolved convergently yet (M3).**
+- **Subtask cycles from concurrent moves are resolved convergently (2026-11-26, schema v9).**
   - Local commands refuse cycles and depth over 3.
-  - But A-under-B on one device and B-under-A on another can both apply. The resolution "reject the later op on every device" from [[05 P2P Sync]] still needs implementing.
+  - A-under-B on one device and B-under-A on another both apply as ops, so the stored link is plain per-field LWW (`task.parent_raw`). `task.parent_id`, what everything reads, is the *effective* parent, derived by `oplog::resolve_parents` from the links and the HLC of the op that set each: links are taken oldest first, and one is kept only if it closes no loop and keeps the subtree within 3 levels, given those kept so far. A dropped link leaves its task top-level; it is re-evaluated whenever the links change (clearing the winner of a swap brings the loser back).
+  - It depends only on converged state (links + field clocks), so it agrees on every replica, after `compact()` and on a fresh device. "Reject the later op" from [[05 P2P Sync]], but as a derived view: no history is rewritten.
+  - `set_parent` re-reads the effective parent after writing and rolls back if the move didn't take. Depth counts Trash subtasks too, so every replica counts the same tree.
+  - Tests: `core/tests/subtask_cycles.rs`, plus parent moves in the `convergence` and `network_sim` property tests (both state and the effective tree must converge and stay a valid forest).
 - No manual ordering yet: `sort_key` exists, but nothing writes fractional indexes (M2 UI).
 - No auto-purge of Trash after 30 days, and no op-log compaction (M3).
 - Arch: the CLI hasn't been built or run there yet (the M1 exit criterion).
