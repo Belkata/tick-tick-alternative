@@ -174,12 +174,14 @@ class _CalendarPageState extends State<CalendarPage> {
       name: 'Day',
       initialTimeOfDay: const KalenderTime(hour: 7, minute: 30),
       initialHeightPerMinute: 0.85,
+      initialDateTime: c.now(),
       nowCallback: c.now,
     ),
     'Week': MultiDayViewConfiguration.week(
       name: 'Week',
       initialTimeOfDay: const KalenderTime(hour: 7, minute: 30),
       initialHeightPerMinute: 0.8,
+      initialDateTime: c.now(),
       nowCallback: c.now,
     ),
     // Phone only: seven columns leave a title 2 to 4 letters, two leave room to read.
@@ -188,10 +190,12 @@ class _CalendarPageState extends State<CalendarPage> {
       numberOfDays: 2,
       initialTimeOfDay: const KalenderTime(hour: 7, minute: 30),
       initialHeightPerMinute: 0.85,
+      initialDateTime: c.now(),
       nowCallback: c.now,
     ),
     'Month': MonthViewConfiguration.singleMonth(
       name: 'Month',
+      initialDateTime: c.now(),
       nowCallback: c.now,
     ),
   };
