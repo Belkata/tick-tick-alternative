@@ -118,6 +118,9 @@ void main() {
     await addTask(tester, 'Old idea');
     await tester.tap(find.text('Old idea'));
     await settle(tester);
+    // The pane scrolls; the extra Duration row pushes Trash below the window.
+    await tester.ensureVisible(find.byKey(const Key('detail-trash')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('detail-trash')));
     await settle(tester);
     expect(await db.inbox(), isEmpty);
@@ -127,6 +130,9 @@ void main() {
     await tester.tap(find.text('Old idea'));
     await settle(tester);
     expect(find.text('Restore'), findsOneWidget);
+    // The pane scrolls; the extra Duration row pushes Trash below the window.
+    await tester.ensureVisible(find.byKey(const Key('detail-trash')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('detail-trash')));
     await settle(tester);
     expect((await db.inbox()).length, 1);
@@ -550,6 +556,8 @@ void main() {
     expect(d.repeatRule, 'FREQ=DAILY');
     expect(d.repeatAfterCompletion, isTrue);
 
+    await tester.ensureVisible(find.byKey(const Key('add-reminder')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('add-reminder')));
     await settle(tester);
     await tester.tap(find.text('15 minutes before'));
