@@ -260,7 +260,8 @@ mod tests {
                     200,
                     r#"{"nextSyncToken":"SYNC1","items":[
                         {"id":"t","summary":"Call","start":{"dateTime":"2026-12-01T09:00:00Z"},
-                         "end":{"dateTime":"2026-12-01T09:30:00Z"}},
+                         "htmlLink":"https://www.google.com/calendar/event?eid=dA","location":"Room 4",
+                         "description":"Agenda","end":{"dateTime":"2026-12-01T09:30:00Z"}},
                         {"id":"gone","status":"cancelled"}]}"#,
                 )
                 .with(&["pageToken=E2"]),
@@ -279,7 +280,12 @@ mod tests {
         assert!(sync.full);
         assert_eq!(sync.next_sync_token.as_deref(), Some("SYNC1"));
         assert_eq!(sync.updates.len(), 3);
-        assert!(matches!(&sync.updates[1], GcalEventUpdate::Upsert(e) if e.summary == "Call"));
+        assert!(
+            matches!(&sync.updates[1], GcalEventUpdate::Upsert(e) if e.summary == "Call"
+            && e.html_link.as_deref() == Some("https://www.google.com/calendar/event?eid=dA")
+            && e.location.as_deref() == Some("Room 4")
+            && e.description.as_deref() == Some("Agenda"))
+        );
         assert!(matches!(&sync.updates[2], GcalEventUpdate::Remove { id } if id == "gone"));
         let first = &requests(&r)[0];
         assert!(first.contains("timeMin=") && first.contains("timeMax="));

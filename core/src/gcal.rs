@@ -167,6 +167,12 @@ pub struct GcalEvent {
     pub all_day: bool,
     pub html_link: Option<String>,
     pub color: Option<String>,
+    /// Plain text; may be empty. Old daemons leave both out.
+    #[serde(default)]
+    pub location: Option<String>,
+    /// Google's description: may hold HTML. The UI shows it as plain text.
+    #[serde(default)]
+    pub description: Option<String>,
 }
 
 /// What one `events.list` item means for the cache.
@@ -209,8 +215,16 @@ impl GcalEventUpdate {
             all_day,
             html_link: item["htmlLink"].as_str().map(str::to_string),
             color: None,
+            location: non_empty(&item["location"]),
+            description: non_empty(&item["description"]),
         }))
     }
+}
+
+fn non_empty(v: &Value) -> Option<String> {
+    v.as_str()
+        .filter(|s| !s.trim().is_empty())
+        .map(str::to_string)
 }
 
 /// `(epoch ms, all_day)` of a Google start/end object. All-day dates become floating
@@ -458,8 +472,9 @@ impl Store {
                 GcalEventUpdate::Upsert(e) => {
                     tx.execute(
                         "INSERT OR REPLACE INTO gcal_event
-                           (calendar_id, id, summary, start_at, end_at, all_day, html_link, color)
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                           (calendar_id, id, summary, start_at, end_at, all_day, html_link, color,
+                            location, description)
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                         params![
                             calendar_id,
                             e.id,
@@ -468,7 +483,9 @@ impl Store {
                             e.end_at,
                             e.all_day,
                             e.html_link,
-                            e.color
+                            e.color,
+                            e.location,
+                            e.description
                         ],
                     )?;
                 }
@@ -494,7 +511,7 @@ impl Store {
         let slack = 2 * DAY_MS;
         let mut q = self.conn.prepare(
             "SELECT e.calendar_id, e.id, e.summary, e.start_at, e.end_at, e.all_day,
-                    e.html_link, coalesce(e.color, c.color)
+                    e.html_link, coalesce(e.color, c.color), e.location, e.description
                FROM gcal_event e JOIN gcal_calendar c ON c.id = e.calendar_id
               WHERE c.selected = 1 AND e.start_at < ?2 AND e.end_at > ?1",
         )?;
@@ -508,6 +525,8 @@ impl Store {
                 all_day: r.get(5)?,
                 html_link: r.get(6)?,
                 color: r.get(7)?,
+                location: r.get(8)?,
+                description: r.get(9)?,
             })
         })?;
         let mut out = Vec::new();
@@ -598,6 +617,47 @@ mod tests {
                 GcalEventUpdate::Remove { .. }
             ));
         }
+    }
+
+    #[test]
+    fn link_location_and_description_are_stored_and_listed() {
+        let s = Store::open_in_memory().unwrap();
+        s.gcal_set_calendars(&[cal("a")]).unwrap();
+        s.gcal_select("a", true).unwrap();
+        let item = json!({"id":"x","summary":"Dentist","htmlLink":"https://www.google.com/calendar/event?eid=abc",
+            "location":"Main St 1","description":"<b>Bring</b> the card",
+            "start":{"date":"2026-12-02"},"end":{"date":"2026-12-03"}});
+        let bare = json!({"id":"y","summary":"Bare","location":"  ","start":{"date":"2026-12-02"},
+            "end":{"date":"2026-12-03"}});
+        s.gcal_apply(
+            "a",
+            true,
+            &[
+                GcalEventUpdate::parse("a", &item).unwrap(),
+                GcalEventUpdate::parse("a", &bare).unwrap(),
+            ],
+            Some("T"),
+        )
+        .unwrap();
+        let tz: Tz = "UTC".parse().unwrap();
+        let got = s.gcal_events(0, i64::MAX / 4, tz).unwrap();
+        let x = got.iter().find(|e| e.id == "x").unwrap();
+        assert_eq!(
+            x.html_link.as_deref(),
+            Some("https://www.google.com/calendar/event?eid=abc")
+        );
+        assert_eq!(x.location.as_deref(), Some("Main St 1"));
+        assert_eq!(x.description.as_deref(), Some("<b>Bring</b> the card"));
+        let y = got.iter().find(|e| e.id == "y").unwrap();
+        assert_eq!(
+            (&y.html_link, &y.location, &y.description),
+            (&None, &None, &None)
+        );
+        // Old daemons' JSON has no such fields.
+        let old = r#"{"calendar_id":"a","id":"z","summary":"s","start_at":0,"end_at":1,
+            "all_day":false,"html_link":null,"color":null}"#;
+        let e: GcalEvent = serde_json::from_str(old).unwrap();
+        assert_eq!((e.location, e.description), (None, None));
     }
 
     #[test]
