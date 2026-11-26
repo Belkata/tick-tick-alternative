@@ -36,6 +36,7 @@ dependencies:
   path_provider: ^2.1.6
   kalender: ^0.34.0
   qr_flutter: ^4.1.0
+  url_launcher: ^6.3.3
   mobile_scanner: ^7.5.0
 
 dev_dependencies:
