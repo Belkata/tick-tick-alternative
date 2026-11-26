@@ -48,6 +48,7 @@ import androidx.glance.color.ColorProvider
 import dev.utre.core.WidgetList
 import dev.utre.core.WidgetRow
 import dev.utre.utre.MainActivity
+import dev.utre.utre.reminders.Reminders
 import dev.utre.utre.sync.SyncWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -250,6 +251,11 @@ class CompleteTaskAction : ActionCallback {
         withContext(Dispatchers.IO) { UtreCore.db(context).complete(id) }
         // Redraw every placed widget, not just this one, so copies never disagree.
         TaskListWidget.refreshAll(context)
+        // A completed task's reminder alarm (or snooze) must not fire afterwards.
+        withContext(Dispatchers.IO) {
+            Reminders.cancelSnooze(context, id)
+            Reminders.schedule(context)
+        }
         // Send the change out soon rather than at the next 15-minute sync.
         SyncWorker.syncSoon(context)
     }
