@@ -55,6 +55,7 @@ erDiagram
 - Filtering on a tag **includes its descendants by default**. The filter builder offers an "exact" option to turn this off.
 - Renaming or moving a tag is a single op, so tasks don't need rewriting because they reference the tag id.
 - Arranging a tag (`Store::place_tag(id, before)`) writes one `sort_key` op: a base-36 key between its new neighbours (`core/src/order.rs`). The first arrangement of a set of siblings, or one that finds ties, numbers them all.
+- Lists and filters are arranged the same way (`Store::place_list`, `place_filter`, v0.8.4), through the shared `place_among`. Their `sort_key` columns and `field_spec` entries already existed, so there is no schema change. Never-arranged ones sort after the arranged ones, by name.
 
 ### List
 `id`, `name`, `color`, `icon`, `sort_key`, `archived`. Lists are flat: no folders, no sections.
