@@ -210,6 +210,9 @@ pub(crate) fn apply(conn: &Connection, op: &Op) -> Result<Applied> {
          ON CONFLICT (entity, entity_id, field) DO UPDATE SET hlc = excluded.hlc",
         params![op.entity.as_str(), op.entity_id, op.field, hlc],
     )?;
+    if op.entity == Entity::Task && op.field == "parent_id" {
+        resolve_parents(conn)?;
+    }
     Ok(Applied::Set)
 }
 
@@ -252,9 +255,16 @@ fn write_field(conn: &Connection, op: &Op) -> Result<bool> {
         return Ok(false);
     };
     ensure_row(conn, table, &op.entity_id)?;
-    // `table` and `field` come from the whitelist above, never from the op as-is.
+    // A task's synced `parent_id` lands in `parent_raw`; `resolve_parents` derives the
+    // effective `parent_id` column from it.
+    let column = if op.entity == Entity::Task && op.field == "parent_id" {
+        "parent_raw"
+    } else {
+        op.field.as_str()
+    };
+    // `table` and `column` come from the whitelist above, never from the op as-is.
     conn.execute(
-        &format!("UPDATE {table} SET {} = ?2 WHERE id = ?1", op.field),
+        &format!("UPDATE {table} SET {column} = ?2 WHERE id = ?1"),
         params![op.entity_id, value],
     )?;
     if op.entity == Entity::Task {
@@ -321,4 +331,72 @@ pub(crate) fn read_ops(conn: &Connection, after: Option<Hlc>) -> Result<Vec<Op>>
         });
     }
     Ok(ops)
+}
+
+/// Derive each task's effective `parent_id` from the synced links (`parent_raw`).
+///
+/// Concurrent moves can make a cycle (A under B on one device, B under A on another) or
+/// a chain deeper than [`crate::task::MAX_DEPTH`]. Every replica resolves that the same
+/// way, from nothing but the converged links and the HLC of the op that set each one:
+/// take the links oldest first, and keep a link only if it closes no loop and keeps the
+/// subtree within the depth limit, given the links kept so far. A dropped link leaves its
+/// task top-level for as long as it loses. The raw link stays stored, so it is
+/// re-evaluated whenever the links around it change. Local moves are checked against the
+/// same forest, and a new op is always the newest, so it is kept exactly when the local
+/// check passed it.
+pub(crate) fn resolve_parents(conn: &Connection) -> Result<()> {
+    use std::collections::HashMap;
+
+    let mut stmt = conn.prepare(
+        "SELECT t.id, t.parent_raw, COALESCE(fc.hlc, ''), t.parent_id FROM task t \
+         LEFT JOIN field_clock fc ON fc.entity = 'task' AND fc.entity_id = t.id \
+           AND fc.field = 'parent_id' \
+         WHERE t.parent_raw IS NOT NULL OR t.parent_id IS NOT NULL",
+    )?;
+    type Link = (String, Option<String>, String, Option<String>);
+    let mut links: Vec<Link> = stmt
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+    drop(stmt);
+    links.sort_by(|a, b| (&a.2, &a.0).cmp(&(&b.2, &b.0)));
+
+    let mut parent: HashMap<&str, &str> = HashMap::new();
+    let mut children: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (id, raw, _, _) in &links {
+        let Some(raw) = raw else { continue };
+        // Levels from the top down to `raw` (top-level = 1).
+        let mut depth = 1;
+        let mut cur = raw.as_str();
+        let mut loops = cur == id;
+        while let Some(p) = parent.get(cur) {
+            depth += 1;
+            if *p == id {
+                loops = true;
+                break;
+            }
+            cur = p;
+        }
+        if loops || depth + 1 + height(&children, id) > crate::task::MAX_DEPTH {
+            continue;
+        }
+        parent.insert(id, raw);
+        children.entry(raw).or_default().push(id);
+    }
+
+    for (id, _, _, effective) in &links {
+        let want = parent.get(id.as_str()).copied();
+        if effective.as_deref() != want {
+            conn.execute(
+                "UPDATE task SET parent_id = ?2 WHERE id = ?1",
+                params![id, want],
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn height(children: &std::collections::HashMap<&str, Vec<&str>>, id: &str) -> usize {
+    children.get(id).map_or(0, |cs| {
+        cs.iter().map(|c| 1 + height(children, c)).max().unwrap_or(0)
+    })
 }
