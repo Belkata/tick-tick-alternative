@@ -42,5 +42,5 @@ PNGs small), and `themed(...)` for a Soft-themed `MaterialApp`. Anything that re
 should take `goldenNow` (`DeskController(now: ...)`); a screen that still calls
 `DateTime.now()` needs fixture dates built from the real today (see `sampleTasks`).
 
-Glyphs missing from Manrope (such as the `▾` in the phone view picker) show as boxes: the
-test renderer has no system fallback font. That is a test artefact, not an app bug.
+Glyphs missing from Manrope show as boxes: the test renderer has no system fallback font,
+so use Material icons rather than characters such as `▾` in the UI (the phone view picker did).
