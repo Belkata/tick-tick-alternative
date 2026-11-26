@@ -96,20 +96,25 @@ class DetailPane extends StatelessWidget {
           label: 'Calendar',
           child: Row(
             children: [
-              Transform.scale(
-                scale: 0.75,
-                alignment: Alignment.centerLeft,
-                child: Switch(
-                  key: const Key('detail-in-calendar'),
-                  value: d.inCalendar,
-                  onChanged: (v) =>
-                      c.run(() => db.setInCalendar(id: id, visible: v)),
+              SizedBox(
+                width: 42,
+                child: FittedBox(
+                  alignment: Alignment.centerLeft,
+                  child: Switch(
+                    key: const Key('detail-in-calendar'),
+                    value: d.inCalendar,
+                    onChanged: (v) =>
+                        c.run(() => db.setInCalendar(id: id, visible: v)),
+                  ),
                 ),
               ),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   d.inCalendar ? 'Shown in Calendar' : 'Kept off the calendar',
-                  style: manrope(12.5, FontWeight.w500, color: s.mute),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: manrope(12, FontWeight.w500, color: s.mute),
                 ),
               ),
             ],
@@ -1098,57 +1103,67 @@ class _RepeatPicker extends StatelessWidget {
       if (current != null && !presets.containsKey(current)) current: current,
       '…': 'Custom rule…',
     };
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 8,
-      children: [
-        DropdownButton<String>(
-          key: const Key('detail-repeat'),
-          value: current ?? '',
-          isDense: true,
-          underline: const SizedBox.shrink(),
-          style: manrope(13, FontWeight.w600, color: s.fg),
-          items: [
-            for (final e in items.entries)
-              DropdownMenuItem(value: e.key, child: Text(e.value)),
-          ],
-          onChanged: (v) async {
-            if (v == null) return;
-            if (v == '…') {
-              final custom = await askText(
-                context,
-                title: 'Repeat rule (RRULE)',
-                hint: 'FREQ=MONTHLY;BYMONTHDAY=1',
-                initial: current ?? '',
-              );
-              if (custom != null && custom.trim().isNotEmpty) {
-                onSet(custom.trim(), afterCompletion);
-              }
-              return;
-            }
-            onSet(v.isEmpty ? null : v, afterCompletion);
-          },
-        ),
-        if (current != null)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 28,
-                child: Checkbox(
-                  key: const Key('repeat-after'),
-                  value: afterCompletion,
-                  visualDensity: VisualDensity.compact,
-                  onChanged: (v) => onSet(current, v ?? false),
-                ),
-              ),
-              Text(
-                'from completion',
-                style: manrope(12, FontWeight.w500, color: s.mute),
-              ),
-            ],
+    // The dropdown is as wide as its longest rule, so cap it to the room the pane has.
+    return LayoutBuilder(
+      builder: (context, box) => Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        children: [
+          SizedBox(
+            width: box.maxWidth.clamp(0, 170).toDouble(),
+            child: DropdownButton<String>(
+              key: const Key('detail-repeat'),
+              value: current ?? '',
+              isDense: true,
+              isExpanded: true,
+              underline: const SizedBox.shrink(),
+              style: manrope(13, FontWeight.w600, color: s.fg),
+              items: [
+                for (final e in items.entries)
+                  DropdownMenuItem(
+                    value: e.key,
+                    child: Text(e.value, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: (v) async {
+                if (v == null) return;
+                if (v == '…') {
+                  final custom = await askText(
+                    context,
+                    title: 'Repeat rule (RRULE)',
+                    hint: 'FREQ=MONTHLY;BYMONTHDAY=1',
+                    initial: current ?? '',
+                  );
+                  if (custom != null && custom.trim().isNotEmpty) {
+                    onSet(custom.trim(), afterCompletion);
+                  }
+                  return;
+                }
+                onSet(v.isEmpty ? null : v, afterCompletion);
+              },
+            ),
           ),
-      ],
+          if (current != null)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 28,
+                  child: Checkbox(
+                    key: const Key('repeat-after'),
+                    value: afterCompletion,
+                    visualDensity: VisualDensity.compact,
+                    onChanged: (v) => onSet(current, v ?? false),
+                  ),
+                ),
+                Text(
+                  'from completion',
+                  style: manrope(12, FontWeight.w500, color: s.mute),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
