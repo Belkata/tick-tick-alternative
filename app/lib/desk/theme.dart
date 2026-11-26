@@ -213,7 +213,10 @@ class TagPill extends StatelessWidget {
               onTap: onDeleted,
               borderRadius: BorderRadius.circular(8),
               child: Padding(
-                padding: const EdgeInsets.only(left: 2),
+                // A finger needs more than 12 px to hit the x.
+                padding: isTouch(context)
+                    ? const EdgeInsets.fromLTRB(6, 9, 8, 9)
+                    : const EdgeInsets.only(left: 2),
                 child: Icon(Icons.close, size: 12, color: s.mute),
               ),
             ),
@@ -274,3 +277,9 @@ class PriorityCheck extends StatelessWidget {
     );
   }
 }
+
+/// A touch screen (phone or tablet): controls there want 48 px targets.
+bool isTouch(BuildContext context) => switch (Theme.of(context).platform) {
+  TargetPlatform.android || TargetPlatform.iOS => true,
+  _ => false,
+};
