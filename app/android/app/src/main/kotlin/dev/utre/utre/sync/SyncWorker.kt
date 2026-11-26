@@ -45,7 +45,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             )
         }
         val n = NotificationCompat.Builder(applicationContext, SYNC_CHANNEL)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_utre)
             .setContentTitle("Syncing tasks")
             .setSilent(true)
             .build()
