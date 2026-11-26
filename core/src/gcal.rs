@@ -145,8 +145,15 @@ pub struct GcalCalendar {
     pub id: String,
     pub summary: String,
     pub color: Option<String>,
-    /// Whether its events show in the app's calendar.
+    /// Whether its events show in the app's calendar on this device. In a list fresh from
+    /// Google (what `Store::gcal_set_calendars` takes) it is Google's own `selected` flag.
     pub selected: bool,
+    /// The account's primary calendar.
+    #[serde(default)]
+    pub primary: bool,
+    /// Google's `accessRole`: owner, writer, reader or freeBusyReader.
+    #[serde(default)]
+    pub access_role: Option<String>,
 }
 
 /// A cached Google event, ready to draw.
@@ -218,14 +225,28 @@ fn when(v: &Value) -> Option<(i64, bool)> {
 }
 
 impl Store {
-    /// Replaces the list of Google calendars, keeping each one's selection and token.
+    /// Takes a fresh calendar list from Google (`selected` is Google's own flag). A calendar
+    /// the user has not chosen on this device follows that flag; a chosen one keeps its
+    /// choice. A calendar that turns hidden loses its cached events and token; one that
+    /// turns visible starts with a full fetch (it has no token).
     pub fn gcal_set_calendars(&self, calendars: &[GcalCalendar]) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
         for c in calendars {
             tx.execute(
-                "INSERT INTO gcal_calendar (id, summary, color) VALUES (?1, ?2, ?3)
-                 ON CONFLICT(id) DO UPDATE SET summary = ?2, color = ?3",
-                params![c.id, c.summary, c.color],
+                "INSERT INTO gcal_calendar
+                   (id, summary, color, selected, google_selected, is_primary, access_role)
+                 VALUES (?1, ?2, ?3, ?4, ?4, ?5, ?6)
+                 ON CONFLICT(id) DO UPDATE SET summary = ?2, color = ?3,
+                    google_selected = ?4, is_primary = ?5, access_role = ?6,
+                    selected = CASE WHEN chosen = 1 THEN selected ELSE ?4 END",
+                params![
+                    c.id,
+                    c.summary,
+                    c.color,
+                    c.selected,
+                    c.primary,
+                    c.access_role
+                ],
             )?;
         }
         let mut stale = Vec::new();
@@ -242,14 +263,25 @@ impl Store {
             tx.execute("DELETE FROM gcal_event WHERE calendar_id = ?1", [&id])?;
             tx.execute("DELETE FROM gcal_calendar WHERE id = ?1", [&id])?;
         }
+        // Hidden calendars keep no events or token, however they got hidden.
+        tx.execute(
+            "DELETE FROM gcal_event WHERE calendar_id IN
+               (SELECT id FROM gcal_calendar WHERE selected = 0)",
+            [],
+        )?;
+        tx.execute(
+            "UPDATE gcal_calendar SET sync_token = NULL WHERE selected = 0",
+            [],
+        )?;
         tx.commit()?;
         Ok(())
     }
 
-    /// Chooses whether a calendar's events show. Hiding drops its cache and token.
+    /// Chooses whether a calendar's events show on this device (a choice that outlives
+    /// Google's own flag). Hiding drops its cache and token.
     pub fn gcal_select(&self, calendar_id: &str, selected: bool) -> Result<()> {
         let n = self.conn.execute(
-            "UPDATE gcal_calendar SET selected = ?2,
+            "UPDATE gcal_calendar SET selected = ?2, chosen = 1,
                     sync_token = CASE WHEN ?2 = 0 THEN NULL ELSE sync_token END
               WHERE id = ?1",
             params![calendar_id, selected],
@@ -364,9 +396,13 @@ impl Store {
         Ok(())
     }
 
+    /// The account's calendars, primary first, then by name. The "Tasks" calendar Utre
+    /// writes to itself is left out: its events are ours, not something to show or fetch.
     pub fn gcal_calendars(&self) -> Result<Vec<GcalCalendar>> {
+        let own = self.gcal_tasks_calendar()?;
         let mut q = self.conn.prepare(
-            "SELECT id, summary, color, selected FROM gcal_calendar ORDER BY summary, id",
+            "SELECT id, summary, color, selected, is_primary, access_role FROM gcal_calendar
+              ORDER BY is_primary DESC, summary COLLATE NOCASE, id",
         )?;
         let rows = q.query_map([], |r| {
             Ok(GcalCalendar {
@@ -374,9 +410,18 @@ impl Store {
                 summary: r.get(1)?,
                 color: r.get(2)?,
                 selected: r.get(3)?,
+                primary: r.get(4)?,
+                access_role: r.get(5)?,
             })
         })?;
-        Ok(rows.collect::<std::result::Result<_, _>>()?)
+        let mut out = Vec::new();
+        for c in rows {
+            let c = c?;
+            if own.as_deref() != Some(c.id.as_str()) {
+                out.push(c);
+            }
+        }
+        Ok(out)
     }
 
     /// The `syncToken` for the next incremental fetch; `None` means fetch everything.
@@ -491,6 +536,8 @@ mod tests {
             summary: id.into(),
             color: Some("#0b8043".into()),
             selected: false,
+            primary: false,
+            access_role: None,
         }
     }
 
@@ -613,6 +660,92 @@ mod tests {
         // Signing out forgets everything.
         s.gcal_forget().unwrap();
         assert!(s.gcal_calendars().unwrap().is_empty());
+    }
+
+    #[test]
+    fn visibility_follows_google_until_chosen_and_is_listed_primary_first() {
+        let s = Store::open_in_memory().unwrap();
+        let mk = |id: &str, google: bool, primary: bool, role: &str| GcalCalendar {
+            selected: google,
+            primary,
+            access_role: Some(role.into()),
+            ..cal(id)
+        };
+        s.gcal_set_calendars(&[
+            mk("b", true, false, "writer"),
+            mk("a", false, false, "reader"),
+            mk("me", true, true, "owner"),
+        ])
+        .unwrap();
+        let ids = |s: &Store| {
+            s.gcal_calendars()
+                .unwrap()
+                .into_iter()
+                .map(|c| (c.id, c.selected))
+                .collect::<Vec<_>>()
+        };
+        let pair = |a: &str, b| (a.to_string(), b);
+        assert_eq!(
+            ids(&s),
+            [pair("me", true), pair("a", false), pair("b", true)]
+        );
+        // Google flips flags and adds a calendar: unchosen ones follow, new ones too.
+        s.gcal_set_calendars(&[
+            mk("b", false, false, "writer"),
+            mk("a", true, false, "reader"),
+            mk("me", true, true, "owner"),
+            mk("n", true, false, "reader"),
+        ])
+        .unwrap();
+        assert_eq!(
+            ids(&s),
+            [
+                pair("me", true),
+                pair("a", true),
+                pair("b", false),
+                pair("n", true)
+            ]
+        );
+        // A choice sticks against Google's flag, whichever way it goes.
+        s.gcal_select("me", false).unwrap();
+        s.gcal_select("b", true).unwrap();
+        s.gcal_set_calendars(&[
+            mk("b", false, false, "writer"),
+            mk("a", true, false, "reader"),
+            mk("me", true, true, "owner"),
+            mk("n", true, false, "reader"),
+        ])
+        .unwrap();
+        assert_eq!(
+            ids(&s),
+            [
+                pair("me", false),
+                pair("a", true),
+                pair("b", true),
+                pair("n", true)
+            ]
+        );
+        // A calendar hidden by Google's flag drops its cache and token too.
+        let day = |d| format!("2026-12-{d:02}");
+        let ev = GcalEventUpdate::parse(
+            "a",
+            &json!({"id":"x","start":{"date":day(2)},"end":{"date":day(3)}}),
+        )
+        .unwrap();
+        s.gcal_apply("a", true, &[ev], Some("T")).unwrap();
+        s.gcal_set_calendars(&[mk("a", false, false, "reader")])
+            .unwrap();
+        assert_eq!(s.gcal_sync_token("a").unwrap(), None);
+        let tz: Tz = "UTC".parse().unwrap();
+        assert!(s.gcal_events(0, i64::MAX / 4, tz).unwrap().is_empty());
+        // The calendar Utre writes tasks to is never offered.
+        s.gcal_set_calendars(&[
+            mk("a", true, false, "reader"),
+            mk("tasks", true, false, "owner"),
+        ])
+        .unwrap();
+        s.gcal_set_tasks_calendar(Some("tasks")).unwrap();
+        assert_eq!(ids(&s), [pair("a", true)]);
     }
 
     fn dated(s: &Store, title: &str, due: i64, repeat: Option<&str>) -> Task {
