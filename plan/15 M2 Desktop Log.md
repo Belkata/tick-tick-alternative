@@ -269,3 +269,9 @@ The user wants a sort choice to stay when switching views. Decided with the user
 - Manual order was already shared by every view (each task's `sort_key`).
 - Integration test: "one sort for every view, then drag in manual order" (checks the choice in Inbox and back in the list).
 
+## Arranging lists and filters (2026-11-26, v0.8.4, at the user's request; PR 38)
+Same idea as arranging tags, for the other two sidebar sections.
+- **Core:** `Store::place_list(id, before)` and `place_filter(id, before)` share `place_among` (fractional `sort_key`, one synced op per move; when sibling keys are missing it renumbers them all). No schema change (still v10). Unarranged items sort after arranged ones, by name.
+- **API and bridge:** `api!` entries `PlaceList` and `PlaceFilter`, bridge `placeList` and `placeFilter`. The daemon needs the rebuild (an old daemon rejects them). CLI: `utre lists order <name> [--before <name>]`, `utre filter order <name> [--before <name>]`.
+- **Sidebar:** one generic `_ArrangeSection` serves Lists, Filters and Tags: the arrange button, drag handles (48 px on Android, 28 px on desktop), Alt+Up/Down, screen-reader move actions. Built-in entries stay fixed.
+- Not verified on the phone or in the running app.
