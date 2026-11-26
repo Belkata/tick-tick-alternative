@@ -7,6 +7,7 @@ import 'date_picker.dart';
 import 'markdown.dart';
 import 'sidebar.dart' show askText;
 import 'task_list.dart';
+import 'debounced.dart';
 import 'theme.dart';
 
 /// The right pane: everything about the selected task, edited in place.
@@ -297,6 +298,8 @@ class DetailPane extends StatelessWidget {
                 child: _EditField(
                   key: const Key('detail-title'),
                   value: r.title,
+                  autosave: true,
+                  scope: id,
                   focus: titleFocus,
                   multiline: true,
                   minLines: 1,
@@ -514,9 +517,18 @@ class _EditField extends StatefulWidget {
     this.inline = false,
     this.minLines = 1,
     this.maxLines = 1,
+    this.autosave = false,
+    this.scope,
   });
 
   final String value;
+
+  /// Save a moment after typing stops, not only on Enter or blur. Only for plain text
+  /// (a half-typed date would be parsed).
+  final bool autosave;
+
+  /// Which record the field shows (a task id): when it changes, pending edits are flushed.
+  final Object? scope;
   final Future<void>? Function(String) onSave;
   final TextStyle style;
   final FocusNode? focus;
@@ -535,6 +547,11 @@ class _EditField extends StatefulWidget {
 class _EditFieldState extends State<_EditField> {
   late final _text = TextEditingController(text: widget.value);
   late final FocusNode _focus = widget.focus ?? FocusNode();
+  late final _edit = DebouncedEdit(
+    initial: widget.value,
+    delay: widget.autosave ? const Duration(milliseconds: 300) : null,
+    normalize: widget.autosave ? (v) => v.trim() : (v) => v,
+  );
 
   @override
   void initState() {
@@ -545,26 +562,31 @@ class _EditFieldState extends State<_EditField> {
   @override
   void didUpdateWidget(_EditField old) {
     super.didUpdateWidget(old);
-    // Take the new value unless the user is typing in this field.
-    if (!_focus.hasFocus && widget.value != _text.text) {
-      _text.text = widget.value;
-    }
+    // Another record: write the old one's pending edit (to the old record), then show the new.
+    if (widget.scope != old.scope) _edit.flush();
+    // The store's value, unless the user has typed something not saved yet.
+    final shown = _edit.incoming(widget.value, _text.text);
+    if (shown != null) _text.text = shown;
   }
 
   @override
   void dispose() {
     _focus.removeListener(_onFocus);
+    _edit.dispose();
     if (widget.focus == null) _focus.dispose();
     _text.dispose();
     super.dispose();
   }
 
   void _onFocus() {
-    if (!_focus.hasFocus) _save();
+    if (!_focus.hasFocus) _edit.flush();
   }
 
+  void _changed(String v) => _edit.edited(v, widget.onSave);
+
   void _save() {
-    if (_text.text != widget.value) widget.onSave(_text.text);
+    _changed(_text.text);
+    _edit.flush();
   }
 
   @override
@@ -593,6 +615,7 @@ class _EditFieldState extends State<_EditField> {
       maxLines: widget.multiline ? widget.maxLines : 1,
       keyboardType: TextInputType.text,
       textInputAction: TextInputAction.done,
+      onChanged: _changed,
       onSubmitted: (_) => _save(),
       decoration: plain,
     );
@@ -811,9 +834,16 @@ class _NotesState extends State<_Notes> {
   bool _editing = false;
   late String _shown = widget.value;
 
+  /// Saves notes a moment after typing stops (and on leaving), never over a newer remote value
+  /// the user did not change.
+  late DebouncedEdit _ed = DebouncedEdit(initial: widget.value);
+
   @override
   void initState() {
     super.initState();
+    _text.addListener(() {
+      if (_editing) _ed.edited(_text.text, widget.onSave);
+    });
     _focus.addListener(() {
       if (!_focus.hasFocus && _editing) _finish();
     });
@@ -822,17 +852,26 @@ class _NotesState extends State<_Notes> {
   @override
   void didUpdateWidget(_Notes old) {
     super.didUpdateWidget(old);
-    if (widget.value != old.value && !_editing) _shown = widget.value;
+    if (widget.value == old.value) return;
+    if (!_editing) {
+      _shown = widget.value;
+    } else {
+      final v = _ed.incoming(widget.value, _text.text);
+      if (v != null) _text.text = v;
+    }
   }
 
   @override
   void dispose() {
+    _ed.dispose();
     _text.dispose();
     _focus.dispose();
     super.dispose();
   }
 
   void _edit() {
+    _ed.dispose();
+    _ed = DebouncedEdit(initial: widget.value);
     _text.text = _shown;
     setState(() => _editing = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -848,7 +887,8 @@ class _NotesState extends State<_Notes> {
       _editing = false;
       _shown = v;
     });
-    if (v != widget.value) widget.onSave(v);
+    _ed.edited(v, widget.onSave);
+    _ed.flush();
   }
 
   /// Wrap the selection in [left]/[right], or insert them with the cursor between.
