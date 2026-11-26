@@ -21,3 +21,8 @@ utre-core = { path = "../core" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time"] }
+
+# The socket test needs the server side; skip it when the feature is off.
+[[test]]
+name = "socket"
+required-features = ["server"]
