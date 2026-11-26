@@ -200,19 +200,24 @@ class DetailPane extends StatelessWidget {
         child: Row(
           children: [
             Flexible(
-              child: InkWell(
-                key: const Key('detail-parent'),
-                borderRadius: BorderRadius.circular(6),
-                onTap: () => _pickParent(context, id, r.parentId),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text(
-                    d.parentTitle ?? 'None',
-                    overflow: TextOverflow.ellipsis,
-                    style: manrope(
-                      13,
-                      d.parentTitle == null ? FontWeight.w500 : FontWeight.w600,
-                      color: d.parentTitle == null ? s.mute : s.fg,
+              child: FocusRing(
+                radius: 6,
+                child: InkWell(
+                  key: const Key('detail-parent'),
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => _pickParent(context, id, r.parentId),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      d.parentTitle ?? 'None',
+                      overflow: TextOverflow.ellipsis,
+                      style: manrope(
+                        13,
+                        d.parentTitle == null
+                            ? FontWeight.w500
+                            : FontWeight.w600,
+                        color: d.parentTitle == null ? s.mute : s.fg,
+                      ),
                     ),
                   ),
                 ),
@@ -1004,43 +1009,46 @@ class _PriorityPicker extends StatelessWidget {
                 selected: p == value,
                 button: true,
                 label: 'Priority ${names[p]}',
-                child: InkWell(
-                  key: Key('priority-$p'),
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => onPick(p),
-                  child: AnimatedContainer(
-                    duration: motion(context, 120),
-                    height: 32,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: p == value
-                          ? (p == 0
-                                ? s.panel
-                                : s.priority(p).withValues(alpha: 0.16))
-                          : null,
-                      border: p == value
-                          ? Border.all(color: p == 0 ? s.line : s.priority(p))
-                          : null,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (p > 0) ...[
-                          Icon(Icons.flag, size: 12, color: s.priority(p)),
-                          const SizedBox(width: 3),
-                        ],
-                        Text(
-                          names[p],
-                          style: manrope(
-                            12.5,
-                            p == value ? FontWeight.w700 : FontWeight.w500,
-                            color: p == 0 || p != value
-                                ? (p == value ? s.fg : s.mute)
-                                : s.priority(p),
+                child: FocusRing(
+                  radius: 8,
+                  child: InkWell(
+                    key: Key('priority-$p'),
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => onPick(p),
+                    child: AnimatedContainer(
+                      duration: motion(context, 120),
+                      height: 32,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: p == value
+                            ? (p == 0
+                                  ? s.panel
+                                  : s.priority(p).withValues(alpha: 0.16))
+                            : null,
+                        border: p == value
+                            ? Border.all(color: p == 0 ? s.line : s.priority(p))
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (p > 0) ...[
+                            Icon(Icons.flag, size: 12, color: s.priority(p)),
+                            const SizedBox(width: 3),
+                          ],
+                          Text(
+                            names[p],
+                            style: manrope(
+                              12.5,
+                              p == value ? FontWeight.w700 : FontWeight.w500,
+                              color: p == 0 || p != value
+                                  ? (p == value ? s.fg : s.mute)
+                                  : s.priority(p),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

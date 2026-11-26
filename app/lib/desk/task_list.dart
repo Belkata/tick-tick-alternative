@@ -506,89 +506,93 @@ class _TaskCardState extends State<TaskCard> {
     ).copyWith(decoration: row.done ? TextDecoration.lineThrough : null);
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        animationDuration: motion(context, 160),
-        color: fill,
-        elevation: s.cardShadow ? 0.6 : 0,
-        shadowColor: const Color(0x22141E3C),
-        borderRadius: BorderRadius.circular(12),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: widget.onTap,
-          onHover: (h) => setState(() => _hover = h),
-          hoverColor: Colors.transparent,
-          child: Stack(
-            children: [
-              Positioned(
-                left: 0,
-                top: 10,
-                bottom: 10,
-                child: AnimatedContainer(
-                  duration: motion(context),
-                  curve: Curves.easeOut,
-                  width: widget.selected ? 3 : 0,
-                  decoration: BoxDecoration(
-                    color: s.accent,
-                    borderRadius: const BorderRadius.horizontal(
-                      right: Radius.circular(3),
+      child: FocusRing(
+        radius: 12,
+        child: Material(
+          animationDuration: motion(context, 160),
+          color: fill,
+          elevation: s.cardShadow ? 0.6 : 0,
+          shadowColor: const Color(0x22141E3C),
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: widget.onTap,
+            onHover: (h) => setState(() => _hover = h),
+            hoverColor: Colors.transparent,
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  top: 10,
+                  bottom: 10,
+                  child: AnimatedContainer(
+                    duration: motion(context),
+                    curve: Curves.easeOut,
+                    width: widget.selected ? 3 : 0,
+                    decoration: BoxDecoration(
+                      color: s.accent,
+                      borderRadius: const BorderRadius.horizontal(
+                        right: Radius.circular(3),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              ConstrainedBox(
-                constraints: BoxConstraints(minHeight: touch ? 48 : 44),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(touch ? 0 : 8, 4, 12, 4),
-                  child: Row(
-                    crossAxisAlignment: touch
-                        ? CrossAxisAlignment.center
-                        : CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(
-                          top: touch ? 0 : (meta.isEmpty ? 3 : 5),
-                        ),
-                        child: PriorityCheck(
-                          key: Key('check-${row.id}'),
-                          priority: row.priority,
-                          done: row.done,
-                          hit: touch ? 15.5 : 3,
-                          onTap: widget.onCheck,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: meta.isEmpty ? 10 : 8,
+                ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: touch ? 48 : 44),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(touch ? 0 : 8, 4, 12, 4),
+                    child: Row(
+                      crossAxisAlignment: touch
+                          ? CrossAxisAlignment.center
+                          : CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.only(
+                            top: touch ? 0 : (meta.isEmpty ? 3 : 5),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                row.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: titleStyle,
-                              ),
-                              if (meta.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 4,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: meta,
+                          child: PriorityCheck(
+                            key: Key('check-${row.id}'),
+                            priority: row.priority,
+                            done: row.done,
+                            hit: touch ? 15.5 : 3,
+                            onTap: widget.onCheck,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: meta.isEmpty ? 10 : 8,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  row.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: titleStyle,
                                 ),
+                                if (meta.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: meta,
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
