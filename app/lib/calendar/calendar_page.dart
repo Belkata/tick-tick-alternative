@@ -843,6 +843,15 @@ class _CalendarPageState extends State<CalendarPage> {
         kalenderController: _calendar,
         interaction: KalenderInteraction(allowEventCreation: false),
         components: KalenderComponents(
+          monthComponents: MonthComponents(
+            headerComponents: MonthHeaderComponents(
+              // Seven columns on a phone are too narrow for "Wednesday".
+              weekDayHeaderStringBuilder: (_, d) {
+                final n = _weekdayName(d.weekday);
+                return _narrow ? n.substring(0, 3) : n;
+              },
+            ),
+          ),
           multiDayComponents: MultiDayComponents(
             headerComponents: MultiDayHeaderComponents(
               dayHeaderBuilder: _dayHeader,
@@ -987,7 +996,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
     final tile = LayoutBuilder(
       builder: (context, box) {
-        final short = box.maxHeight < 34;
+        final short = box.maxHeight < 42;
         final monthChip =
             !i.allDay &&
             box.maxHeight <= 22 &&
@@ -1176,7 +1185,7 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
           );
         }
-        final short = g.allDay || box.maxHeight < 34;
+        final short = g.allDay || box.maxHeight < 42;
         final lines = ((box.maxHeight - 22) / 16).floor().clamp(1, 4);
         final title = Text(
           g.summary,
