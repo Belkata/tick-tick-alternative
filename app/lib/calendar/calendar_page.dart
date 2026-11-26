@@ -996,7 +996,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
     final tile = LayoutBuilder(
       builder: (context, box) {
-        final short = box.maxHeight < 42;
+        final short = box.maxHeight < 34;
         final monthChip =
             !i.allDay &&
             box.maxHeight <= 22 &&
@@ -1114,7 +1114,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
                       6,
-                      short || i.allDay ? 0 : 4,
+                      short || i.allDay ? 0 : (box.maxHeight < 40 ? 2 : 4),
                       6,
                       0,
                     ),
@@ -1185,7 +1185,7 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
           );
         }
-        final short = g.allDay || box.maxHeight < 42;
+        final short = g.allDay || box.maxHeight < 34;
         final lines = ((box.maxHeight - 22) / 16).floor().clamp(1, 4);
         final title = Text(
           g.summary,
@@ -1206,7 +1206,12 @@ class _CalendarPageState extends State<CalendarPage> {
               Container(width: 3, color: tc.withValues(alpha: 0.7)),
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(6, short ? 0 : 4, 6, 0),
+                  padding: EdgeInsets.fromLTRB(
+                    6,
+                    short ? 0 : (box.maxHeight < 40 ? 2 : 4),
+                    6,
+                    0,
+                  ),
                   child: short
                       ? Align(
                           alignment: Alignment.centerLeft,
