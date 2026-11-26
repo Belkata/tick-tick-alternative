@@ -141,14 +141,23 @@ mod tests {
 
     #[test]
     fn a_full_counter_rolls_into_the_next_millisecond() {
-        let full = Hlc { wall: 5, counter: u32::MAX, device: 9 };
+        let full = Hlc {
+            wall: 5,
+            counter: u32::MAX,
+            device: 9,
+        };
         let a = full.tick(1);
         assert!(a > full);
         assert_eq!(a.to_string().parse::<Hlc>().unwrap(), a);
         let b = Hlc::zero(1).observe(full, 1);
         assert!(b > full);
         assert_eq!(b.to_string().parse::<Hlc>().unwrap(), b);
-        let c = Hlc { wall: 5, counter: MAX_COUNTER, device: 1 }.tick(1);
+        let c = Hlc {
+            wall: 5,
+            counter: MAX_COUNTER,
+            device: 1,
+        }
+        .tick(1);
         assert_eq!((c.wall, c.counter), (6, 0));
     }
 

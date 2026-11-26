@@ -304,7 +304,8 @@ fn garbage_and_oversized_requests_get_errors_not_a_dead_daemon() {
     let mut s = std::os::unix::net::UnixStream::connect(&sock).unwrap();
     s.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
     // Not JSON, then invalid UTF-8, then a real request on the same connection.
-    s.write_all(b"not json\n\xff\xfe\n{\"type\":\"Hello\"}\n").unwrap();
+    s.write_all(b"not json\n\xff\xfe\n{\"type\":\"Hello\"}\n")
+        .unwrap();
     let mut r = BufReader::new(s.try_clone().unwrap());
     for _ in 0..2 {
         let mut line = String::new();

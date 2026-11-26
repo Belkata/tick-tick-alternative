@@ -393,8 +393,7 @@ async fn run() -> Result<()> {
     let tz = TzName(local_tz().name().to_string());
     let mut last_check = now_ms();
     let mut tick = tokio::time::interval(TICK);
-    let mut sigterm =
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+    let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     loop {
         tokio::select! {
             _ = tick.tick() => {

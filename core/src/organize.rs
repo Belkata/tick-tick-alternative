@@ -531,7 +531,11 @@ mod tests {
         // Device 1 moved a under b while device 2 moved b under a.
         let far = 4_000_000_000_000;
         let mv = |n: u64, id: &str, parent: &str| Op {
-            hlc: Hlc { wall: far + n, counter: 0, device: 9 },
+            hlc: Hlc {
+                wall: far + n,
+                counter: 0,
+                device: 9,
+            },
             entity: Entity::Tag,
             entity_id: id.into(),
             field: "parent_id".into(),
