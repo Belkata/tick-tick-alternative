@@ -5,16 +5,101 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../src/rust/api/tasks.dart';
+import '../widget_bridge.dart';
 import 'filter_builder.dart' show confirm;
 import 'theme.dart';
 
-/// Google Calendar page (M5b, plan/06 and plan/19): sign in, pick which of your Google
-/// calendars show in Utre's calendar. The sign-in and the fetching run in utre-daemon, so
-/// everything here goes through it; without a daemon the page says so.
-class GooglePage extends StatefulWidget {
-  const GooglePage({super.key, required this.db});
+/// What the Google page needs, so a widget test can stand in for the core.
+abstract class GoogleSource {
+  /// Whether Google can work here: utre-daemon is serving the database, or this is the
+  /// phone, which fetches in-process.
+  bool get available;
+
+  /// The phone signs in through Google's consent screen, not a browser link.
+  bool get onPhone;
+
+  Future<GoogleStatus> status();
+  Future<List<GcalCalendar>> calendars();
+
+  /// Starts the sign-in. Desktop: opens the browser and returns its URL. Phone: shows the
+  /// consent screen, returns null once the user agreed (or backed out), then fetches.
+  Future<String?> signIn();
+  Future<void> signOut();
+  Future<void> sync();
+  Future<void> select(String calendarId, bool on);
+  Stream<int> changes();
+
+  /// Sending tasks out to Google (slice 4) runs in utre-daemon, so the phone has none:
+  /// [pushStatus] answers null there and the page hides the switch.
+  Future<GooglePushStatus?> pushStatus();
+  Future<void> pushSet(bool enabled);
+  Future<void> pushNow();
+}
+
+/// The real thing: [TaskDb] on desktop (through utre-daemon) and on the phone (in-process).
+class TaskDbGoogle implements GoogleSource {
+  TaskDbGoogle(this.db);
 
   final TaskDb db;
+
+  @override
+  bool get available => db.googleAvailable();
+
+  @override
+  bool get onPhone => WidgetBridge.supported;
+
+  @override
+  Future<GoogleStatus> status() => db.googleStatus();
+
+  @override
+  Future<List<GcalCalendar>> calendars() => db.gcalCalendars();
+
+  @override
+  Future<String?> signIn() async {
+    if (!onPhone) return db.googleSignIn();
+    final answer = await WidgetBridge.googleSignIn();
+    if (answer == 'ok') {
+      await db.googleSync();
+    } else if (answer == 'not_configured') {
+      throw 'Google isn\'t set up in this build';
+    } else if (answer != null && answer.startsWith('error: ')) {
+      throw answer.substring(7);
+    }
+    // Anything else: the user backed out.
+    return null;
+  }
+
+  @override
+  Future<void> signOut() => db.googleSignOut();
+
+  @override
+  Future<void> sync() => db.googleSync();
+
+  @override
+  Future<void> select(String calendarId, bool on) =>
+      db.gcalSelect(calendarId: calendarId, selected: on);
+
+  @override
+  Stream<int> changes() => db.changes();
+
+  @override
+  Future<GooglePushStatus?> pushStatus() async =>
+      onPhone ? null : await db.googlePushStatus();
+
+  @override
+  Future<void> pushSet(bool enabled) => db.googlePushSet(enabled: enabled);
+
+  @override
+  Future<void> pushNow() => db.googlePushNow();
+}
+
+/// Google Calendar page (M5b, plan/06 and plan/19): sign in, pick which of your Google
+/// calendars show in Utre's calendar. On desktop the sign-in and the fetching run in
+/// utre-daemon (the page says so when it isn't running); the phone does both itself.
+class GooglePage extends StatefulWidget {
+  const GooglePage({super.key, required this.source});
+
+  final GoogleSource source;
 
   @override
   State<GooglePage> createState() => _GooglePageState();
@@ -31,12 +116,12 @@ class _GooglePageState extends State<GooglePage> {
   Timer? _clock;
   int _ticks = 0;
 
-  TaskDb get db => widget.db;
+  GoogleSource get g => widget.source;
 
   @override
   void initState() {
     super.initState();
-    _changes = db.changes().listen((_) => _load());
+    _changes = g.changes().listen((_) => _load());
     // While the browser sign-in is open, look often; otherwise keep "fetched 2 min ago"
     // current.
     _clock = Timer.periodic(const Duration(seconds: 3), (_) {
@@ -53,14 +138,14 @@ class _GooglePageState extends State<GooglePage> {
   }
 
   Future<void> _load() async {
-    if (!db.googleAvailable()) {
+    if (!g.available) {
       if (mounted) setState(() => _status = null);
       return;
     }
     try {
-      final status = await db.googleStatus();
-      final calendars = await db.gcalCalendars();
-      final push = status.signedIn ? await db.googlePushStatus() : null;
+      final status = await g.status();
+      final calendars = await g.calendars();
+      final push = status.signedIn ? await g.pushStatus() : null;
       if (!mounted) return;
       setState(() {
         _status = status;
@@ -93,8 +178,8 @@ class _GooglePageState extends State<GooglePage> {
   }
 
   Future<void> _signIn() => _run(() async {
-    final url = await db.googleSignIn();
-    if (mounted) setState(() => _signInUrl = url);
+    final url = await g.signIn();
+    if (mounted && url != null) setState(() => _signInUrl = url);
   });
 
   Future<void> _signOut() async {
@@ -107,19 +192,19 @@ class _GooglePageState extends State<GooglePage> {
       action: 'Sign out',
     );
     if (!ok) return;
-    await _run(db.googleSignOut);
+    await _run(g.signOut);
   }
 
   Future<void> _toggle(GcalCalendar c, bool on) => _run(() async {
-    await db.gcalSelect(calendarId: c.id, selected: on);
-    // Showing a calendar: fetch its events now rather than at the next 5-minute poll.
-    if (on) await db.googleSync();
+    await g.select(c.id, on);
+    // Showing a calendar: fetch its events now rather than at the next poll.
+    if (on) await g.sync();
   });
 
   Future<void> _togglePush(bool on) => _run(() async {
-    await db.googlePushSet(enabled: on);
+    await g.pushSet(on);
     // Sending: don't wait for the daemon's next pass.
-    if (on) await db.googlePushNow();
+    if (on) await g.pushNow();
   });
 
   String _pushLine(GooglePushStatus p) {
@@ -143,10 +228,10 @@ class _GooglePageState extends State<GooglePage> {
         _Card(
           child: Text(
             _error ??
-                (db.googleAvailable()
+                (g.available
                     ? 'Loading…'
                     : 'Google Calendar runs in utre-daemon, which isn\'t running for '
-                          'this database (and isn\'t on the phone yet).\n'
+                          'this database.\n'
                           'Start it with: systemctl --user start utre'),
             style: manrope(13.5, FontWeight.w500, color: s.mute),
           ),
@@ -156,9 +241,15 @@ class _GooglePageState extends State<GooglePage> {
       body.add(
         _Card(
           child: Text(
-            'Google isn\'t set up on this device. Save the OAuth client file '
-            '(Google Cloud → Credentials → Desktop app → Download JSON) as '
-            '~/.config/utre/google-client.json and restart utre-daemon.',
+            g.onPhone
+                ? 'Google isn\'t set up in this build of Utre. Missing: an Android '
+                      'OAuth client in Google Cloud for the package dev.utre.utre and '
+                      'this app\'s signing key (SHA-1), and its client id in the build '
+                      '(utre.googleAndroidClientId). See plan/19 in the repository.'
+                : 'Google isn\'t set up on this device. Save the OAuth client file '
+                      '(Google Cloud → Credentials → Desktop app → Download JSON) as '
+                      '~/.config/utre/google-client.json and restart utre-daemon.',
+            key: const Key('google-state'),
             style: manrope(13.5, FontWeight.w500, color: s.mute),
           ),
         ),
@@ -168,7 +259,9 @@ class _GooglePageState extends State<GooglePage> {
         _Card(
           child: Text(
             status.signingIn
-                ? 'Waiting for you to finish signing in, in your browser…'
+                ? (g.onPhone
+                      ? 'Waiting for you to finish signing in…'
+                      : 'Waiting for you to finish signing in, in your browser…')
                 : 'Show your Google Calendar events next to your tasks. Utre asks '
                       'to read your calendars, and to manage only the one it '
                       'creates. Events stay on your devices.',
@@ -202,8 +295,12 @@ class _GooglePageState extends State<GooglePage> {
         ),
         const SizedBox(height: 10),
         Text(
-          'Google may warn that the app is unverified. Choose Advanced, then '
-          'continue: it only means Google hasn\'t reviewed Utre.',
+          g.onPhone
+              ? 'Google may warn that the app is unverified. Choose Advanced, then '
+                    'continue: it only means Google hasn\'t reviewed Utre. The phone '
+                    'checks your calendars about every 15 minutes.'
+              : 'Google may warn that the app is unverified. Choose Advanced, then '
+                    'continue: it only means Google hasn\'t reviewed Utre.',
           style: manrope(12, FontWeight.w500, color: s.mute),
         ),
       ]);
@@ -248,7 +345,7 @@ class _GooglePageState extends State<GooglePage> {
           children: [
             OutlinedButton.icon(
               key: const Key('google-sync'),
-              onPressed: _busy ? null : () => _run(db.googleSync),
+              onPressed: _busy ? null : () => _run(g.sync),
               icon: const Icon(Icons.sync, size: 18),
               label: const Text('Fetch now'),
             ),

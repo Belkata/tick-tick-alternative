@@ -82,13 +82,12 @@ class UtreApp extends StatelessWidget {
           if (peer case final p?)
             ShellPage('Sync (spike)', Icons.sync, (_, _) => SyncPage(peer: p)),
           ShellPage('Devices', Icons.devices, (_, _) => DevicesPage(db: db)),
-          // Google runs in utre-daemon, so the desktop only (the phone has no daemon yet).
-          if (!Platform.isAndroid)
-            ShellPage(
-              'Google Calendar',
-              Icons.event_repeat_outlined,
-              (_, _) => GooglePage(db: db),
-            ),
+          // Desktop: utre-daemon fetches. Phone: the app does, in-process (plan/19 slice 5).
+          ShellPage(
+            'Google Calendar',
+            Icons.event_repeat_outlined,
+            (_, _) => GooglePage(source: TaskDbGoogle(db)),
+          ),
         ],
       ),
     );
