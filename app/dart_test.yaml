@@ -1,0 +1,5 @@
+# Golden (screenshot) tests: Linux only, compared on CI. See test/golden/README.md.
+tags:
+  golden:
+    # A golden test pumps real frames, so give it room on a slow runner.
+    timeout: 2x
