@@ -10,6 +10,7 @@ use tokio::sync::mpsc;
 use utre_core::Task;
 
 use crate::Cmd;
+use crate::tray_mark::Mark;
 
 /// The running tray. Every platform's tray module has this interface.
 pub struct Tray(ksni::Handle<TickTray>);
@@ -185,19 +186,13 @@ impl ksni::Tray for TickTray {
     }
 }
 
-/// A rounded teal square with a white check mark, ARGB32 big-endian.
-/// Dimmed when the Inbox is empty.
+/// The app icon at tray size: a rounded teal square with the white u-check, and the amber
+/// dot while the Inbox has tasks. A grey square, without the dot, when it is empty. ARGB32
+/// big-endian; the square reads on both dark and light bars.
 fn check_icon(size: i32, active: bool) -> ksni::Icon {
     let s = size as f32;
-    let (r, g, b) = if active {
-        (0x0f, 0x9d, 0x8f)
-    } else {
-        (0x6b, 0x7f, 0x7d)
-    };
+    let mark = Mark::new(s, 0.64);
     let radius = s * 0.22;
-    // The check mark: two segments in unit coordinates.
-    let seg = [((0.27, 0.53), (0.43, 0.69)), ((0.43, 0.69), (0.74, 0.34))];
-    let stroke = (s * 0.09).max(1.6);
     let mut data = Vec::with_capacity((size * size * 4) as usize);
     for y in 0..size {
         for x in 0..size {
@@ -206,14 +201,33 @@ fn check_icon(size: i32, active: bool) -> ksni::Icon {
             let dx = (radius - px).max(px - (s - radius)).max(0.0);
             let dy = (radius - py).max(py - (s - radius)).max(0.0);
             let inside = (radius - (dx * dx + dy * dy).sqrt() + 0.5).clamp(0.0, 1.0);
-            // Distance to the check mark.
-            let d = seg
-                .iter()
-                .map(|&((ax, ay), (bx, by))| seg_dist(px, py, ax * s, ay * s, bx * s, by * s))
-                .fold(f32::MAX, f32::min);
-            let on_check = (stroke / 2.0 - d + 0.5).clamp(0.0, 1.0);
-            let mix = |c: u8| (c as f32 * (1.0 - on_check) + 255.0 * on_check) as u8;
-            data.extend([(inside * 255.0) as u8, mix(r), mix(g), mix(b)]);
+            // Teal, lighter at the top left like the app icon; grey when empty.
+            let k = (px + py) / (2.0 * s);
+            let bg = if active {
+                [
+                    lerp(0x19, 0x07, k),
+                    lerp(0xb8, 0x5e, k),
+                    lerp(0xa5, 0x55, k),
+                ]
+            } else {
+                [0x6b, 0x7f, 0x7d]
+            };
+            let mut rgb = bg.map(f32::from);
+            let ink = mark.stroke(px, py);
+            rgb = rgb.map(|c| c * (1.0 - ink) + 255.0 * ink);
+            if active {
+                let dot = mark.dot(px, py);
+                let amber = [0xff as f32, 0xb4 as f32, 0x40 as f32];
+                for (c, a) in rgb.iter_mut().zip(amber) {
+                    *c = *c * (1.0 - dot) + a * dot;
+                }
+            }
+            data.extend([
+                (inside * 255.0) as u8,
+                rgb[0] as u8,
+                rgb[1] as u8,
+                rgb[2] as u8,
+            ]);
         }
     }
     ksni::Icon {
@@ -223,11 +237,8 @@ fn check_icon(size: i32, active: bool) -> ksni::Icon {
     }
 }
 
-fn seg_dist(px: f32, py: f32, ax: f32, ay: f32, bx: f32, by: f32) -> f32 {
-    let (vx, vy) = (bx - ax, by - ay);
-    let t = (((px - ax) * vx + (py - ay) * vy) / (vx * vx + vy * vy)).clamp(0.0, 1.0);
-    let (cx, cy) = (ax + t * vx - px, ay + t * vy - py);
-    (cx * cx + cy * cy).sqrt()
+fn lerp(a: u8, b: u8, k: f32) -> u8 {
+    (a as f32 + (b as f32 - a as f32) * k) as u8
 }
 
 /// The tray host's XDG activation token for the click being handled. It may arrive just
