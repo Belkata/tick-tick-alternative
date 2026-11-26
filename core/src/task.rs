@@ -512,7 +512,7 @@ impl Store {
             let t = require_task(w.conn, id)?;
             let new = schedule.cloned().unwrap_or_default();
             write_schedule(w, id, &new)?;
-            crate::reminder::auto_due_reminder(w, id, (t.due_at, t.all_day), &new)
+            crate::reminder::auto_due_reminder(w, id, (t.anchor(), t.all_day), &new)
         })
     }
 
@@ -531,7 +531,7 @@ impl Store {
                 s.tz = Some("UTC".into());
             }
             write_schedule(w, id, &s)?;
-            crate::reminder::auto_due_reminder(w, id, (t.due_at, t.all_day), &s)
+            crate::reminder::auto_due_reminder(w, id, (t.anchor(), t.all_day), &s)
         })
     }
 

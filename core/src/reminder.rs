@@ -113,16 +113,18 @@ fn auto_due_id(task_id: &str) -> String {
     .to_string()
 }
 
-/// The automatic reminder for a *local* edit of a task's due date (`before` is the old
-/// `(due_at, all_day)`, `after` the schedule just written).
+/// The automatic reminder for a *local* edit of a task's date (`before` is the old
+/// `(anchor, all_day)`, where the anchor is the start, else the due, as relative reminders
+/// use; `after` the schedule just written).
 ///
-/// - The due goes from not timed (none, or all-day) to timed and the task has no reminders:
-///   add "at due time" (relative, offset 0), so it follows each occurrence of a repeat.
-/// - The due stops being timed (cleared or all-day) and the only reminder is that automatic
+/// - The task goes from not timed (no date, or all-day) to timed and has no reminders: add
+///   "at due time" (relative, offset 0), so it fires at the anchor (a block's start when it
+///   has one) and follows each occurrence of a repeat.
+/// - The task stops being timed (cleared or all-day) and the only reminder is that automatic
 ///   one: remove it. (A relative reminder on an all-day task would fire at 09:00 on the date,
 ///   which nobody asked for.)
 ///
-/// Only the schedule setters call this. Remote ops, imports and recurrence advancing write
+/// Only the schedule setters and the calendar's `place_block` / `unschedule` call this. Remote ops, imports and recurrence advancing write
 /// ops directly and never do.
 pub(crate) fn auto_due_reminder(
     w: &mut Writer,
@@ -131,7 +133,7 @@ pub(crate) fn auto_due_reminder(
     after: &Schedule,
 ) -> Result<()> {
     let was_timed = before.0.is_some() && !before.1;
-    let now_timed = after.due_at.is_some() && !after.all_day;
+    let now_timed = after.start_at.or(after.due_at).is_some() && !after.all_day;
     let id = auto_due_id(task_id);
     let live = load_reminders(w.conn, Some(task_id))?;
     if now_timed && !was_timed && live.is_empty() {
