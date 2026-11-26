@@ -30,16 +30,18 @@ The UI style is decided: **Soft** (rounded cards, teal placeholder accent, Manro
 > `plan/00 Overview.md`. The sync ALPN (`tickalt/sync/1`) and the `tt1`/`tt2` ticket prefixes keep their old
 > spelling on purpose (wire protocol).
 
-## Latest session (2026-11-26, Arch laptop, orchestrated multi-agent run; released as v0.8.0, v0.8.1, v0.8.2 and v0.8.3)
+## Latest session (2026-11-26, Arch laptop, orchestrated multi-agent run; released as v0.8.0 to v0.8.4)
 
-Parallel agents in worktrees, each change a PR with green CI (PRs 19 to 35, all merged; nothing open).
+Parallel agents in worktrees, each change a PR with green CI (PRs 19 to 40, all merged; nothing open).
 - **CI:** hardened, with blocking rustfmt, clippy and shellcheck, 26 Linux golden tests (`app/test/golden/`), and a non-required Linux integration job under xvfb.
 - **UI:** a date and time picker (dialog on desktop, bottom sheet on the phone), Rust, Android and Flutter review fixes, `start_at` and the keyboard focus ring, the new **u-tick icon** and tray icon (PR 33; plan/20 round 8 and 9), and calendar bugs the goldens found (PR 34: all-day in Day/Month, "+N", compact tiles, "1 days ago", sheet tint).
 - **Core:** the `network_sim` flake is explained and fixed (PR 32, a test bug: a ring plus compaction can strand a superseded op, so version vectors differ while state is identical; plan/16).
 - **Google calendars, choose which are visible** (PR 35, **schema v10**, per device, plan/19): desktop toolbar "Calendars" menu, phone "Google calendars..." sheet. An older build refuses a v10 DB.
 - **v0.8.2:** automatic reminder at due time (PR 36; plan/14): setting a time on a task with no reminders adds one at that time. Unverified on a real phone alarm.
 - **v0.8.3:** dragging a task onto the calendar adds the same reminder (at the block's start), and dragging it out or onto the all-day row removes it if it is the only one (PR 37; plan/14).
-- **Running here:** `utre.service` runs this checkout's `target/fast/utre-daemon` on `utre.db` (schema v10; v9 backup `~/.local/share/utre/backups/utre-v9-pre-v10-*.db`); the desktop app was rebuilt at v0.8.3. **Phone:** v0.8.3 pre-release APK on GitHub, not installed yet (it upgrades its DB to v10 on first start; same debug key, updates in place). **The Mac is still on Tick Alt 0.3.0** (see v0.7.3 notes below: new app, remove the old LaunchAgent, `scripts/build-macos.sh`, `scripts/install-launch-agent.sh`).
+- **v0.8.4:** arrange **lists and filters** in the sidebar like tags (PR 38; plan/15, `utre lists order`, `utre filter order`; unverified on the phone); checkboxes centred on the title's first line and title/notes autosave debounced, with fewer rebuilds while typing (PR 40; plan/20 round 10; the user's typing lag was not reproduced, suspects are GPU raster or GTK-on-Wayland frame pacing). **Agent guard** (PR 39): a PreToolUse hook blocks endless wait loops, plus `scripts/agent-reap.sh`. `agent-worktree.sh` now works from inside a worktree.
+- **User data change (by hand, not in code):** the Work list's 26 tasks were moved to a new `work` tag (icon ✈️) and the Work list was deleted.
+- **Running here:** `utre.service` runs this checkout's `target/fast/utre-daemon` on `utre.db` (schema v10; v9 backup `~/.local/share/utre/backups/utre-v9-pre-v10-*.db`); the daemon and desktop app were rebuilt at v0.8.4. **Phone:** v0.8.4 pre-release APK on GitHub, not installed yet (it upgrades its DB to v10 on first start; same debug key, updates in place). **The Mac is still on Tick Alt 0.3.0** (see v0.7.3 notes below: new app, remove the old LaunchAgent, `scripts/build-macos.sh`, `scripts/install-launch-agent.sh`).
 - **Open items:**
   - Never tried on real hardware: the date picker sheet, the new launcher, themed and status-bar icons, the tray icon in waybar, the macOS menu-bar icon (unbuilt), the Google calendar picker with a real account, stale-reminder clearing across devices, and earlier items (widget Reconfigure and midnight refresh, tasks out to real Google, 2 Days and Month on the phone).
   - Waiting on the user: GitHub settings, the plan/11 decisions (including the review recommendations), a release key plus the 4 CI secrets, a LICENSE name, Google consent screen "In production" and app verification, the Mac switch-over.
