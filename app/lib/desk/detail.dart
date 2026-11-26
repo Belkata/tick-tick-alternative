@@ -57,7 +57,7 @@ class DetailPane extends StatelessWidget {
     final startWhen = parseWhenLabel(d.startLabel, DateTime.now());
 
     final dateRows = <Widget>[
-      _PropRow(
+      PropRow(
         icon: Icons.event_outlined,
         label: 'Due',
         child: _DateField(
@@ -81,7 +81,7 @@ class DetailPane extends StatelessWidget {
           ),
         ),
       ),
-      _PropRow(
+      PropRow(
         icon: Icons.play_circle_outline,
         label: 'Start',
         child: _DateField(
@@ -101,7 +101,7 @@ class DetailPane extends StatelessWidget {
           ),
         ),
       ),
-      _PropRow(
+      PropRow(
         icon: Icons.repeat_rounded,
         label: 'Repeat',
         child: _RepeatPicker(
@@ -114,7 +114,7 @@ class DetailPane extends StatelessWidget {
       ),
       // Only a task with a date can be on the calendar, so only then the switch.
       if (r.dueAt != null || d.startLabel != null)
-        _PropRow(
+        PropRow(
           icon: Icons.calendar_month_outlined,
           label: 'Calendar',
           child: Row(
@@ -146,7 +146,7 @@ class DetailPane extends StatelessWidget {
     ];
 
     final placeRows = <Widget>[
-      _PropRow(
+      PropRow(
         icon: Icons.folder_outlined,
         label: 'List',
         child: Align(
@@ -172,7 +172,7 @@ class DetailPane extends StatelessWidget {
           ),
         ),
       ),
-      _PropRow(
+      PropRow(
         icon: Icons.sell_outlined,
         label: 'Tags',
         child: Wrap(
@@ -194,7 +194,7 @@ class DetailPane extends StatelessWidget {
           ],
         ),
       ),
-      _PropRow(
+      PropRow(
         icon: Icons.account_tree_outlined,
         label: 'Parent',
         child: Row(
@@ -301,9 +301,9 @@ class DetailPane extends StatelessWidget {
             onPick: (p) => c.run(() => db.setPriority(id: id, priority: p)),
           ),
           const SizedBox(height: 14),
-          _Card(children: dateRows),
+          PropCard(children: dateRows),
           const SizedBox(height: 10),
-          _Card(children: placeRows),
+          PropCard(children: placeRows),
           _Section(
             icon: Icons.notes_rounded,
             title: 'Notes',
@@ -636,8 +636,9 @@ class _DateField extends StatelessWidget {
 }
 
 /// A rounded group of property rows with hairlines between them.
-class _Card extends StatelessWidget {
-  const _Card({required this.children});
+@visibleForTesting
+class PropCard extends StatelessWidget {
+  const PropCard({required this.children});
 
   final List<Widget> children;
 
@@ -650,29 +651,37 @@ class _Card extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: s.line),
       ),
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) Divider(height: 1, indent: 40, color: s.line),
-            children[i],
+      child: LayoutBuilder(
+        // The hairlines start under the label; where the rows drop their icon, so do they.
+        builder: (context, box) => Column(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0)
+                Divider(
+                  height: 1,
+                  indent: box.maxWidth - 24 >= PropRow.iconMinWidth ? 40 : 12,
+                  color: s.line,
+                ),
+              children[i],
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-/// icon, label, value: one line of a [_Card].
-class _PropRow extends StatelessWidget {
-  const _PropRow({
-    required this.icon,
-    required this.label,
-    required this.child,
-  });
+/// icon, label, value: one line of a [PropCard].
+@visibleForTesting
+class PropRow extends StatelessWidget {
+  const PropRow({required this.icon, required this.label, required this.child});
 
   final IconData icon;
   final String label;
   final Widget child;
+
+  /// Below this row width (the detail pane at its minimum) the icon is left out.
+  static const iconMinWidth = 240.0;
 
   @override
   Widget build(BuildContext context) {
@@ -681,19 +690,25 @@ class _PropRow extends StatelessWidget {
       constraints: BoxConstraints(minHeight: isTouch(context) ? 48 : 42),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: s.mute),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 58,
-              child: Text(
-                label,
-                style: manrope(12, FontWeight.w600, color: s.mute),
+        // In the narrowest detail pane the icon makes way, so `Fri 4 Dec 14:30`
+        // fits next to its pick button.
+        child: LayoutBuilder(
+          builder: (context, box) => Row(
+            children: [
+              if (box.maxWidth >= iconMinWidth) ...[
+                Icon(icon, size: 16, color: s.mute),
+                const SizedBox(width: 12),
+              ],
+              SizedBox(
+                width: 58,
+                child: Text(
+                  label,
+                  style: manrope(12, FontWeight.w600, color: s.mute),
+                ),
               ),
-            ),
-            Expanded(child: child),
-          ],
+              Expanded(child: child),
+            ],
+          ),
         ),
       ),
     );
