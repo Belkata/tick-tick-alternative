@@ -24,6 +24,18 @@ import '../desk/theme.dart';
 import '../src/rust/api/tasks.dart';
 import 'calendar_prefs.dart';
 
+/// A block's end. The core always gives an all-day block its whole local day; a block
+/// with no length would be dropped by kalender's day, week and month layouts, so an
+/// all-day one that arrives empty (or inverted) is stretched to the next local midnight.
+DateTime _blockEnd(CalendarItem item) {
+  final start = DateTime.fromMillisecondsSinceEpoch(item.startAt);
+  final end = DateTime.fromMillisecondsSinceEpoch(item.endAt);
+  if (item.allDay && !end.isAfter(start)) {
+    return DateTime(start.year, start.month, start.day + 1);
+  }
+  return end;
+}
+
 /// One block on the grid. Its id is the task plus the occurrence's start, so repeats of
 /// one task stay distinct.
 class TaskEvent extends KalenderEvent {
@@ -31,7 +43,7 @@ class TaskEvent extends KalenderEvent {
     : super(
         id: '${item.taskId}@${item.startAt}',
         start: DateTime.fromMillisecondsSinceEpoch(item.startAt),
-        end: DateTime.fromMillisecondsSinceEpoch(item.endAt),
+        end: _blockEnd(item),
         isAllDay: item.allDay,
         interaction: !item.movable
             ? EventInteraction.allowNone()
