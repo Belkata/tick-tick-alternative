@@ -51,9 +51,7 @@ class _CountingDb extends _SlowDb {
 }
 
 void midnightTests() {
-  testWidgets('reloads when the day rolls over', (
-    tester,
-  ) async {
+  testWidgets('reloads when the day rolls over', (tester) async {
     final db = _CountingDb();
     var now = DateTime(2026, 11, 26, 23, 59, 0);
     final c = DeskController(db, now: () => now);
