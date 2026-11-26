@@ -227,22 +227,25 @@ class GoogleCalendarsMenu extends StatelessWidget {
               minimumSize: Size(compact ? 32 : 0, 32),
               textStyle: manrope(13, FontWeight.w700),
             );
-            return Tooltip(
-              message: 'Choose which Google calendars show',
-              child: compact
-                  ? OutlinedButton(
-                      key: const Key('cal-google-calendars'),
-                      style: style,
-                      onPressed: toggle,
-                      child: const Icon(Icons.layers_outlined, size: 18),
-                    )
-                  : OutlinedButton.icon(
-                      key: const Key('cal-google-calendars'),
-                      style: style,
-                      onPressed: toggle,
-                      icon: const Icon(Icons.layers_outlined, size: 18),
-                      label: const Text('Calendars'),
-                    ),
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Tooltip(
+                message: 'Choose which Google calendars show',
+                child: compact
+                    ? OutlinedButton(
+                        key: const Key('cal-google-calendars'),
+                        style: style,
+                        onPressed: toggle,
+                        child: const Icon(Icons.layers_outlined, size: 18),
+                      )
+                    : OutlinedButton.icon(
+                        key: const Key('cal-google-calendars'),
+                        style: style,
+                        onPressed: toggle,
+                        icon: const Icon(Icons.layers_outlined, size: 18),
+                        label: const Text('Calendars'),
+                      ),
+              ),
             );
           },
         );
@@ -260,7 +263,6 @@ Future<void> showGoogleCalendarsSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: s.panel,
     showDragHandle: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(22)),

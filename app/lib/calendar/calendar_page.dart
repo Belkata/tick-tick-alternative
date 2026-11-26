@@ -20,6 +20,8 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
 import '../desk/controller.dart';
 import '../desk/detail.dart';
+import '../desk/google.dart' show TaskDbGoogle;
+import '../desk/google_calendars.dart';
 import '../desk/theme.dart';
 import '../src/rust/api/tasks.dart';
 import 'calendar_prefs.dart';
@@ -135,6 +137,8 @@ const _twoDays = '2 Days';
 const _views = ['Day', 'Week', 'Month'];
 
 /// The phone's view picker also offers [_twoDays].
+/// The phone view menu's extra entry (not a view).
+const _googleCalendars = 'google-calendars';
 const _phoneViews = ['Day', _twoDays, 'Week', 'Month'];
 
 /// Month cells list a day's items in time order, all-day ones first (kalender's default
@@ -213,6 +217,9 @@ class _CalendarPageState extends State<CalendarPage> {
   };
   late final KalenderController _calendar;
   late final StreamSubscription<int> _changes;
+
+  /// Which Google calendars show (per device); the toolbar button and phone sheet use it.
+  late final GoogleCalendarsController _google;
   final _titleFocus = FocusNode(debugLabel: 'calendar-detail-title');
 
   CalendarPrefs _prefs = CalendarPrefs();
@@ -241,6 +248,7 @@ class _CalendarPageState extends State<CalendarPage> {
     _calendar = KalenderController(viewConfiguration: _configs['Week']!);
     _calendar.visibleDateTimeRange.addListener(_reload);
     _changes = db.changes().listen((_) => _reload());
+    _google = GoogleCalendarsController(TaskDbGoogle(db));
     // Phone: opening the calendar fetches Google's events unless they are minutes old
     // (the fetch ticks the change stream, which reloads). Desktop: a no-op, the daemon polls.
     unawaited(db.googleSyncIfStale(maxAgeSecs: 300).catchError((Object _) {}));
@@ -260,6 +268,7 @@ class _CalendarPageState extends State<CalendarPage> {
   void dispose() {
     _calendar.visibleDateTimeRange.removeListener(_reload);
     _changes.cancel();
+    _google.dispose();
     c.removeListener(_onShell);
     _calendar.dispose();
     _events.dispose();
@@ -608,7 +617,9 @@ class _CalendarPageState extends State<CalendarPage> {
           PopupMenuButton<String>(
             key: const Key('view-picker'),
             color: s.panel,
-            onSelected: _setView,
+            onSelected: (v) => v == _googleCalendars
+                ? showGoogleCalendarsSheet(context, _google)
+                : _setView(v),
             itemBuilder: (context) => [
               for (final v in _phoneViews)
                 PopupMenuItem(
@@ -623,6 +634,17 @@ class _CalendarPageState extends State<CalendarPage> {
                     ),
                   ),
                 ),
+              if (_google.visible) ...[
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  key: const Key('view-google-calendars'),
+                  value: _googleCalendars,
+                  child: Text(
+                    'Google calendars…',
+                    style: manrope(13, FontWeight.w600, color: s.fg),
+                  ),
+                ),
+              ],
             ],
             child: _pill(s, current, null, chevron: true),
           ),
@@ -806,6 +828,7 @@ class _CalendarPageState extends State<CalendarPage> {
             _calendar.animateToNextPage,
           ),
           const SizedBox(width: 12),
+          GoogleCalendarsMenu(controller: _google, compact: !wide),
           _Segmented(values: _views, selected: current, onSelected: _setView),
         ],
       ),
