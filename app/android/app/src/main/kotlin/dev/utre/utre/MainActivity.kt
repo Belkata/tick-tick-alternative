@@ -16,9 +16,11 @@ import dev.utre.utre.widget.TaskListWidgetReceiver
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : FlutterActivity() {
     private val scope = MainScope()
@@ -32,7 +34,7 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         // The core's Google service must exist before the Google page or the calendar ask for it.
         GoogleAuth.init(applicationContext)
-        val ch =MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "utre/widget")
+        val ch = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "utre/widget")
         channel = ch
         ch.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -48,13 +50,22 @@ class MainActivity : FlutterActivity() {
                 }
                 // The app changed tasks: redraw every placed widget.
                 "refresh" -> scope.launch {
-                    TaskListWidget.refreshAll(applicationContext)
-                    result.success(null)
+                    try {
+                        TaskListWidget.refreshAll(applicationContext)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("refresh", e.message, null)
+                    }
                 }
                 // The app changed tasks: reschedule reminder alarms.
-                "reminders" -> {
-                    Reminders.schedule(applicationContext)
-                    result.success(null)
+                // It reads the database, so it stays off the main thread.
+                "reminders" -> scope.launch {
+                    try {
+                        withContext(Dispatchers.IO) { Reminders.schedule(applicationContext) }
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("reminders", e.message, null)
+                    }
                 }
                 // The core needs the IANA zone (Android has no /etc/localtime).
                 "timeZone" -> result.success(TimeZone.getDefault().id)
@@ -88,8 +99,12 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        pendingShare = sharedText(intent)
-        pendingTask = openedTask(intent)
+        // After process death Android restarts the activity with its original intent: the
+        // share would then add the same task twice, so only a fresh launch reads it.
+        if (savedInstanceState == null) {
+            pendingShare = sharedText(intent)
+            pendingTask = openedTask(intent)
+        }
         Reminders.ensureChannel(this)
         SyncWorker.enqueue(applicationContext)
     }
