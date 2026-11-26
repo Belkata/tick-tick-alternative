@@ -713,7 +713,9 @@ mod tests {
         // Clearing the dates by hand brings a task back too.
         set_start(&s, &start_only, None, now, tz).unwrap();
         assert_eq!(ids(None).len(), 3);
+    }
 
+    #[test]
     fn rows_and_detail_carry_the_duration() {
         let s = Store::open_in_memory().unwrap();
         let tz = Tz::Europe__Sofia;
