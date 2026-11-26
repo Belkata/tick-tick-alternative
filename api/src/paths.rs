@@ -11,7 +11,8 @@ pub fn default_db() -> std::io::Result<PathBuf> {
     if let Some(p) = utre_core::envvar::var_os("DB") {
         return Ok(PathBuf::from(p));
     }
-    let data = dirs::data_dir().ok_or_else(|| std::io::Error::other("no platform data directory"))?;
+    let data =
+        dirs::data_dir().ok_or_else(|| std::io::Error::other("no platform data directory"))?;
     let (old, dir) = (data.join(LEGACY_DIR), data.join("utre"));
     match migrate_data_dir(&old, &dir, legacy_daemon_running) {
         Ok(true) => eprintln!(
@@ -110,6 +111,12 @@ pub fn socket() -> PathBuf {
     }
 }
 
+/// Two paths name the same database file (both canonicalised; a missing file is compared as given).
+pub fn same_file(a: &Path, b: &Path) -> bool {
+    let canon = |p: &Path| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    canon(a) == canon(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -126,7 +133,13 @@ mod tests {
         let root = scratch("move");
         let (old, new) = (root.join("tick-alt"), root.join("utre"));
         std::fs::create_dir_all(old.join("backups")).unwrap();
-        for f in ["tt.db", "tt.db-wal", "tt.key", "desk.json", "backups/tt-v6.db"] {
+        for f in [
+            "tt.db",
+            "tt.db-wal",
+            "tt.key",
+            "desk.json",
+            "backups/tt-v6.db",
+        ] {
             std::fs::write(old.join(f), f).unwrap();
         }
         assert!(migrate_data_dir(&old, &new, || false).unwrap());
@@ -138,7 +151,11 @@ mod tests {
             ("desk.json", "desk.json"),
             ("backups/tt-v6.db", "backups/tt-v6.db"),
         ] {
-            assert_eq!(std::fs::read_to_string(new.join(f)).unwrap(), content, "{f}");
+            assert_eq!(
+                std::fs::read_to_string(new.join(f)).unwrap(),
+                content,
+                "{f}"
+            );
         }
         assert!(!new.join("tt.db").exists());
         // A second start does nothing.
@@ -174,10 +191,4 @@ mod tests {
         assert!(migrate_data_dir(&old, &new, || true).is_err());
         assert!(old.join("tt.db").exists() && !new.exists());
     }
-}
-
-/// Two paths name the same database file (both canonicalised; a missing file is compared as given).
-pub fn same_file(a: &Path, b: &Path) -> bool {
-    let canon = |p: &Path| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
-    canon(a) == canon(b)
 }
