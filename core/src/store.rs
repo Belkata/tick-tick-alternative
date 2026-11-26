@@ -20,6 +20,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("migrations/007_view_sort.sql"),
     include_str!("migrations/008_gcal.sql"),
     include_str!("migrations/009_parent_raw.sql"),
+    include_str!("migrations/010_gcal_visibility.sql"),
 ];
 
 /// A handle to one Utre database file.

@@ -31,7 +31,8 @@ fn rfc3339(ms: i64) -> String {
 }
 
 impl Session {
-    /// The calendars the user can read. Selection stays with the cache, not Google.
+    /// The calendars the user can read, with Google's `selected` flag (the default for
+    /// visibility, see `Store::gcal_set_calendars`).
     pub async fn list_calendars(&self) -> Result<Vec<GcalCalendar>> {
         let mut out = Vec::new();
         let mut page: Option<String> = None;
@@ -55,7 +56,10 @@ impl Session {
                     id: id.to_string(),
                     summary: name.to_string(),
                     color: item["backgroundColor"].as_str().map(str::to_string),
-                    selected: false,
+                    // Google's own flag: the default until the user chooses on this device.
+                    selected: item["selected"].as_bool().unwrap_or(false),
+                    primary: item["primary"].as_bool().unwrap_or(false),
+                    access_role: item["accessRole"].as_str().map(str::to_string),
                 });
             }
             page = reply["nextPageToken"].as_str().map(str::to_string);
@@ -242,7 +246,8 @@ mod tests {
             ("a@x", "Me")
         );
         assert_eq!(cals[1].color.as_deref(), Some("#16a765"));
-        assert!(cals.iter().all(|c| !c.selected));
+        // Google's own flags come through (none were set here).
+        assert!(cals.iter().all(|c| !c.selected && !c.primary));
         assert!(requests(&r)[0].contains("minAccessRole=reader"));
     }
 
@@ -489,6 +494,8 @@ mod tests {
                 summary: "A".into(),
                 color: None,
                 selected: false,
+                primary: false,
+                access_role: None,
             }])
             .unwrap();
         store.gcal_select("a", true).unwrap();
@@ -502,5 +509,88 @@ mod tests {
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].summary, "Lunch");
         assert!(requests(&r).iter().all(|q| !q.contains("/calendars/b/")));
+    }
+
+    #[tokio::test]
+    async fn google_flags_set_the_default_and_a_choice_wins_and_hidden_ones_are_not_fetched() {
+        let r = rig(
+            vec![
+                Route::new(
+                    "/calendar/v3/users/me/calendarList",
+                    200,
+                    r##"{"items":[
+                        {"id":"me","summary":"Me","primary":true,"selected":true,"accessRole":"owner"},
+                        {"id":"fam","summary":"Family","selected":true,"accessRole":"writer"},
+                        {"id":"hol","summary":"Holidays","accessRole":"reader"}]}"##,
+                ),
+                Route::new(
+                    "/calendar/v3/calendars/me/events",
+                    200,
+                    r#"{"nextSyncToken":"T","items":[]}"#,
+                ),
+                Route::new(
+                    "/calendar/v3/calendars/fam/events",
+                    200,
+                    r#"{"nextSyncToken":"T","items":[]}"#,
+                ),
+                Route::new(
+                    "/calendar/v3/calendars/hol/events",
+                    200,
+                    r#"{"nextSyncToken":"T","items":[]}"#,
+                ),
+            ],
+            HOUR,
+        )
+        .await;
+        let mut store = Store::open_in_memory().unwrap();
+        // First round: nothing chosen, so Google's flags decide; the primary one comes first.
+        sync_calendars(&r.session, &mut store, NOW).await.unwrap();
+        let cals = store.gcal_calendars().unwrap();
+        let view: Vec<_> = cals
+            .iter()
+            .map(|c| {
+                (
+                    c.id.as_str(),
+                    c.selected,
+                    c.primary,
+                    c.access_role.as_deref(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            view,
+            [
+                ("me", true, true, Some("owner")),
+                ("fam", true, false, Some("writer")),
+                ("hol", false, false, Some("reader")),
+            ]
+        );
+        let fetched = |r: &Rig, id: &str| {
+            requests(r)
+                .iter()
+                .filter(|q| q.contains(&format!("/calendars/{id}/events")))
+                .count()
+        };
+        assert_eq!(
+            (fetched(&r, "me"), fetched(&r, "fam"), fetched(&r, "hol")),
+            (1, 1, 0)
+        );
+        // The user hides Family and shows Holidays; the next round keeps both choices
+        // and fetches Holidays (no token yet) but not Family.
+        store.gcal_select("fam", false).unwrap();
+        store.gcal_select("hol", true).unwrap();
+        sync_calendars(&r.session, &mut store, NOW).await.unwrap();
+        assert_eq!(
+            (fetched(&r, "me"), fetched(&r, "fam"), fetched(&r, "hol")),
+            (2, 1, 1)
+        );
+        let shown: Vec<_> = store
+            .gcal_calendars()
+            .unwrap()
+            .into_iter()
+            .filter(|c| c.selected)
+            .map(|c| c.id)
+            .collect();
+        assert_eq!(shown, ["me", "hol"]);
     }
 }
