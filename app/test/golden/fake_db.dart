@@ -325,6 +325,8 @@ class FakeDb implements TaskDb {
       summary: 'Personal',
       color: '#8e24aa',
       selected: true,
+      primary: true,
+      accessRole: 'owner',
     ),
   ];
 
