@@ -15,4 +15,6 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+    <!-- The widget's own dialogs (setup and quick add). -->
+    <style name="DialogTheme" parent="@android:style/Theme.DeviceDefault.Light.Dialog" />
 </resources>
