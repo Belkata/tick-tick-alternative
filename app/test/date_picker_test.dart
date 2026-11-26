@@ -376,6 +376,27 @@ void main() {
       });
     }
 
+    for (final b in Brightness.values) {
+      testWidgets('the chosen day is readable on the accent, ${b.name}', (
+        t,
+      ) async {
+        await open(t, brightness: b, initial: When(DateTime(2026, 11, 26)));
+        final label = t.widget<Text>(
+          find.descendant(
+            of: find.byKey(const Key('when-day-2026-11-26')),
+            matching: find.byType(Text),
+          ),
+        );
+        final fg = label.style!.color!;
+        final bg = softTheme(b).colorScheme.primary;
+        final hi = fg.computeLuminance() > bg.computeLuminance() ? fg : bg;
+        final lo = hi == fg ? bg : fg;
+        final ratio =
+            (hi.computeLuminance() + 0.05) / (lo.computeLuminance() + 0.05);
+        expect(ratio, greaterThanOrEqualTo(3));
+      });
+    }
+
     testWidgets('desktop uses a dialog', (t) async {
       await open(t, brightness: Brightness.dark);
       expect(find.byType(Dialog), findsOneWidget);

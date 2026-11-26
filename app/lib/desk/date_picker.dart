@@ -433,7 +433,7 @@ class _WhenPickerPanelState extends State<WhenPickerPanel> {
                     foregroundColor: WidgetStateProperty.resolveWith(
                       (st) => st.contains(WidgetState.disabled)
                           ? s.mute
-                          : Colors.white,
+                          : Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                   onPressed: canSave ? _done : null,
@@ -576,7 +576,7 @@ class _WhenPickerPanelState extends State<WhenPickerPanel> {
     final selected = _day != null && DateUtils.isSameDay(_day, day);
     final isToday = DateUtils.isSameDay(_today, day);
     final fg = selected
-        ? Colors.white
+        ? Theme.of(context).colorScheme.onPrimary
         : isToday
         ? s.today
         : inMonth
