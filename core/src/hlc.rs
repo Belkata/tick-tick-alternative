@@ -18,7 +18,30 @@ pub struct Hlc {
     pub device: u64,
 }
 
+/// Largest counter the fixed-width text form can hold (6 hex digits).
+const MAX_COUNTER: u32 = 0xFF_FFFF;
+
 impl Hlc {
+    /// The stamp after `(wall, counter)`: the counter is capped by the text form's width,
+    /// so a full counter moves to the next millisecond instead of overflowing (a peer
+    /// can send any counter, and a stamp that doesn't print as 6 digits can't be parsed
+    /// back or sorted as text).
+    const fn after(wall: u64, counter: u32, device: u64) -> Self {
+        if counter >= MAX_COUNTER {
+            Self {
+                wall: wall.saturating_add(1),
+                counter: 0,
+                device,
+            }
+        } else {
+            Self {
+                wall,
+                counter: counter + 1,
+                device,
+            }
+        }
+    }
+
     pub const fn zero(device: u64) -> Self {
         Self {
             wall: 0,
@@ -36,11 +59,7 @@ impl Hlc {
                 device: self.device,
             }
         } else {
-            Self {
-                wall: self.wall,
-                counter: self.counter + 1,
-                device: self.device,
-            }
+            Self::after(self.wall, self.counter, self.device)
         }
     }
 
@@ -49,19 +68,19 @@ impl Hlc {
     pub fn observe(self, remote: Hlc, now_ms: u64) -> Self {
         let wall = now_ms.max(self.wall).max(remote.wall);
         let counter = if wall == self.wall && wall == remote.wall {
-            self.counter.max(remote.counter) + 1
+            self.counter.max(remote.counter)
         } else if wall == self.wall {
-            self.counter + 1
+            self.counter
         } else if wall == remote.wall {
-            remote.counter + 1
+            remote.counter
         } else {
-            0
+            return Self {
+                wall,
+                counter: 0,
+                device: self.device,
+            };
         };
-        Self {
-            wall,
-            counter,
-            device: self.device,
-        }
+        Self::after(wall, counter, self.device)
     }
 }
 
@@ -119,6 +138,19 @@ impl<'de> serde::Deserialize<'de> for Hlc {
 mod tests {
     use super::*;
     use proptest::prelude::*;
+
+    #[test]
+    fn a_full_counter_rolls_into_the_next_millisecond() {
+        let full = Hlc { wall: 5, counter: u32::MAX, device: 9 };
+        let a = full.tick(1);
+        assert!(a > full);
+        assert_eq!(a.to_string().parse::<Hlc>().unwrap(), a);
+        let b = Hlc::zero(1).observe(full, 1);
+        assert!(b > full);
+        assert_eq!(b.to_string().parse::<Hlc>().unwrap(), b);
+        let c = Hlc { wall: 5, counter: MAX_COUNTER, device: 1 }.tick(1);
+        assert_eq!((c.wall, c.counter), (6, 0));
+    }
 
     #[test]
     fn tick_is_monotonic_when_the_clock_goes_back() {
