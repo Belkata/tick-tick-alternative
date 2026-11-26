@@ -125,3 +125,15 @@ Before / after: `attachments/ui6-wide-inset-before.jpg` / `ui6-wide-inset-after.
 Process note: a first desktop test launch without `$UTRE_DB` made the app open the real database directly (the
 daemon-or-file check compares paths), so for about 15 seconds it was open on the real file with no input sent. Always
 export `UTRE_DB` for the app as well as the daemon when testing on a desktop.
+
+## Round 7: motion
+
+One helper, `motion(context, ms)` in `theme.dart`, returns a zero duration when the system asks for reduced motion
+(`MediaQuery.disableAnimations`), so every transition below respects it.
+- Checkbox: the fill and edge colours animate (140 ms) and the tick pops in (`AnimatedScale`, ease-out-back).
+- Task card: the selection bar grows from the left edge instead of appearing; the wash already animated through
+  `Material.animationDuration`, now 160 ms and reduced-motion aware. Sidebar tiles likewise.
+- Segmented priority and the calendar's Unscheduled drop highlight use the same helper.
+Checked on the emulator: completing a task from the phone list leaves no stray tick at scale 0. Not verified: the look of the
+animations themselves (stills only), and that `disableAnimations` flips with Android's "remove animations" (Flutter reads it).
+Left: page routes (detail on phones) keep Material's default transition.
