@@ -174,11 +174,13 @@ class _CalendarPageState extends State<CalendarPage> {
       name: 'Day',
       initialTimeOfDay: const KalenderTime(hour: 7, minute: 30),
       initialHeightPerMinute: 0.85,
+      nowCallback: c.now,
     ),
     'Week': MultiDayViewConfiguration.week(
       name: 'Week',
       initialTimeOfDay: const KalenderTime(hour: 7, minute: 30),
       initialHeightPerMinute: 0.8,
+      nowCallback: c.now,
     ),
     // Phone only: seven columns leave a title 2 to 4 letters, two leave room to read.
     _twoDays: MultiDayViewConfiguration.custom(
@@ -186,8 +188,12 @@ class _CalendarPageState extends State<CalendarPage> {
       numberOfDays: 2,
       initialTimeOfDay: const KalenderTime(hour: 7, minute: 30),
       initialHeightPerMinute: 0.85,
+      nowCallback: c.now,
     ),
-    'Month': MonthViewConfiguration.singleMonth(name: 'Month'),
+    'Month': MonthViewConfiguration.singleMonth(
+      name: 'Month',
+      nowCallback: c.now,
+    ),
   };
   late final KalenderController _calendar;
   late final StreamSubscription<int> _changes;
@@ -301,7 +307,7 @@ class _CalendarPageState extends State<CalendarPage> {
       _calendar.viewConfiguration = config;
       // A new configuration keeps the old first visible day; come back to today.
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _calendar.jumpToDate(DateTime.now()),
+        (_) => _calendar.jumpToDate(c.now()),
       );
     }
     if (save) {
@@ -579,7 +585,7 @@ class _CalendarPageState extends State<CalendarPage> {
           _pill(
             s,
             'Today',
-            () => _calendar.animateToDate(DateTime.now()),
+            () => _calendar.animateToDate(c.now()),
             key: const Key('cal-today'),
           ),
           const SizedBox(width: 6),
@@ -641,7 +647,7 @@ class _CalendarPageState extends State<CalendarPage> {
           shownDay.month,
           shownDay.day - (shownDay.weekday - 1),
         );
-        final now = DateTime.now();
+        final now = c.now();
         final today = DateTime(now.year, now.month, now.day);
         final busy = <DateTime>{};
         for (final i in _items) {
@@ -759,7 +765,7 @@ class _CalendarPageState extends State<CalendarPage> {
               minimumSize: const Size(0, 32),
               textStyle: manrope(13, FontWeight.w700),
             ),
-            onPressed: () => _calendar.animateToDate(DateTime.now()),
+            onPressed: () => _calendar.animateToDate(c.now()),
             child: const Text('Today'),
           ),
           const SizedBox(width: 6),
@@ -933,7 +939,7 @@ class _CalendarPageState extends State<CalendarPage> {
     if (_narrow && _calendar.viewConfiguration.name == 'Day') {
       return const SizedBox.shrink();
     }
-    final now = DateTime.now();
+    final now = c.now();
     final today =
         date.year == now.year && date.month == now.month && date.day == now.day;
     const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -1753,7 +1759,7 @@ class _CalendarPageState extends State<CalendarPage> {
     );
     final draggable = Theme.of(context).platform == TargetPlatform.android
         ? LongPressDraggable<Reschedule>(
-            data: Reschedule(event: TaskEvent.draft(row, DateTime.now())),
+            data: Reschedule(event: TaskEvent.draft(row, c.now())),
             dragAnchorStrategy: pointerDragAnchorStrategy,
             onDragStarted: _collapseDrawer,
             feedback: feedback,
@@ -1761,7 +1767,7 @@ class _CalendarPageState extends State<CalendarPage> {
             child: card,
           )
         : Draggable<Reschedule>(
-            data: Reschedule(event: TaskEvent.draft(row, DateTime.now())),
+            data: Reschedule(event: TaskEvent.draft(row, c.now())),
             // kalender reads the drop time from the feedback's top-left corner, so pin
             // that corner to the pointer.
             dragAnchorStrategy: pointerDragAnchorStrategy,
