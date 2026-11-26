@@ -128,5 +128,6 @@ Before committing, a short **spike (milestone M0 in [[10 Roadmap]])** checks:
 > | `local_notifier` | 0.1.6 | last release 2024-04: likely replace with own notifications |
 > | `play-services-auth` | 22.0.0 | M5b slice 5 (checked 2026-11-26 on Google Maven, released 2026-08): Google Identity `AuthorizationClient` gives the phone its Google Calendar access tokens (no refresh token, no client secret) |
 > | `rustls` / `webpki-roots` | 0.23 / 1 | M5b slice 5, Android only in `utre-google`: reqwest trusts the bundled roots, because its default platform verifier needs a Java-side setup the app doesn't have |
+| `url_launcher` | 6.3.3 | v0.8.6: opens a Google event's `htmlLink` in the browser (desktop; the phone's fallback). http(s) only |
 
 > **2026-11-26 (v0.8.0) build tooling:** Android Gradle Plugin 9.5.3, Kotlin 2.4.21 (and its Compose plugin), Gradle 9.9.2. CI: `actions/cache` v6.1.0 (other actions pinned by SHA). `cupertino_icons` removed from the app.
