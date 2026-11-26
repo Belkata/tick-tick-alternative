@@ -254,14 +254,27 @@ class _QuickAddState extends State<_QuickAdd> {
   void initState() {
     super.initState();
     widget.focus.addListener(_onFocus);
-    _text.addListener(_onFocus);
+    _text.addListener(_onText);
   }
 
   void _onFocus() => setState(() {});
 
+  bool _hadText = false;
+
+  // Only whether there is text decides what the field shows (the Enter hint), so typing
+  // rebuilds the field when that flips, not on every keystroke.
+  void _onText() {
+    final has = _text.text.trim().isNotEmpty;
+    if (has != _hadText) {
+      _hadText = has;
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
     widget.focus.removeListener(_onFocus);
+    _text.removeListener(_onText);
     _text.dispose();
     super.dispose();
   }
@@ -504,6 +517,13 @@ class _TaskCardState extends State<TaskCard> {
       FontWeight.w500,
       color: row.done ? s.mute : s.fg,
     ).copyWith(decoration: row.done ? TextDecoration.lineThrough : null);
+    // The checkbox is centred on the title's first line, not on the whole card.
+    final hit = touch ? 15.5 : 3.0;
+    final align = FirstLineAlign(
+      box: 17 + 2 * hit,
+      lineHeight: FirstLineAlign.lineHeightOf(context, titleStyle),
+      textTop: meta.isEmpty ? 10 : 8,
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: FocusRing(
@@ -542,33 +562,31 @@ class _TaskCardState extends State<TaskCard> {
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(touch ? 0 : 8, 4, 12, 4),
                     child: Row(
-                      crossAxisAlignment: touch
-                          ? CrossAxisAlignment.center
-                          : CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: EdgeInsets.only(
-                            top: touch ? 0 : (meta.isEmpty ? 3 : 5),
-                          ),
+                          padding: EdgeInsets.only(top: align.lead),
                           child: PriorityCheck(
                             key: Key('check-${row.id}'),
                             priority: row.priority,
                             done: row.done,
-                            hit: touch ? 15.5 : 3,
+                            hit: hit,
                             onTap: widget.onCheck,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: meta.isEmpty ? 10 : 8,
+                            padding: EdgeInsets.only(
+                              top: align.text,
+                              bottom: meta.isEmpty ? 10 : 8,
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   row.title,
+                                  key: Key('title-${row.id}'),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: titleStyle,
