@@ -409,6 +409,29 @@ mod tests {
     }
 
     #[test]
+    fn remote_values_outside_sane_ranges_are_rejected() {
+        use crate::hlc::Hlc;
+        use crate::oplog::Op;
+        let s = Store::open_in_memory().unwrap();
+        let op = |n: u32, field: &str, value: i64| Op {
+            hlc: Hlc { wall: 1_000 + n as u64, counter: 0, device: 77 },
+            entity: Entity::Task,
+            entity_id: "t1".into(),
+            field: field.into(),
+            value: serde_json::json!(value),
+        };
+        let bad = [
+            op(1, "due_at", i64::MAX),
+            op(2, "start_at", i64::MIN),
+            op(3, "duration_min", i64::MAX),
+            op(4, "duration_min", -1),
+        ];
+        assert_eq!(s.apply_remote(&bad).unwrap(), 0);
+        let good = [op(5, "due_at", 1_700_000_000_000), op(6, "duration_min", 45)];
+        assert_eq!(s.apply_remote(&good).unwrap(), 2);
+    }
+
+    #[test]
     fn migrations_are_idempotent_on_reopen() {
         let dir = std::env::temp_dir().join(format!("utre-core-mig-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
