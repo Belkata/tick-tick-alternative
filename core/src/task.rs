@@ -535,6 +535,18 @@ impl Store {
         })
     }
 
+    /// Set or clear only the task's length in minutes (calendar block length, Google event
+    /// length). Dates are untouched; a repeating task keeps it for every occurrence.
+    pub fn set_task_duration(&self, id: &str, duration_min: Option<i64>) -> Result<()> {
+        if duration_min.is_some_and(|d| d <= 0) {
+            return Err(Error::Invalid("duration must be positive".into()));
+        }
+        self.write(|w| {
+            require_task(w.conn, id)?;
+            w.set(Entity::Task, id, "duration_min", duration_min)
+        })
+    }
+
     /// Mark a task done, or advance a repeating one to its next date.
     /// Returns false if no open task has that id.
     pub fn complete_task(&self, id: &str) -> Result<bool> {
@@ -765,5 +777,58 @@ mod tests {
         assert!(s.add_task("   ").is_err());
         let t = s.add_task("ok").unwrap();
         assert!(s.set_title(&t.id, "").is_err());
+    }
+
+    #[test]
+    fn duration_is_set_cleared_bounded_and_kept_by_repeats() {
+        let s = Store::open_in_memory().unwrap();
+        let day = 1_796_000_000_000 / crate::dates::DAY_MS * crate::dates::DAY_MS;
+        let t = s
+            .create_task(&NewTask {
+                title: "Gym".into(),
+                schedule: Schedule {
+                    start_at: Some(day + 9 * 3_600_000),
+                    due_at: Some(day + 9 * 3_600_000),
+                    tz: Some("UTC".into()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap();
+        assert_eq!(t.duration_min, None);
+        s.set_task_duration(&t.id, Some(90)).unwrap();
+        let got = s.get_task(&t.id).unwrap().unwrap();
+        // Only the length changed.
+        assert_eq!((got.duration_min, got.start_at), (Some(90), t.start_at));
+        let block = |s: &Store| {
+            let b = s
+                .calendar(day, day + crate::dates::DAY_MS, chrono_tz::UTC)
+                .unwrap();
+            (b[0].end_at - b[0].start_at) / 60_000
+        };
+        assert_eq!(block(&s), 90);
+        // Out of range is refused and changes nothing.
+        for bad in [0, -5, i64::MAX] {
+            assert!(s.set_task_duration(&t.id, Some(bad)).is_err());
+        }
+        assert_eq!(s.get_task(&t.id).unwrap().unwrap().duration_min, Some(90));
+        // A repeat keeps it for the next occurrence.
+        s.set_repeat(
+            &t.id,
+            Some(&crate::Repeat {
+                rule: "FREQ=DAILY".into(),
+                mode: crate::RepeatMode::Fixed,
+            }),
+        )
+        .unwrap();
+        s.complete_task(&t.id).unwrap();
+        let next = s.get_task(&t.id).unwrap().unwrap();
+        assert!(next.due_at > t.due_at);
+        assert_eq!(next.duration_min, Some(90));
+        // Clearing goes back to the default block length.
+        s.set_task_duration(&t.id, None).unwrap();
+        assert_eq!(s.get_task(&t.id).unwrap().unwrap().duration_min, None);
+        assert_eq!(block(&s), crate::calendar::DEFAULT_BLOCK_MIN);
+        assert!(s.set_task_duration("nope", Some(5)).is_err());
     }
 }

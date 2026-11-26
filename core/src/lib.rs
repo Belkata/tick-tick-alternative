@@ -25,7 +25,10 @@ mod view_sort;
 
 pub use calendar::{Block, DEFAULT_BLOCK_MIN};
 pub use checklist::ChecklistItem;
-pub use dates::{Day, is_overdue, local_day, local_tz, offset_label, parse_when, when_label};
+pub use dates::{
+    Day, duration_label, is_overdue, local_day, local_tz, offset_label, parse_duration, parse_when,
+    when_label,
+};
 pub use filter::{Cond, Filter, FilterRule, SavedFilter};
 pub use gcal::{
     GcalCalendar, GcalEvent, GcalEventUpdate, PUSH_FUTURE_DAYS, PUSH_PAST_DAYS, PushEvent,

@@ -255,6 +255,67 @@ pub fn offset_label(min: i64) -> String {
     format!("{} before", parts.join(""))
 }
 
+/// Parse a task length: `90`, `45m`, `45 min`, `1h`, `1h30`, `1h30m`, `1:30`, `1.5h`.
+/// `none` (or empty) clears it (`Ok(None)`). A bare number is minutes. Always positive.
+pub fn parse_duration(input: &str) -> Result<Option<i64>> {
+    let bad = || {
+        Error::Invalid(format!(
+            "can't read '{}' as a duration (try 90m or 1h30)",
+            input.trim()
+        ))
+    };
+    let t = input.trim().to_lowercase().replace(' ', "");
+    if t.is_empty() || t == "none" || t == "no" || t == "-" {
+        return Ok(None);
+    }
+    let num = |s: &str| -> Result<i64> {
+        if s.is_empty() || !s.bytes().all(|b| b.is_ascii_digit()) || s.len() > 9 {
+            return Err(bad());
+        }
+        s.parse().map_err(|_| bad())
+    };
+    let min = if let Some((h, m)) = t.split_once(':') {
+        let m = num(m)?;
+        if m >= 60 {
+            return Err(bad());
+        }
+        num(h)? * 60 + m
+    } else if let Some((h, rest)) = t.split_once('h') {
+        let rest = rest
+            .strip_suffix("min")
+            .or_else(|| rest.strip_suffix('m'))
+            .unwrap_or(rest);
+        match h.split_once(['.', ',']).filter(|_| rest.is_empty()) {
+            // 1.5h: a decimal hour on its own.
+            Some((whole, frac)) => {
+                let scale = 10_i64.pow(frac.len().min(6) as u32);
+                num(whole)? * 60 + (num(frac)? * 60 + scale / 2) / scale
+            }
+            None => num(h)? * 60 + if rest.is_empty() { 0 } else { num(rest)? },
+        }
+    } else {
+        let digits = t
+            .strip_suffix("minutes")
+            .or_else(|| t.strip_suffix("min"))
+            .or_else(|| t.strip_suffix('m'))
+            .unwrap_or(&t);
+        num(digits)?
+    };
+    if min <= 0 || min > 100_000_000 {
+        return Err(bad());
+    }
+    Ok(Some(min))
+}
+
+/// `45 min`, `2 h`, `1 h 30 min`.
+pub fn duration_label(min: i64) -> String {
+    match (min / 60, min % 60) {
+        (0, m) => format!("{m} min"),
+        (h, 0) => format!("{h} h"),
+        (h, m) => format!("{h} h {m} min"),
+    }
+}
+
 /// Today's date in UTC (tests).
 #[cfg(test)]
 pub(crate) fn utc_today() -> NaiveDate {
@@ -267,6 +328,41 @@ mod tests {
 
     fn d(s: &str) -> NaiveDate {
         NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap()
+    }
+
+    #[test]
+    fn durations_parse_in_every_common_shape() {
+        for (text, want) in [
+            ("90", Some(90)),
+            ("45m", Some(45)),
+            ("45 min", Some(45)),
+            ("1h", Some(60)),
+            ("1h30", Some(90)),
+            ("1h30m", Some(90)),
+            ("1:30", Some(90)),
+            ("0:45", Some(45)),
+            ("1.5h", Some(90)),
+            ("2H", Some(120)),
+            ("none", None),
+            ("", None),
+        ] {
+            assert_eq!(parse_duration(text).unwrap(), want, "{text}");
+        }
+        for bad in [
+            "0",
+            "0m",
+            "-5",
+            "abc",
+            "1:75",
+            "1h99x",
+            "99999999999",
+            "1.h5",
+        ] {
+            assert!(parse_duration(bad).is_err(), "{bad}");
+        }
+        assert_eq!(duration_label(45), "45 min");
+        assert_eq!(duration_label(120), "2 h");
+        assert_eq!(duration_label(90), "1 h 30 min");
     }
 
     #[test]
