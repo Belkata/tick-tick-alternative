@@ -34,6 +34,7 @@ import java.util.TimeZone
 object Reminders {
     private const val CHANNEL = "reminders"
     private const val PREFS = "reminders"
+    private const val EXTRA_TASK = "utre_task"
     private const val WINDOW_MS = 48L * 3600 * 1000
     const val SNOOZE_MS = 10L * 60 * 1000
     const val SNOOZE_LONG_MS = 60L * 60 * 1000
@@ -49,12 +50,16 @@ object Reminders {
             alarms.cancel(alarmIntent(ctx, code.toInt(), null, null))
         }
         val now = System.currentTimeMillis()
-        val due = try {
-            UtreCore.db(ctx).upcomingReminders(now, now + WINDOW_MS, TimeZone.getDefault().id)
+        // From 0, so that reminders which already fired still tell which tasks keep one.
+        val all = try {
+            UtreCore.db(ctx).upcomingReminders(0, now + WINDOW_MS, TimeZone.getDefault().id)
         } catch (e: Exception) {
             android.util.Log.w("Utre", "reminders: ${e.message}")
             return
         }
+        val live = all.map { it.taskId }.toSet()
+        cancelStale(ctx, live)
+        val due = all.filter { it.fireAt >= now }
         val codes = mutableSetOf<String>()
         for (r in due) {
             val code = (r.reminderId + r.fireAt).hashCode()
@@ -64,9 +69,32 @@ object Reminders {
         prefs.edit().putStringSet("codes", codes).apply()
         // Snoozes live outside the core's list, and alarms don't survive a reboot: re-arm them.
         for (s in snoozes(prefs)) {
-            if (s.at > now) set(ctx, s.at, alarmIntent(ctx, s.code, s.task, s.title))
+            if (s.at > now && s.task in live) set(ctx, s.at, alarmIntent(ctx, s.code, s.task, s.title))
         }
     }
+
+    /**
+     * Take down shown reminder notifications whose task is no longer open or has no reminder
+     * left (completed or edited on another device). `live` = tasks that still have one.
+     */
+    private fun cancelStale(ctx: Context, live: Set<String>) {
+        try {
+            val nm = ctx.getSystemService(NotificationManager::class.java)
+            val shown = nm.activeNotifications
+                .filter { it.notification.channelId == CHANNEL }
+                .mapNotNull { sbn -> sbn.notification.extras.getString(EXTRA_TASK)?.let { sbn.id to it } }
+            for (id in staleIds(shown, live)) {
+                nm.cancel(id)
+                shown.firstOrNull { it.first == id }?.let { cancelSnooze(ctx, it.second) }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("Utre", "reminders: stale check: ${e.message}")
+        }
+    }
+
+    /** Which of the shown (notification id, task id) pairs belong to a task not in `live`. */
+    internal fun staleIds(shown: List<Pair<Int, String>>, live: Set<String>): List<Int> =
+        shown.filter { it.second !in live }.map { it.first }
 
     /** Forget a task's snooze (it was completed), and cancel its alarm. */
     @Synchronized
@@ -165,6 +193,7 @@ object Reminders {
             .setContentText("Reminder")
             .setContentIntent(open)
             .setAutoCancel(true)
+            .addExtras(android.os.Bundle().apply { putString(EXTRA_TASK, taskId) })
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .addAction(0, "Done", action(ReminderReceiver.DONE))
             .addAction(0, "Snooze 10 min", action(ReminderReceiver.SNOOZE))

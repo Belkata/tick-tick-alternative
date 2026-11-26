@@ -29,4 +29,11 @@ class RemindersTest {
         Reminders.cancelSnooze(ctx, "task-b")
         assertEquals(0, stored().length())
     }
+
+    @Test
+    fun staleNotificationsAreTheOnesWithoutALiveTask() {
+        val shown = listOf(1 to "done-elsewhere", 2 to "still-open", 3 to "done-elsewhere")
+        assertEquals(listOf(1, 3), Reminders.staleIds(shown, setOf("still-open")))
+        assertEquals(emptyList<Int>(), Reminders.staleIds(shown, setOf("done-elsewhere", "still-open")))
+    }
 }
