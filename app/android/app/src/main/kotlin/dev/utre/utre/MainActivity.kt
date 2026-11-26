@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import dev.utre.utre.google.GoogleAuth
@@ -83,6 +84,9 @@ class MainActivity : FlutterActivity() {
                 }
                 // Google's consent screen (plan/19 slice 5); answers ok, cancelled, not_configured or error: ...
                 "googleSignIn" -> GoogleAuth.signIn(this, result)
+                // A Google event's web link, handed to the Google Calendar app only. Answers false
+                // when that app is missing or does not take the link; Dart then opens the browser.
+                "openInCalendarApp" -> result.success(openInCalendarApp(call.arguments as? String))
                 // Ask the launcher to place the widget; it shows its own confirmation.
                 "pin" -> {
                     val manager = AppWidgetManager.getInstance(this)
@@ -94,6 +98,25 @@ class MainActivity : FlutterActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }
+    }
+
+    /**
+     * ACTION_VIEW for [url] with the package pinned to Google Calendar. startActivity throws
+     * ActivityNotFoundException when the app is not installed or has no filter for the link, so
+     * no `<queries>` entry or calendar permission is needed.
+     */
+    private fun openInCalendarApp(url: String?): Boolean {
+        if (url == null) return false
+        return try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    .setPackage("com.google.android.calendar")
+                    .addCategory(Intent.CATEGORY_BROWSABLE),
+            )
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 
