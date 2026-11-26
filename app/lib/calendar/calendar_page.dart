@@ -624,14 +624,20 @@ class _CalendarPageState extends State<CalendarPage> {
                   ),
                 ),
             ],
-            child: _pill(s, '$current ▾', null),
+            child: _pill(s, current, null, chevron: true),
           ),
         ],
       ),
     );
   }
 
-  Widget _pill(SoftColors s, String label, VoidCallback? onTap, {Key? key}) {
+  Widget _pill(
+    SoftColors s,
+    String label,
+    VoidCallback? onTap, {
+    Key? key,
+    bool chevron = false,
+  }) {
     final pill = Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
       decoration: BoxDecoration(
@@ -639,7 +645,15 @@ class _CalendarPageState extends State<CalendarPage> {
         border: Border.all(color: s.line),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(label, style: manrope(12, FontWeight.w700, color: s.fg)),
+      child: chevron
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label, style: manrope(12, FontWeight.w700, color: s.fg)),
+                Icon(Icons.arrow_drop_down, size: 18, color: s.fg),
+              ],
+            )
+          : Text(label, style: manrope(12, FontWeight.w700, color: s.fg)),
     );
     if (onTap == null) return pill;
     return InkWell(

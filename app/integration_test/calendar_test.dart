@@ -199,14 +199,14 @@ void main() {
       await settle(tester);
       await tester.tap(find.byKey(const Key('view-2 Days')));
       await settle(tester);
-      expect(find.text('2 Days ▾'), findsOneWidget);
+      expect(find.text('2 Days'), findsOneWidget);
       expect(find.text('Write report'), findsOneWidget);
       // Back to Day keeps working.
       await tester.tap(find.byKey(const Key('view-picker')));
       await settle(tester);
       await tester.tap(find.byKey(const Key('view-Day')));
       await settle(tester);
-      expect(find.text('Day ▾'), findsOneWidget);
+      expect(find.text('Day'), findsOneWidget);
     },
   );
 
