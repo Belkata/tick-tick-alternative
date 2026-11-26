@@ -657,30 +657,64 @@ impl TaskDb {
         self.write(Request::DeleteTag { id }).map(drop)
     }
 
-    // ----- Google Calendar (M5b, plan/19). Fetching runs in utre-daemon; the cache is readable anywhere -----
+    // ----- Google Calendar (M5b, plan/19). Desktop: fetching runs in utre-daemon. Android: in this process -----
 
-    /// Whether the Google page can work: only through utre-daemon.
+    /// The phone's own Google service (Kotlin installs it at start), wired to the change stream.
+    fn phone_google(&self) -> Option<Arc<crate::google::PhoneGoogle>> {
+        let g = crate::google::get()?;
+        g.watch(self.changes.clone());
+        Some(g)
+    }
+
+    /// Whether the Google page can work: through utre-daemon, or the phone's own service.
     #[frb(sync)]
     pub fn google_available(&self) -> bool {
-        self.api.is_remote()
+        self.api.is_remote() || crate::google::get().is_some()
     }
 
     pub fn google_status(&self) -> anyhow::Result<GoogleStatus> {
-        self.api.google_status()
+        match self.phone_google() {
+            Some(g) => Ok(g.status()),
+            None => self.api.google_status(),
+        }
     }
 
-    /// Opens the browser sign-in; returns its URL (to show if the browser didn't open).
+    /// Desktop: opens the browser sign-in; returns its URL (to show if the browser didn't
+    /// open). Android signs in through its consent screen (Kotlin), not through here.
     pub fn google_sign_in(&self) -> anyhow::Result<String> {
+        if self.phone_google().is_some() {
+            anyhow::bail!("the phone signs in through Google's consent screen");
+        }
         self.api.google_sign_in()
     }
 
     pub fn google_sign_out(&self) -> anyhow::Result<()> {
-        self.api.google_sign_out()
+        match self.phone_google() {
+            Some(g) => g.sign_out().map_err(anyhow::Error::msg),
+            None => self.api.google_sign_out(),
+        }
     }
 
     /// Fetch Google's calendars and events now.
     pub fn google_sync(&self) -> anyhow::Result<()> {
-        self.api.google_sync()
+        match self.phone_google() {
+            Some(g) => crate::google::runtime()
+                .block_on(g.sync_now())
+                .map_err(anyhow::Error::msg),
+            None => self.api.google_sync(),
+        }
+    }
+
+    /// Android, when the calendar opens: fetch unless one succeeded less than `max_age_secs`
+    /// ago. Does nothing on desktop (utre-daemon polls) or when signed out.
+    pub fn google_sync_if_stale(&self, max_age_secs: u32) -> anyhow::Result<()> {
+        if let Some(g) = self.phone_google() {
+            let max_age = std::time::Duration::from_secs(max_age_secs.into());
+            crate::google::runtime()
+                .block_on(g.sync_if_stale(max_age))
+                .map_err(anyhow::Error::msg)?;
+        }
+        Ok(())
     }
 
     /// Whether this device sends tasks with a date to Google's "Tasks" calendar.
