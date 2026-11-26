@@ -413,8 +413,11 @@ class _WhenPickerPanelState extends State<WhenPickerPanel> {
             if (note != null && problem == null)
               _message(context, note, s.mute),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            // A Wrap, so the buttons stack rather than overflow at large text sizes.
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 TextButton(
                   key: const Key('when-cancel'),
@@ -422,7 +425,6 @@ class _WhenPickerPanelState extends State<WhenPickerPanel> {
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
                 ),
-                const SizedBox(width: 8),
                 FilledButton(
                   key: const Key('when-done'),
                   style: _btn(touch).copyWith(
@@ -624,12 +626,14 @@ class _WhenPickerPanelState extends State<WhenPickerPanel> {
     final s = context.soft;
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: touch ? 48 : 40),
-      child: Row(
+      // A Wrap, so a large text size moves the time box down instead of overflowing.
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runAlignment: WrapAlignment.center,
+        spacing: 6,
         children: [
           Icon(Icons.schedule_rounded, size: 18, color: s.mute),
-          const SizedBox(width: 8),
           Text('Time', style: manrope(13, FontWeight.w700, color: s.fg)),
-          const SizedBox(width: 4),
           SizedBox(
             width: 52,
             child: FittedBox(
