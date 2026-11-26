@@ -19,6 +19,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("migrations/006_in_calendar.sql"),
     include_str!("migrations/007_view_sort.sql"),
     include_str!("migrations/008_gcal.sql"),
+    include_str!("migrations/009_parent_raw.sql"),
 ];
 
 /// A handle to one Utre database file.
@@ -206,6 +207,9 @@ fn migrate(conn: &Connection) -> Result<()> {
             if to == 7 {
                 oplog::replay_field(conn, Entity::List, "sort")?;
                 oplog::replay_field(conn, Entity::Tag, "sort")?;
+            }
+            if to == 9 {
+                oplog::resolve_parents(conn)?;
             }
             conn.pragma_update(None, "user_version", to as i64)?;
             Ok::<_, Error>(())
