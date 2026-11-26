@@ -127,7 +127,9 @@ fn db_thread(
                     proto::handle(&store, req)
                 }))
                 .unwrap_or_else(|_| {
-                    Err(utre_core::Error::Invalid("internal error (request panicked)".into()))
+                    Err(utre_core::Error::Invalid(
+                        "internal error (request panicked)".into(),
+                    ))
                 })
                 .map_err(|e| e.to_string());
                 if write && result.is_ok() {
@@ -154,7 +156,10 @@ fn db_thread(
 pub fn bind(path: &Path) -> anyhow::Result<UnixListener> {
     if path.exists() {
         if !std::fs::symlink_metadata(path)?.file_type().is_socket() {
-            anyhow::bail!("{} exists and isn't a socket; not replacing it", path.display());
+            anyhow::bail!(
+                "{} exists and isn't a socket; not replacing it",
+                path.display()
+            );
         }
         if std::os::unix::net::UnixStream::connect(path).is_ok() {
             anyhow::bail!("a daemon is already listening on {}", path.display());

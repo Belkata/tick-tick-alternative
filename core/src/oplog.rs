@@ -412,6 +412,9 @@ pub(crate) fn resolve_parents(conn: &Connection) -> Result<()> {
 
 fn height(children: &std::collections::HashMap<&str, Vec<&str>>, id: &str) -> usize {
     children.get(id).map_or(0, |cs| {
-        cs.iter().map(|c| 1 + height(children, c)).max().unwrap_or(0)
+        cs.iter()
+            .map(|c| 1 + height(children, c))
+            .max()
+            .unwrap_or(0)
     })
 }

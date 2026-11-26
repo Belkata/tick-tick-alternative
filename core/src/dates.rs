@@ -272,7 +272,12 @@ mod tests {
     #[test]
     fn huge_offsets_are_errors_not_panics() {
         let today = d("2026-11-25");
-        for t in ["+99999999999999d", "-99999999999999d", "+9223372036854775807d", "+100000000d"] {
+        for t in [
+            "+99999999999999d",
+            "-99999999999999d",
+            "+9223372036854775807d",
+            "+100000000d",
+        ] {
             assert!(day_range(t, today).is_err(), "{t}");
         }
     }

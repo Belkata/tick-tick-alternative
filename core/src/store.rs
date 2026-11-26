@@ -393,7 +393,12 @@ mod tests {
     #[test]
     fn a_panic_in_a_write_rolls_back_and_leaves_the_store_usable() {
         let s = Store::open_in_memory().unwrap();
-        let t = s.create_task(&crate::NewTask { title: "keep".into(), ..Default::default() }).unwrap();
+        let t = s
+            .create_task(&crate::NewTask {
+                title: "keep".into(),
+                ..Default::default()
+            })
+            .unwrap();
         let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let _ = s.write(|w| {
                 w.set(Entity::Task, &t.id, "title", "lost")?;
@@ -404,8 +409,11 @@ mod tests {
         }));
         assert!(caught.is_err());
         assert_eq!(s.get_task(&t.id).unwrap().unwrap().title, "keep");
-        s.create_task(&crate::NewTask { title: "next".into(), ..Default::default() })
-            .expect("no transaction left open");
+        s.create_task(&crate::NewTask {
+            title: "next".into(),
+            ..Default::default()
+        })
+        .expect("no transaction left open");
     }
 
     #[test]
@@ -414,7 +422,11 @@ mod tests {
         use crate::oplog::Op;
         let s = Store::open_in_memory().unwrap();
         let op = |n: u32, field: &str, value: i64| Op {
-            hlc: Hlc { wall: 1_000 + n as u64, counter: 0, device: 77 },
+            hlc: Hlc {
+                wall: 1_000 + n as u64,
+                counter: 0,
+                device: 77,
+            },
             entity: Entity::Task,
             entity_id: "t1".into(),
             field: field.into(),
@@ -427,7 +439,10 @@ mod tests {
             op(4, "duration_min", -1),
         ];
         assert_eq!(s.apply_remote(&bad).unwrap(), 0);
-        let good = [op(5, "due_at", 1_700_000_000_000), op(6, "duration_min", 45)];
+        let good = [
+            op(5, "due_at", 1_700_000_000_000),
+            op(6, "duration_min", 45),
+        ];
         assert_eq!(s.apply_remote(&good).unwrap(), 2);
     }
 

@@ -581,7 +581,10 @@ mod tests {
     fn batches_respect_count_and_size() {
         let small: Vec<Op> = (0..1200).map(|i| op(i, "x")).collect();
         let b = batches(&small);
-        assert_eq!(b.iter().map(|c| c.len()).collect::<Vec<_>>(), [500, 500, 200]);
+        assert_eq!(
+            b.iter().map(|c| c.len()).collect::<Vec<_>>(),
+            [500, 500, 200]
+        );
 
         // 40 ops of 100 KB: far over MAX_FRAME if sent as one frame, so they must split.
         let note = "n".repeat(100_000);
@@ -590,13 +593,19 @@ mod tests {
         assert!(b.len() > 1);
         assert_eq!(b.iter().map(|c| c.len()).sum::<usize>(), 40);
         for chunk in &b {
-            let frame = serde_json::to_vec(&Frame::Ops { ops: chunk.to_vec() }).unwrap();
+            let frame = serde_json::to_vec(&Frame::Ops {
+                ops: chunk.to_vec(),
+            })
+            .unwrap();
             assert!((frame.len() as u64) < MAX_FRAME);
         }
 
         // One op over the limit goes alone; nothing yields no frames.
         let huge = [op(1, &"n".repeat(2 << 20)), op(2, "x")];
-        assert_eq!(batches(&huge).iter().map(|c| c.len()).collect::<Vec<_>>(), [1, 1]);
+        assert_eq!(
+            batches(&huge).iter().map(|c| c.len()).collect::<Vec<_>>(),
+            [1, 1]
+        );
         assert!(batches(&[]).is_empty());
     }
 }

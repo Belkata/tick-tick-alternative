@@ -185,12 +185,17 @@ mod tests {
         let t = s
             .create_task(&NewTask {
                 title: "x".into(),
-                schedule: Schedule { due_at: Some(HOUR), tz: Some("UTC".into()), ..Default::default() },
+                schedule: Schedule {
+                    due_at: Some(HOUR),
+                    tz: Some("UTC".into()),
+                    ..Default::default()
+                },
                 ..Default::default()
             })
             .unwrap();
         for offset_min in [100_000_000, -100_000_000] {
-            s.add_reminder(&t.id, ReminderKind::Relative { offset_min }).unwrap();
+            s.add_reminder(&t.id, ReminderKind::Relative { offset_min })
+                .unwrap();
         }
         s.upcoming_reminders(0, i64::MAX, Tz::UTC).unwrap();
     }
