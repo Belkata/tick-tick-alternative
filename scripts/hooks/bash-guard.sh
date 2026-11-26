@@ -32,7 +32,7 @@ bounded_before() {
 loop_re='(^|[;&|({[:space:]"'"'"'])(while|until)[[:space:]]'
 
 # 1. Wait loops on pgrep: `pgrep -f` matches the waiting shell's own command line, so it never ends.
-if [[ "$flat" =~ $loop_re[^\;]*pgrep ]]; then
+if [[ "$flat" =~ ${loop_re}[^\;]*pgrep ]]; then
   block "a while/until loop that uses pgrep never ends (pgrep -f matches the loop's own shell). Do not poll for processes. Run the long command with run_in_background and wait for its completion notification, or wait on a PID you started: 'timeout 30m tail --pid=<PID> -f /dev/null'."
 fi
 
