@@ -42,7 +42,7 @@
         <receiver
             android:name=".widget.TaskListWidgetReceiver"
             android:exported="true"
-            android:label="Utre Inbox">
+            android:label="Utre tasks">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -50,6 +50,34 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/task_list_widget_info" />
         </receiver>
+        <!-- Midnight and clock changes: redraw the widgets so "today" rows stay right. -->
+        <receiver
+            android:name=".widget.WidgetRefreshReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+        <!-- Widget setup: choose what a widget shows. -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/DialogTheme">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <!-- The widget's + : a one-line quick-add dialog. -->
+        <activity
+            android:name=".widget.QuickAddActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/DialogTheme" />
         <!-- Reminder alarms, their Done/Snooze actions, and boot rescheduling. -->
         <receiver
             android:name=".reminders.ReminderReceiver"

@@ -35,6 +35,23 @@ class WidgetDbTest {
     }
 
     @Test
+    fun sourcesTasksAndQuickAddInASource() {
+        freshDb().use { db ->
+            val zone = "Europe/Sofia"
+            db.add("Loose")
+            // No lists exist yet, so the only source is the Inbox.
+            assertEquals(listOf("inbox"), db.sources(zone).map { it.kind })
+            val inbox = db.tasks("inbox", "", zone)
+            assertEquals("Inbox", inbox.name)
+            assertEquals(listOf("Loose"), inbox.rows.map { it.title })
+            // A source that was deleted fails, so the widget can fall back to the Inbox.
+            assertTrue(runCatching { db.tasks("list", "gone", zone) }.isFailure)
+            db.addIn("inbox", "", "  Quick  ", zone)
+            assertEquals(2, db.tasks("inbox", "", zone).rows.size)
+        }
+    }
+
+    @Test
     fun twoConnectionsSeeEachOthersWrites() {
         // The widget and the Flutter UI each hold their own connection to the same file.
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext

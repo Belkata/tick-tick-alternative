@@ -24,6 +24,8 @@ class MainActivity : FlutterActivity() {
     private var channel: MethodChannel? = null
     /** Text shared to the app before Flutter asked for it (plan/07: share target → Inbox). */
     private var pendingShare: String? = null
+    /** A task opened from the widget, until Flutter asks for it. */
+    private var pendingTask: String? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -35,6 +37,11 @@ class MainActivity : FlutterActivity() {
                 "takeShared" -> {
                     result.success(pendingShare)
                     pendingShare = null
+                }
+                // The task the widget row was tapped on, if the app was opened that way.
+                "takeOpenTask" -> {
+                    result.success(pendingTask)
+                    pendingTask = null
                 }
                 // The app changed tasks: redraw every placed widget.
                 "refresh" -> scope.launch {
@@ -77,6 +84,7 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingShare = sharedText(intent)
+        pendingTask = openedTask(intent)
         Reminders.ensureChannel(this)
         SyncWorker.enqueue(applicationContext)
     }
@@ -84,6 +92,9 @@ class MainActivity : FlutterActivity() {
     // Shared again while the app is open: hand it straight to Flutter.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        openedTask(intent)?.let { task ->
+            channel?.invokeMethod("openTask", task) ?: run { pendingTask = task }
+        }
         val text = sharedText(intent) ?: return
         channel?.invokeMethod("shared", text) ?: run { pendingShare = text }
     }
@@ -97,8 +108,23 @@ class MainActivity : FlutterActivity() {
         ).distinct().joinToString(" ").trim().ifEmpty { null }
     }
 
+    private fun openedTask(intent: Intent?): String? =
+        if (intent?.action == OPEN_TASK) intent.getStringExtra("task") else null
+
     override fun onDestroy() {
         scope.cancel()
         super.onDestroy()
+    }
+
+    companion object {
+        private const val OPEN_TASK = "dev.utre.OPEN_TASK"
+
+        /** Open the app on a task: the widget's row tap. */
+        fun openTaskIntent(context: android.content.Context, taskId: String): Intent =
+            Intent(context, MainActivity::class.java)
+                .setAction(OPEN_TASK)
+                .putExtra("task", taskId)
+                .setData(android.net.Uri.parse("utre://task/$taskId"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
 }
