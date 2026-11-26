@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -21,6 +22,8 @@ import dev.utre.utre.widget.UtreCore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.TimeZone
 
 /**
@@ -36,6 +39,7 @@ object Reminders {
     const val SNOOZE_LONG_MS = 60L * 60 * 1000
 
     /** Replace every scheduled alarm with the core's current list. */
+    @Synchronized
     fun schedule(context: Context) {
         val ctx = context.applicationContext
         val alarms = ctx.getSystemService(AlarmManager::class.java)
@@ -58,21 +62,65 @@ object Reminders {
             codes += code.toString()
         }
         prefs.edit().putStringSet("codes", codes).apply()
+        // Snoozes live outside the core's list, and alarms don't survive a reboot: re-arm them.
+        for (s in snoozes(prefs)) {
+            if (s.at > now) set(ctx, s.at, alarmIntent(ctx, s.code, s.task, s.title))
+        }
+    }
+
+    /** Forget a task's snooze (it was completed), and cancel its alarm. */
+    @Synchronized
+    fun cancelSnooze(context: Context, taskId: String) {
+        val ctx = context.applicationContext
+        val code = (taskId + "snooze").hashCode()
+        val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        saveSnoozes(prefs, snoozes(prefs).filter { it.code != code })
+        ctx.getSystemService(AlarmManager::class.java).cancel(alarmIntent(ctx, code, null, null))
+    }
+
+    private class Snooze(val code: Int, val at: Long, val task: String, val title: String)
+
+    private fun snoozes(prefs: SharedPreferences): List<Snooze> = try {
+        val arr = JSONArray(prefs.getString("snoozes", "[]"))
+        val now = System.currentTimeMillis()
+        (0 until arr.length()).map { arr.getJSONObject(it) }
+            .map { Snooze(it.getInt("code"), it.getLong("at"), it.getString("task"), it.getString("title")) }
+            .filter { it.at > now }
+    } catch (e: Exception) {
+        emptyList()
+    }
+
+    private fun saveSnoozes(prefs: SharedPreferences, list: List<Snooze>) {
+        val arr = JSONArray()
+        for (s in list) {
+            arr.put(JSONObject().put("code", s.code).put("at", s.at).put("task", s.task).put("title", s.title))
+        }
+        prefs.edit().putString("snoozes", arr.toString()).apply()
     }
 
     /** Show the reminder again in `delayMs` (10 minutes or an hour). */
+    @Synchronized
     fun snooze(context: Context, taskId: String, title: String, delayMs: Long) {
+        val ctx = context.applicationContext
         val code = (taskId + "snooze").hashCode()
-        set(context, System.currentTimeMillis() + delayMs, alarmIntent(context, code, taskId, title))
+        val at = System.currentTimeMillis() + delayMs
+        val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        // Kept in the prefs so a reboot (or the next schedule()) doesn't lose it.
+        saveSnoozes(prefs, snoozes(prefs).filter { it.code != code } + Snooze(code, at, taskId, title))
+        set(ctx, at, alarmIntent(ctx, code, taskId, title))
     }
 
     private fun set(context: Context, at: Long, intent: PendingIntent) {
         val alarms = context.getSystemService(AlarmManager::class.java)
-        if (Build.VERSION.SDK_INT < 31 || alarms.canScheduleExactAlarms()) {
-            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent)
-        } else {
-            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent)
+        try {
+            if (Build.VERSION.SDK_INT < 31 || alarms.canScheduleExactAlarms()) {
+                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent)
+                return
+            }
+        } catch (e: SecurityException) {
+            // The permission was revoked between the check and the call: fall through.
         }
+        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent)
     }
 
     private fun alarmIntent(context: Context, code: Int, taskId: String?, title: String?): PendingIntent {
@@ -106,9 +154,10 @@ object Reminders {
                 .putExtra("task", taskId).putExtra("title", title).putExtra("code", code),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        // A tap opens the task itself, as a widget row does.
         val open = PendingIntent.getActivity(
-            context, 0, Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE,
+            context, (code.toString() + "open").hashCode(), MainActivity.openTaskIntent(context, taskId),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.mipmap.ic_launcher)
@@ -141,6 +190,7 @@ class ReminderReceiver : BroadcastReceiver() {
             }
             DONE -> if (task != null) {
                 NotificationManagerCompat.from(ctx).cancel(code)
+                Reminders.cancelSnooze(ctx, task)
                 val pending = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
@@ -154,8 +204,22 @@ class ReminderReceiver : BroadcastReceiver() {
                 }
             }
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> {
-                Reminders.schedule(ctx)
+                rescheduleAsync(ctx)
                 SyncWorker.enqueue(ctx)
+            }
+            // Android 12-13: the user granted or revoked "Alarms & reminders".
+            AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> rescheduleAsync(ctx)
+        }
+    }
+
+    /** schedule() reads the database: keep it off the main thread, and the receiver alive. */
+    private fun BroadcastReceiver.rescheduleAsync(ctx: Context) {
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Reminders.schedule(ctx)
+            } finally {
+                pending.finish()
             }
         }
     }
