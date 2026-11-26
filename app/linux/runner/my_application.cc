@@ -32,6 +32,11 @@ static void my_application_activate(GApplication* application) {
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
   gtk_window_set_default_size(window, 1280, 720);
+  // GTK capitalises the X11 WM_CLASS class; set both parts to the application id.
+  // (Deprecated, but the only way to pick the class per window.) No-op on Wayland.
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+  gtk_window_set_wmclass(window, APPLICATION_ID, APPLICATION_ID);
+  G_GNUC_END_IGNORE_DEPRECATIONS
 
   // If you want to use a header bar, uncomment the following lines.
   // Header bars are commonly used in GNOME based desktop environments and
