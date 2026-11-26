@@ -119,7 +119,11 @@ class GoogleEvent extends KalenderEvent {
   int get hashCode => Object.hash(super.hashCode, event, calendar);
 }
 
+const _twoDays = '2 Days';
 const _views = ['Day', 'Week', 'Month'];
+
+/// The phone's view picker also offers [_twoDays].
+const _phoneViews = ['Day', _twoDays, 'Week', 'Month'];
 
 /// Month cells list a day's items in time order, all-day ones first (kalender's default
 /// puts the longest first).
@@ -176,6 +180,13 @@ class _CalendarPageState extends State<CalendarPage> {
       initialTimeOfDay: const KalenderTime(hour: 7, minute: 30),
       initialHeightPerMinute: 0.8,
     ),
+    // Phone only: seven columns leave a title 2 to 4 letters, two leave room to read.
+    _twoDays: MultiDayViewConfiguration.custom(
+      name: _twoDays,
+      numberOfDays: 2,
+      initialTimeOfDay: const KalenderTime(hour: 7, minute: 30),
+      initialHeightPerMinute: 0.85,
+    ),
     'Month': MonthViewConfiguration.singleMonth(name: 'Month'),
   };
   late final KalenderController _calendar;
@@ -216,7 +227,9 @@ class _CalendarPageState extends State<CalendarPage> {
       if (!mounted) return;
       _prefs = p;
       final narrow = MediaQuery.sizeOf(context).width < 760;
-      _setView(p.view ?? (narrow ? 'Day' : 'Week'), save: false);
+      // The wide layout has no 2-day view: a saved one falls back to Week.
+      final saved = (p.view == _twoDays && !narrow) ? 'Week' : p.view;
+      _setView(saved ?? (narrow ? 'Day' : 'Week'), save: false);
       _reload();
     });
   }
@@ -574,7 +587,7 @@ class _CalendarPageState extends State<CalendarPage> {
             color: s.panel,
             onSelected: _setView,
             itemBuilder: (context) => [
-              for (final v in _views)
+              for (final v in _phoneViews)
                 PopupMenuItem(
                   key: Key('view-$v'),
                   value: v,
