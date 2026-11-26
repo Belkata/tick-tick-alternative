@@ -3,6 +3,7 @@ package dev.utre.utre
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import dev.utre.utre.sync.SyncWorker
 import org.junit.Assert.assertEquals
@@ -22,8 +23,9 @@ class SyncSoonTest {
         SyncWorker.syncSoon(ctx)
         SyncWorker.syncSoon(ctx)
         val infos = wm.getWorkInfosForUniqueWork("utre-sync-soon").get()
-        // REPLACE would leave one live request; APPEND_OR_REPLACE keeps the chain.
-        assertEquals(3, infos.count { !it.state.isFinished })
+        // REPLACE would cancel the earlier requests (even a running one); appending doesn't.
+        assertEquals(3, infos.size)
+        assertEquals(0, infos.count { it.state == WorkInfo.State.CANCELLED })
         wm.cancelUniqueWork("utre-sync-soon").result.get()
     }
 }
