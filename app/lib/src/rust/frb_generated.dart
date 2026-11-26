@@ -3813,8 +3813,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   GcalEvent dco_decode_gcal_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 8)
-      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    if (arr.length != 10)
+      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
     return GcalEvent(
       calendarId: dco_decode_String(arr[0]),
       id: dco_decode_String(arr[1]),
@@ -3824,6 +3824,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       allDay: dco_decode_bool(arr[5]),
       htmlLink: dco_decode_opt_String(arr[6]),
       color: dco_decode_opt_String(arr[7]),
+      location: dco_decode_opt_String(arr[8]),
+      description: dco_decode_opt_String(arr[9]),
     );
   }
 
@@ -4417,6 +4419,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_allDay = sse_decode_bool(deserializer);
     var var_htmlLink = sse_decode_opt_String(deserializer);
     var var_color = sse_decode_opt_String(deserializer);
+    var var_location = sse_decode_opt_String(deserializer);
+    var var_description = sse_decode_opt_String(deserializer);
     return GcalEvent(
       calendarId: var_calendarId,
       id: var_id,
@@ -4426,6 +4430,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       allDay: var_allDay,
       htmlLink: var_htmlLink,
       color: var_color,
+      location: var_location,
+      description: var_description,
     );
   }
 
@@ -5170,6 +5176,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.allDay, serializer);
     sse_encode_opt_String(self.htmlLink, serializer);
     sse_encode_opt_String(self.color, serializer);
+    sse_encode_opt_String(self.location, serializer);
+    sse_encode_opt_String(self.description, serializer);
   }
 
   @protected

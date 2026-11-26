@@ -4630,6 +4630,8 @@ const _: fn() = || {
         let _: bool = GcalEvent.all_day;
         let _: Option<String> = GcalEvent.html_link;
         let _: Option<String> = GcalEvent.color;
+        let _: Option<String> = GcalEvent.location;
+        let _: Option<String> = GcalEvent.description;
     }
     {
         let GooglePushStatus = None::<crate::api::tasks::GooglePushStatus>.unwrap();
@@ -4901,6 +4903,8 @@ impl SseDecode for crate::api::tasks::GcalEvent {
         let mut var_allDay = <bool>::sse_decode(deserializer);
         let mut var_htmlLink = <Option<String>>::sse_decode(deserializer);
         let mut var_color = <Option<String>>::sse_decode(deserializer);
+        let mut var_location = <Option<String>>::sse_decode(deserializer);
+        let mut var_description = <Option<String>>::sse_decode(deserializer);
         return crate::api::tasks::GcalEvent {
             calendar_id: var_calendarId,
             id: var_id,
@@ -4910,6 +4914,8 @@ impl SseDecode for crate::api::tasks::GcalEvent {
             all_day: var_allDay,
             html_link: var_htmlLink,
             color: var_color,
+            location: var_location,
+            description: var_description,
         };
     }
 }
@@ -5774,6 +5780,8 @@ impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::GcalEvent> 
             self.0.all_day.into_into_dart().into_dart(),
             self.0.html_link.into_into_dart().into_dart(),
             self.0.color.into_into_dart().into_dart(),
+            self.0.location.into_into_dart().into_dart(),
+            self.0.description.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -6294,6 +6302,8 @@ impl SseEncode for crate::api::tasks::GcalEvent {
         <bool>::sse_encode(self.all_day, serializer);
         <Option<String>>::sse_encode(self.html_link, serializer);
         <Option<String>>::sse_encode(self.color, serializer);
+        <Option<String>>::sse_encode(self.location, serializer);
+        <Option<String>>::sse_encode(self.description, serializer);
     }
 }
 
