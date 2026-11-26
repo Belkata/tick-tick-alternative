@@ -62,6 +62,10 @@ class WidgetBridge {
     }
   }
 
+  /// Google's consent screen (the phone has no browser sign-in). Answers `ok`,
+  /// `cancelled`, `not_configured` or `error: ...`; null off Android.
+  static Future<String?> googleSignIn() => _call<String>('googleSignIn');
+
   /// Ask the launcher to place the widget. Returns false if the launcher can't.
   static Future<bool> pin() async {
     if (!supported) return false;

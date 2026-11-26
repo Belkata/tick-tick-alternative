@@ -208,6 +208,9 @@ class _CalendarPageState extends State<CalendarPage> {
     _calendar = KalenderController(viewConfiguration: _configs['Week']!);
     _calendar.visibleDateTimeRange.addListener(_reload);
     _changes = db.changes().listen((_) => _reload());
+    // Phone: opening the calendar fetches Google's events unless they are minutes old
+    // (the fetch ticks the change stream, which reloads). Desktop: a no-op, the daemon polls.
+    unawaited(db.googleSyncIfStale(maxAgeSecs: 300).catchError((Object _) {}));
     c.addListener(_onShell);
     CalendarPrefs.load().then((p) {
       if (!mounted) return;
