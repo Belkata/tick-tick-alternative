@@ -1,5 +1,6 @@
 pub mod api;
 mod changes;
+#[rustfmt::skip]
 mod frb_generated;
 pub mod google;
 pub mod kotlin;
