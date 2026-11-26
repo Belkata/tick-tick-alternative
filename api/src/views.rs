@@ -522,7 +522,9 @@ pub fn calendar(s: &Store, from: i64, until: i64, tz: Tz) -> utre_core::Result<V
 
 /// The calendar's Unscheduled panel: a saved filter's tasks (`filter_id` is the filter's
 /// id), a list's (`list:<id>`) or a tag's (`tag:<id>`), or by default every open task
-/// with no start or due.
+/// with no start or due. Whatever the source, a task with a start or a due date is
+/// never listed: it is already on the calendar (or kept off it by "Show in Calendar"),
+/// so dropping it on a day makes it leave the panel and `unschedule` brings it back.
 pub fn unscheduled(
     s: &Store,
     filter_id: Option<&str>,
@@ -559,7 +561,7 @@ pub fn unscheduled(
     };
     tasks
         .into_iter()
-        .filter(|t| t.in_calendar)
+        .filter(|t| t.in_calendar && t.start_at.is_none() && t.due_at.is_none())
         .map(|t| task_row(s, t, now, tz))
         .collect()
 }
@@ -650,6 +652,62 @@ mod tests {
         v.as_object_mut().unwrap().remove("start_at");
         let old: TaskDetail = serde_json::from_value(v).unwrap();
         assert_eq!(old.start_at, None);
+    }
+
+    #[test]
+    fn placed_tasks_leave_every_unscheduled_source() {
+        let s = Store::open_in_memory().unwrap();
+        let tz = Tz::Europe__Sofia;
+        let now = 1_795_600_000_000;
+        let list = s.create_list("Work").unwrap();
+        let tag = s.ensure_tag_path("deep").unwrap();
+        let ids = |f: Option<&str>| -> Vec<String> {
+            let mut v: Vec<_> = unscheduled(&s, f, now, tz)
+                .unwrap()
+                .into_iter()
+                .map(|r| r.title)
+                .collect();
+            v.sort();
+            v
+        };
+        let mk = |title: &str| {
+            let id = s.add_task(title).unwrap().id;
+            s.set_task_list(&id, Some(&list)).unwrap();
+            s.tag_task(&id, &tag).unwrap();
+            id
+        };
+        let timed = mk("timed");
+        let allday = mk("allday");
+        let start_only = mk("start");
+        let due_only = mk("due");
+        let done = mk("done");
+        let hidden = mk("hidden");
+        let sources = [
+            None,
+            Some(format!("list:{list}")),
+            Some(format!("tag:{tag}")),
+        ];
+        for src in &sources {
+            assert_eq!(ids(src.as_deref()).len(), 6);
+        }
+        let t0 = now + 3_600_000;
+        s.place_block(&timed, t0, Some(t0 + 3_600_000), false, tz).unwrap();
+        s.place_block(&allday, t0, None, true, tz).unwrap();
+        set_start(&s, &start_only, Some("2026-12-01 14:30"), now, tz).unwrap();
+        set_due(&s, &due_only, Some("2026-12-02 09:00"), now, tz).unwrap();
+        s.complete_task(&done).unwrap();
+        s.set_in_calendar(&hidden, false).unwrap();
+        for src in &sources {
+            assert!(ids(src.as_deref()).is_empty(), "{src:?}");
+        }
+        s.unschedule(&timed).unwrap();
+        s.unschedule(&allday).unwrap();
+        for src in &sources {
+            assert_eq!(ids(src.as_deref()), ["allday", "timed"], "{src:?}");
+        }
+        // Clearing the dates by hand brings a task back too.
+        set_start(&s, &start_only, None, now, tz).unwrap();
+        assert_eq!(ids(None).len(), 3);
     }
 
     #[test]
