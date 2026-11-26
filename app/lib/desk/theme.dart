@@ -399,6 +399,59 @@ class PriorityCheck extends StatelessWidget {
   }
 }
 
+/// Where a leading box (a checkbox) and the text beside it start so the box is centred on the
+/// text's FIRST line, however tall the rest of the row is.
+class FirstLineAlign {
+  const FirstLineAlign._(this.lead, this.text);
+
+  /// Space above the box.
+  final double lead;
+
+  /// Space above the text (at least [textTop]; more when the box is taller than the line).
+  final double text;
+
+  /// [box] is the box's height, [lineHeight] the first line's, [textTop] the wanted gap above
+  /// the text.
+  factory FirstLineAlign({
+    required double box,
+    required double lineHeight,
+    double textTop = 0,
+  }) {
+    final lead = textTop + lineHeight / 2 - box / 2;
+    return lead >= 0
+        ? FirstLineAlign._(lead, textTop)
+        : FirstLineAlign._(0, textTop - lead);
+  }
+
+  static final _heights = <Object, double>{};
+
+  /// The height of one line of [style] at the current text scale (cached: a long list asks
+  /// once per row).
+  static double lineHeightOf(BuildContext context, TextStyle style) {
+    final scaler = MediaQuery.textScalerOf(context);
+    // A `Text` merges its style into the ambient one (Material gives it a line height).
+    style = DefaultTextStyle.of(context).style.merge(style);
+    final key = Object.hash(
+      style.fontSize,
+      style.fontWeight,
+      style.fontFamily,
+      style.height,
+      scaler,
+    );
+    return _heights[key] ??= () {
+      final p = TextPainter(
+        text: TextSpan(text: 'Ag', style: style),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      final h = p.height;
+      p.dispose();
+      return h;
+    }();
+  }
+}
+
 /// A touch screen (phone or tablet): controls there want 48 px targets.
 bool isTouch(BuildContext context) => switch (Theme.of(context).platform) {
   TargetPlatform.android || TargetPlatform.iOS => true,

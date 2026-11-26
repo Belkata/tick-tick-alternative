@@ -267,11 +267,24 @@ class DetailPane extends StatelessWidget {
                 ),
               ),
             ),
+          // The box is centred on the title's first line (the field has 4 px of padding).
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.only(top: 5),
+                padding: EdgeInsets.only(
+                  top:
+                      FirstLineAlign(
+                        box: 26,
+                        lineHeight: FirstLineAlign.lineHeightOf(
+                          context,
+                          manrope(21, FontWeight.w800).copyWith(height: 1.25),
+                        ),
+                        textTop: 4,
+                        // Optically: big bold type sits high in its line box.
+                      ).lead -
+                      2,
+                ),
                 child: PriorityCheck(
                   priority: r.priority,
                   done: r.done,
