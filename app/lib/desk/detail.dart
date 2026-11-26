@@ -917,7 +917,7 @@ class _PriorityPicker extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   onTap: () => onPick(p),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 120),
+                    duration: motion(context, 120),
                     height: 32,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(

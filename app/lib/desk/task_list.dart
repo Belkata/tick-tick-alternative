@@ -507,6 +507,7 @@ class _TaskCardState extends State<TaskCard> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
+        animationDuration: motion(context, 160),
         color: fill,
         elevation: s.cardShadow ? 0.6 : 0,
         shadowColor: const Color(0x22141E3C),
@@ -518,21 +519,22 @@ class _TaskCardState extends State<TaskCard> {
           hoverColor: Colors.transparent,
           child: Stack(
             children: [
-              if (widget.selected)
-                Positioned(
-                  left: 0,
-                  top: 10,
-                  bottom: 10,
-                  child: Container(
-                    width: 3,
-                    decoration: BoxDecoration(
-                      color: s.accent,
-                      borderRadius: const BorderRadius.horizontal(
-                        right: Radius.circular(3),
-                      ),
+              Positioned(
+                left: 0,
+                top: 10,
+                bottom: 10,
+                child: AnimatedContainer(
+                  duration: motion(context),
+                  curve: Curves.easeOut,
+                  width: widget.selected ? 3 : 0,
+                  decoration: BoxDecoration(
+                    color: s.accent,
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(3),
                     ),
                   ),
                 ),
+              ),
               ConstrainedBox(
                 constraints: BoxConstraints(minHeight: touch ? 48 : 44),
                 child: Padding(

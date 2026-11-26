@@ -274,7 +274,9 @@ class PriorityCheck extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         child: Padding(
           padding: EdgeInsets.all(hit),
-          child: Container(
+          child: AnimatedContainer(
+            duration: motion(context),
+            curve: Curves.easeOut,
             width: size,
             height: size,
             decoration: BoxDecoration(
@@ -284,9 +286,13 @@ class PriorityCheck extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: edge, width: 1.6),
             ),
-            child: done
-                ? Icon(Icons.check, size: size - 4, color: s.panel)
-                : null,
+            // The tick pops in rather than appearing.
+            child: AnimatedScale(
+              duration: motion(context),
+              curve: Curves.easeOutBack,
+              scale: done ? 1 : 0,
+              child: Icon(Icons.check, size: size - 4, color: s.panel),
+            ),
           ),
         ),
       ),
@@ -299,3 +305,10 @@ bool isTouch(BuildContext context) => switch (Theme.of(context).platform) {
   TargetPlatform.android || TargetPlatform.iOS => true,
   _ => false,
 };
+
+/// A short transition length, or none when the system asks for reduced motion
+/// (`MediaQuery.disableAnimations`: Android's "remove animations", the OS setting on desktop).
+Duration motion(BuildContext context, [int ms = 140]) =>
+    MediaQuery.disableAnimationsOf(context)
+    ? Duration.zero
+    : Duration(milliseconds: ms);

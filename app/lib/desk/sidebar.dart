@@ -352,6 +352,7 @@ class NavTile extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(left: 8.0 + depth * 16, right: 8, bottom: 2),
       child: Material(
+        animationDuration: motion(context, 160),
         color: selected ? s.panel : Colors.transparent,
         elevation: selected && s.cardShadow ? 0.6 : 0,
         shadowColor: const Color(0x22141E3C),
