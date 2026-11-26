@@ -50,11 +50,11 @@ class DetailPane extends StatelessWidget {
     final checked = d.checklist.where((i) => i.done).length;
     final subsDone = d.subtasks.where((t) => t.done).length;
 
-    // The picker starts from the stored dates. The bridge gives the start date
-    // only as a label, so it is read back from that.
+    // The picker starts from the stored dates (one all-day flag covers both).
     final dueMs = r.dueAt;
     final dueWhen = dueMs == null ? null : whenFromMs(dueMs, r.allDay);
-    final startWhen = parseWhenLabel(d.startLabel, DateTime.now());
+    final startMs = d.startAt;
+    final startWhen = startMs == null ? null : whenFromMs(startMs, r.allDay);
 
     final dateRows = <Widget>[
       PropRow(
