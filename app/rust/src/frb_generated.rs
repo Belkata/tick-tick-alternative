@@ -4503,6 +4503,8 @@ const _: fn() = || {
         let _: String = GcalCalendar.summary;
         let _: Option<String> = GcalCalendar.color;
         let _: bool = GcalCalendar.selected;
+        let _: bool = GcalCalendar.primary;
+        let _: Option<String> = GcalCalendar.access_role;
     }
     {
         let GcalEvent = None::<crate::api::tasks::GcalEvent>.unwrap();
@@ -4761,11 +4763,15 @@ impl SseDecode for crate::api::tasks::GcalCalendar {
         let mut var_summary = <String>::sse_decode(deserializer);
         let mut var_color = <Option<String>>::sse_decode(deserializer);
         let mut var_selected = <bool>::sse_decode(deserializer);
+        let mut var_primary = <bool>::sse_decode(deserializer);
+        let mut var_accessRole = <Option<String>>::sse_decode(deserializer);
         return crate::api::tasks::GcalCalendar {
             id: var_id,
             summary: var_summary,
             color: var_color,
             selected: var_selected,
+            primary: var_primary,
+            access_role: var_accessRole,
         };
     }
 }
@@ -5623,6 +5629,8 @@ impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::GcalCalenda
             self.0.summary.into_into_dart().into_dart(),
             self.0.color.into_into_dart().into_dart(),
             self.0.selected.into_into_dart().into_dart(),
+            self.0.primary.into_into_dart().into_dart(),
+            self.0.access_role.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -6154,6 +6162,8 @@ impl SseEncode for crate::api::tasks::GcalCalendar {
         <String>::sse_encode(self.summary, serializer);
         <Option<String>>::sse_encode(self.color, serializer);
         <bool>::sse_encode(self.selected, serializer);
+        <bool>::sse_encode(self.primary, serializer);
+        <Option<String>>::sse_encode(self.access_role, serializer);
     }
 }
 

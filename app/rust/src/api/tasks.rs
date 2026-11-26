@@ -166,6 +166,8 @@ pub struct _GcalCalendar {
     pub summary: String,
     pub color: Option<String>,
     pub selected: bool,
+    pub primary: bool,
+    pub access_role: Option<String>,
 }
 
 #[frb(mirror(GcalEvent))]
