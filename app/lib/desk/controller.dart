@@ -11,7 +11,7 @@ import 'task_sort.dart';
 /// panes stay live (and will for writes from other processes once the socket lands).
 class DeskController extends ChangeNotifier {
   DeskController(this.db, {this.now = DateTime.now}) {
-    _sub = db.changes().listen((_) => reload());
+    _sub = db.changes().listen((_) => _onChange());
     _armMidnight();
   }
 
@@ -49,6 +49,31 @@ class DeskController extends ChangeNotifier {
 
   int _generation = 0;
   bool _disposed = false;
+
+  // A change event arriving while a change-driven reload is running only asks for one more
+  // reload afterwards, so a burst of writes (a sync, an import) costs two reloads, not N.
+  bool _changeReloading = false;
+  bool _changeAgain = false;
+
+  Future<void> _onChange() async {
+    if (_changeReloading) {
+      _changeAgain = true;
+      return;
+    }
+    _changeReloading = true;
+    try {
+      do {
+        _changeAgain = false;
+        await reload();
+      } while (_changeAgain && !_disposed);
+    } finally {
+      _changeReloading = false;
+    }
+  }
+
+  /// How many reloads ended with nothing new to show (tests).
+  @visibleForTesting
+  int unchangedReloads = 0;
 
   @override
   void notifyListeners() {
@@ -91,12 +116,24 @@ class DeskController extends ChangeNotifier {
       return;
     }
     if (gen != _generation) return;
+    // Nothing the panes show has changed (a write to something off screen, a sync that
+    // brought nothing visible): don't rebuild the shell, which also disturbs typing.
+    final same =
+        loaded &&
+        sb == sidebar &&
+        listEquals(rows, tasks) &&
+        listEquals(order, sort) &&
+        d == detail;
     sidebar = sb;
     tasks = rows;
     sort = order;
     detail = d;
     if (d == null) selectedId = null;
     loaded = true;
+    if (same && (d != null || sel == null)) {
+      unchangedReloads++;
+      return;
+    }
     notifyListeners();
   }
 
