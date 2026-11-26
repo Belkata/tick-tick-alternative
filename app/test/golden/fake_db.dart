@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:utre/src/rust/api/tasks.dart';
 
 /// Wednesday 2026-11-25, 10:30: the clock every golden runs on.
@@ -281,7 +283,9 @@ class FakeDb implements TaskDb {
   final bool sync;
 
   @override
-  Stream<int> changes() => const Stream.empty();
+  Stream<int> changes() => _changes.stream;
+
+  final _changes = StreamController<int>.broadcast();
 
   @override
   bool isRemote() => false;
@@ -333,7 +337,12 @@ class FakeDb implements TaskDb {
 
   @override
   Future<void> setDuration({required String id, int? minutes}) async =>
-      durations[id] = minutes;
+      _setDuration(id, minutes);
+
+  void _setDuration(String id, int? minutes) {
+    durations[id] = minutes;
+    _changes.add(1);
+  }
 
   @override
   Future<TaskDetail?> task({required String id}) async =>
