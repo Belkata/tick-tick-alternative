@@ -4,8 +4,8 @@
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use utre_core::{
-    is_overdue, local_day, offset_label, parse_when, when_label, FilterRule, NewTask, ReminderKind,
-    Schedule, Status, Store, Task,
+    FilterRule, NewTask, ReminderKind, Schedule, Status, Store, Task, is_overdue, local_day,
+    offset_label, parse_when, when_label,
 };
 
 /// Which kind of view the task list shows.
