@@ -382,17 +382,23 @@ class MarkdownView extends StatelessWidget {
     final done = it.checked ?? false;
     final Widget lead;
     if (it.checked != null) {
+      final lineH = FirstLineAlign.lineHeightOf(context, body);
       lead = SizedBox(
         width: 22,
         child: Align(
-          alignment: Alignment.centerLeft,
-          child: PriorityCheck(
-            priority: 0,
-            done: done,
-            size: 14,
-            onTap: onChanged == null
-                ? () {}
-                : () => onChanged!(toggleCheckbox(source, it.line)),
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: FirstLineAlign(box: 20, lineHeight: lineH).lead,
+            ),
+            child: PriorityCheck(
+              priority: 0,
+              done: done,
+              size: 14,
+              onTap: onChanged == null
+                  ? () {}
+                  : () => onChanged!(toggleCheckbox(source, it.line)),
+            ),
           ),
         ),
       );

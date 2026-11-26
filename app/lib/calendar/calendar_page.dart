@@ -1742,6 +1742,12 @@ class _CalendarPageState extends State<CalendarPage> {
     bool lifted = false,
     bool flat = false,
   }) {
+    final titleStyle = manrope(13, FontWeight.w600, color: s.fg);
+    // The box sits on the title's first line, however many tags follow.
+    final align = FirstLineAlign(
+      box: 16,
+      lineHeight: FirstLineAlign.lineHeightOf(context, titleStyle),
+    );
     final card = Container(
       padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
       decoration: BoxDecoration(
@@ -1772,7 +1778,8 @@ class _CalendarPageState extends State<CalendarPage> {
           Container(
             width: 16,
             height: 16,
-            margin: const EdgeInsets.only(top: 1),
+            key: Key('unscheduled-box-${row.id}'),
+            margin: EdgeInsets.only(top: align.lead),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: s.priority(row.priority), width: 1.6),
@@ -1783,9 +1790,13 @@ class _CalendarPageState extends State<CalendarPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  row.title,
-                  style: manrope(13, FontWeight.w600, color: s.fg),
+                Padding(
+                  padding: EdgeInsets.only(top: align.text),
+                  child: Text(
+                    row.title,
+                    key: Key('unscheduled-title-${row.id}'),
+                    style: titleStyle,
+                  ),
                 ),
                 if (row.tags.isNotEmpty) ...[
                   const SizedBox(height: 5),
