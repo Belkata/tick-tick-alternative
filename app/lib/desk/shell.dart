@@ -86,9 +86,13 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
       if (mounted) setState(() => _prefs = p);
     });
     // Android share sheet: shared text or links become Inbox tasks.
-    WidgetBridge.onShared(_addShared);
+    WidgetBridge.listen(onShared: _addShared, onOpenTask: _openFromWidget);
     WidgetBridge.takeShared().then((t) {
       if (t != null) _addShared(t);
+    });
+    // A widget row tap: open that task (cold start; later taps arrive through listen).
+    WidgetBridge.takeOpenTask().then((t) {
+      if (t != null) _openFromWidget(t);
     });
   }
 
@@ -107,6 +111,15 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) c.reload();
+  }
+
+  Future<void> _openFromWidget(String id) async {
+    if (!mounted) return;
+    // Another task's detail may be open already: start from the list.
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    _showTasks();
+    if (!await c.showTask(id) || !mounted) return;
+    if (MediaQuery.sizeOf(context).width < wide) _pushDetail();
   }
 
   Future<void> _addShared(String text) async {

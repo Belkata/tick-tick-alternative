@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Talks to the Android side (see MainActivity.kt): the home-screen widget, reminder
@@ -8,7 +9,8 @@ import 'package:flutter/services.dart';
 class WidgetBridge {
   static const _channel = MethodChannel('utre/widget');
 
-  static bool get supported => !_isTest && Platform.isAndroid;
+  static bool get supported =>
+      forceSupported || (!_isTest && Platform.isAndroid);
 
   static final _isTest = Platform.environment.containsKey('FLUTTER_TEST');
 
@@ -44,14 +46,28 @@ class WidgetBridge {
   /// Flutter was ready, then each later share through [onShared].
   static Future<String?> takeShared() => _call<String>('takeShared');
 
-  static void onShared(void Function(String text) handler) {
+  /// The task a widget row was tapped on: what arrived before Flutter was ready, then
+  /// each later tap through [listen]'s `onOpenTask`.
+  static Future<String?> takeOpenTask() => _call<String>('takeOpenTask');
+
+  /// Messages the Android side pushes: shared text and widget row taps. One handler
+  /// serves both, because a channel has only one.
+  static void listen({
+    void Function(String text)? onShared,
+    void Function(String taskId)? onOpenTask,
+  }) {
     if (!supported) return;
     _channel.setMethodCallHandler((call) async {
-      if (call.method == 'shared' && call.arguments is String) {
-        handler(call.arguments as String);
-      }
+      final arg = call.arguments;
+      if (arg is! String) return;
+      if (call.method == 'shared') onShared?.call(arg);
+      if (call.method == 'openTask') onOpenTask?.call(arg);
     });
   }
+
+  /// Tests pretend to be on Android so the channel is used.
+  @visibleForTesting
+  static bool forceSupported = false;
 
   static Future<T?> _call<T>(String method) async {
     if (!supported) return null;

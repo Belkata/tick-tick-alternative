@@ -10,6 +10,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:utre/desk/detail.dart';
 import 'package:utre/desk/task_list.dart';
 import 'package:utre/main.dart';
+import 'package:utre/widget_bridge.dart';
 import 'package:utre/src/rust/api/sync.dart';
 import 'package:utre/src/rust/api/tasks.dart';
 import 'package:utre/src/rust/frb_generated.dart';
@@ -538,5 +539,48 @@ void main() {
     await tester.tap(find.byKey(const Key('open-drawer')));
     await settle(tester);
     expect(find.text('Completed'), findsOneWidget);
+  });
+
+  /// What MainActivity does when a widget row is tapped while the app is running.
+  Future<void> widgetTap(WidgetTester tester, String id) async {
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      'utre/widget',
+      const StandardMethodCodec().encodeMethodCall(MethodCall('openTask', id)),
+      (_) {},
+    );
+    await settle(tester);
+  }
+
+  String detailTitle(WidgetTester tester) => tester
+      .widget<EditableText>(
+        find.descendant(
+          of: find.byKey(const Key('detail-title')),
+          matching: find.byType(EditableText),
+        ),
+      )
+      .controller
+      .text;
+
+  testWidgets("a widget row tap opens that task's detail (phone)", (
+    tester,
+  ) async {
+    WidgetBridge.forceSupported = true;
+    addTearDown(() => WidgetBridge.forceSupported = false);
+    final db = await pumpApp(tester, size: const Size(420, 860));
+    await addTask(tester, 'From the widget');
+    await addTask(tester, 'Other');
+    final rows = await db.inbox();
+    String idOf(String t) => rows.firstWhere((r) => r.title == t).id;
+    expect(find.byKey(const Key('detail-title')), findsNothing);
+
+    await widgetTap(tester, idOf('From the widget'));
+    expect(detailTitle(tester), 'From the widget');
+
+    // A second tap while a detail is open shows the new task, not a stack of details.
+    await widgetTap(tester, idOf('Other'));
+    expect(detailTitle(tester), 'Other');
+    await tester.pageBack();
+    await settle(tester);
+    expect(find.byKey(const Key('detail-title')), findsNothing);
   });
 }

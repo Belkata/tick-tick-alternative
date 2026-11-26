@@ -98,6 +98,14 @@ class DeskController extends ChangeNotifier {
     reload();
   }
 
+  /// Select a task from outside the list (a widget row tap), whatever view is open.
+  /// False if it no longer exists.
+  Future<bool> showTask(String id) async {
+    selectedId = id;
+    await reload();
+    return selectedId == id;
+  }
+
   /// Arrow keys: move the selection up or down the list.
   void moveSelection(int delta) {
     if (tasks.isEmpty) return;
