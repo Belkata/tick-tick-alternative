@@ -281,3 +281,51 @@ fn calendar_calls_go_through_the_socket() {
     api.unschedule(&t.id).unwrap();
     assert!(api.calendar(now, now + 86_400_000, tz).unwrap().is_empty());
 }
+
+#[test]
+fn bind_never_deletes_a_file_that_is_not_a_socket() {
+    let dir = temp_dir("notsock");
+    let file = dir.join("precious");
+    std::fs::write(&file, "data").unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let err = rt
+        .block_on(async { server::bind(&file).map(|_| ()) })
+        .unwrap_err();
+    assert!(err.to_string().contains("isn't a socket"), "{err}");
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), "data");
+}
+
+#[test]
+fn garbage_and_oversized_requests_get_errors_not_a_dead_daemon() {
+    use std::io::{BufRead, BufReader, Read, Write};
+    let dir = temp_dir("garbage");
+    let (_db, sock) = start_daemon(&dir);
+
+    let mut s = std::os::unix::net::UnixStream::connect(&sock).unwrap();
+    s.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
+    // Not JSON, then invalid UTF-8, then a real request on the same connection.
+    s.write_all(b"not json\n\xff\xfe\n{\"type\":\"Hello\"}\n").unwrap();
+    let mut r = BufReader::new(s.try_clone().unwrap());
+    for _ in 0..2 {
+        let mut line = String::new();
+        r.read_line(&mut line).unwrap();
+        assert!(line.contains("bad request"), "{line}");
+    }
+
+    // A line far past the limit: the daemon answers once and hangs up.
+    let mut big = std::os::unix::net::UnixStream::connect(&sock).unwrap();
+    big.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
+    let chunk = vec![b'a'; 1 << 20];
+    for _ in 0..18 {
+        if big.write_all(&chunk).is_err() {
+            break;
+        }
+    }
+    let mut reply = String::new();
+    let _ = big.read_to_string(&mut reply);
+    assert!(reply.contains("request too long"), "{reply}");
+
+    // The daemon is still up.
+    let client = Client::connect(&sock).unwrap();
+    assert!(client.hello().pid > 0);
+}
