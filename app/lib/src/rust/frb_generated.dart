@@ -3705,13 +3705,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   GcalCalendar dco_decode_gcal_calendar(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return GcalCalendar(
       id: dco_decode_String(arr[0]),
       summary: dco_decode_String(arr[1]),
       color: dco_decode_opt_String(arr[2]),
       selected: dco_decode_bool(arr[3]),
+      primary: dco_decode_bool(arr[4]),
+      accessRole: dco_decode_opt_String(arr[5]),
     );
   }
 
@@ -4300,11 +4302,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_summary = sse_decode_String(deserializer);
     var var_color = sse_decode_opt_String(deserializer);
     var var_selected = sse_decode_bool(deserializer);
+    var var_primary = sse_decode_bool(deserializer);
+    var var_accessRole = sse_decode_opt_String(deserializer);
     return GcalCalendar(
       id: var_id,
       summary: var_summary,
       color: var_color,
       selected: var_selected,
+      primary: var_primary,
+      accessRole: var_accessRole,
     );
   }
 
@@ -5057,6 +5063,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.summary, serializer);
     sse_encode_opt_String(self.color, serializer);
     sse_encode_bool(self.selected, serializer);
+    sse_encode_bool(self.primary, serializer);
+    sse_encode_opt_String(self.accessRole, serializer);
   }
 
   @protected

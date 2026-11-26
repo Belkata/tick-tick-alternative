@@ -348,17 +348,26 @@ class GcalCalendar {
   final String summary;
   final String? color;
   final bool selected;
+  final bool primary;
+  final String? accessRole;
 
   const GcalCalendar({
     required this.id,
     required this.summary,
     this.color,
     required this.selected,
+    required this.primary,
+    this.accessRole,
   });
 
   @override
   int get hashCode =>
-      id.hashCode ^ summary.hashCode ^ color.hashCode ^ selected.hashCode;
+      id.hashCode ^
+      summary.hashCode ^
+      color.hashCode ^
+      selected.hashCode ^
+      primary.hashCode ^
+      accessRole.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -368,7 +377,9 @@ class GcalCalendar {
           id == other.id &&
           summary == other.summary &&
           color == other.color &&
-          selected == other.selected;
+          selected == other.selected &&
+          primary == other.primary &&
+          accessRole == other.accessRole;
 }
 
 class GcalEvent {
