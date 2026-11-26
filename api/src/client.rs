@@ -22,7 +22,9 @@ pub struct Disconnected {
 impl std::fmt::Display for Disconnected {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.sent {
-            f.write_str("lost the connection to utre-daemon before it answered; check and try again")
+            f.write_str(
+                "lost the connection to utre-daemon before it answered; check and try again",
+            )
         } else {
             f.write_str("utre-daemon isn't running")
         }

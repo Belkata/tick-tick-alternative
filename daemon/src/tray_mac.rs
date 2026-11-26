@@ -201,12 +201,7 @@ impl State {
             None,
         ));
         add(&PredefinedMenuItem::separator());
-        add(&MenuItem::with_id(
-            "quit",
-            "Quit Utre daemon",
-            true,
-            None,
-        ));
+        add(&MenuItem::with_id("quit", "Quit Utre daemon", true, None));
         menu
     }
 }

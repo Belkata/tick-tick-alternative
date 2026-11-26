@@ -36,7 +36,8 @@ pub fn line(store: &Api, t: &Task, now_ms: i64, tz: Tz, indent: usize) -> String
     let mut extras = Vec::new();
     if let Some(due) = t.due_at {
         let mut s = when(due, t.all_day, now_ms, tz);
-        if utre_core::is_overdue(due, t.all_day, now_ms, tz) && t.status == utre_core::Status::Open {
+        if utre_core::is_overdue(due, t.all_day, now_ms, tz) && t.status == utre_core::Status::Open
+        {
             s = format!("{s} (overdue)");
         }
         if t.repeat_rule.is_some() {

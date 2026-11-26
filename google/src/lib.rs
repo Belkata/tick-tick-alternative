@@ -20,9 +20,9 @@ pub mod tokens;
 #[cfg(test)]
 mod testutil;
 
+pub use android::{AccessTokenProvider, AndroidAuthorizer};
 pub use calendar::{EventSync, sync_calendars};
 pub use oauth::{ClientSecrets, Endpoints, SCOPES};
-pub use android::{AccessTokenProvider, AndroidAuthorizer};
 pub use push::{PushReport, push_tasks};
 pub use session::{Authorizer, Session};
 pub use tokens::{FileTokenStore, TokenStore, Tokens};

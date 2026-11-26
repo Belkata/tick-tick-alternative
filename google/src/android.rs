@@ -120,7 +120,10 @@ mod tests {
     }
 
     impl AccessTokenProvider for Fake {
-        fn access_token(&self, stale: Option<String>) -> std::result::Result<Option<String>, String> {
+        fn access_token(
+            &self,
+            stale: Option<String>,
+        ) -> std::result::Result<Option<String>, String> {
             self.asked.lock().unwrap().push(stale);
             self.answers.lock().unwrap().remove(0)
         }
@@ -128,7 +131,10 @@ mod tests {
 
     fn store(name: &str) -> (Arc<FileTokenStore>, std::path::PathBuf) {
         let dir = std::env::temp_dir().join(format!("utre-android-{name}-{}", std::process::id()));
-        (Arc::new(FileTokenStore::new(dir.join("google-token.json"))), dir)
+        (
+            Arc::new(FileTokenStore::new(dir.join("google-token.json"))),
+            dir,
+        )
     }
 
     #[tokio::test]
@@ -136,7 +142,10 @@ mod tests {
         let (store, dir) = store("out");
         let auth = AndroidAuthorizer::new(Fake::new(vec![]), store);
         assert!(!auth.is_signed_in().unwrap());
-        assert!(matches!(auth.access_token(false).await, Err(Error::SignedOut)));
+        assert!(matches!(
+            auth.access_token(false).await,
+            Err(Error::SignedOut)
+        ));
         auth.signed_in("t1".into()).unwrap();
         assert!(auth.is_signed_in().unwrap());
         auth.sign_out().unwrap();
@@ -192,7 +201,10 @@ mod tests {
         let mut session = Session::with_authorizer(auth, endpoints);
         session.retry_base = std::time::Duration::from_millis(1);
         session.list_calendars().await.unwrap();
-        assert_eq!(*provider.asked.lock().unwrap(), vec![Some("t1".to_string())]);
+        assert_eq!(
+            *provider.asked.lock().unwrap(),
+            vec![Some("t1".to_string())]
+        );
         assert_eq!(store.load().unwrap().unwrap().access_token, "t2");
         // The browser sign-in isn't offered on this device.
         assert!(session.sign_in(|_| {}).await.is_err());
@@ -205,9 +217,14 @@ mod tests {
         let fake = Fake::new(vec![Err("no network".into()), Ok(None)]);
         let auth = AndroidAuthorizer::new(fake, store);
         auth.signed_in("t1".into()).unwrap();
-        assert!(matches!(auth.access_token(true).await, Err(Error::SignIn(m)) if m == "no network"));
+        assert!(
+            matches!(auth.access_token(true).await, Err(Error::SignIn(m)) if m == "no network")
+        );
         assert!(auth.is_signed_in().unwrap());
-        assert!(matches!(auth.access_token(true).await, Err(Error::SignedOut)));
+        assert!(matches!(
+            auth.access_token(true).await,
+            Err(Error::SignedOut)
+        ));
         assert!(!auth.is_signed_in().unwrap());
         let _ = std::fs::remove_dir_all(dir);
     }

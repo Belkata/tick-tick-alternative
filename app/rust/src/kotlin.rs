@@ -152,7 +152,9 @@ impl WidgetDb {
                 .chain(sb.filters)
                 .find(|i| i.id == id)
                 .map(|i| i.name)
-                .ok_or_else(|| CoreError::Failed { msg: format!("no {kind} {id}") })?
+                .ok_or_else(|| CoreError::Failed {
+                    msg: format!("no {kind} {id}"),
+                })?
         };
         let rows = views::tasks(&s, &view, now, tz)?
             .into_iter()
@@ -171,9 +173,21 @@ impl WidgetDb {
 
     /// Quick add: the task lands in the source (list or tag, or what a filter asks for),
     /// else in the Inbox. Returns the new task's id.
-    pub fn add_in(&self, kind: String, id: String, title: String, tz: String) -> Result<String, CoreError> {
+    pub fn add_in(
+        &self,
+        kind: String,
+        id: String,
+        title: String,
+        tz: String,
+    ) -> Result<String, CoreError> {
         let view = view_of(&kind, &id)?;
-        Ok(views::add_in(&self.lock(), &view, title.trim(), now_ms(), parse_tz(&tz))?)
+        Ok(views::add_in(
+            &self.lock(),
+            &view,
+            title.trim(),
+            now_ms(),
+            parse_tz(&tz),
+        )?)
     }
 
     pub fn add(&self, title: String) -> Result<WidgetTask, CoreError> {
@@ -212,9 +226,16 @@ impl WidgetDb {
 /// app's sync node if it's running in this process, else one started now. Returns a short
 /// summary for the log.
 #[uniffi::export]
-pub fn background_sync(db_path: String, key_path: String, device: String) -> Result<String, CoreError> {
-    let failed = |e: anyhow::Error| CoreError::Failed { msg: format!("{e:#}") };
-    let phone = crate::phone::start(Path::new(&db_path), Path::new(&key_path), device).map_err(failed)?;
+pub fn background_sync(
+    db_path: String,
+    key_path: String,
+    device: String,
+) -> Result<String, CoreError> {
+    let failed = |e: anyhow::Error| CoreError::Failed {
+        msg: format!("{e:#}"),
+    };
+    let phone =
+        crate::phone::start(Path::new(&db_path), Path::new(&key_path), device).map_err(failed)?;
     let outcomes = phone.rt.block_on(phone.svc.round());
     let ok = outcomes.iter().filter(|o| o.error.is_none()).count();
     let mut summary = format!("synced with {ok} of {} devices", outcomes.len());
@@ -265,7 +286,11 @@ fn view_of(kind: &str, id: &str) -> Result<TaskView, CoreError> {
         "list" => ViewKind::List,
         "tag" => ViewKind::Tag,
         "filter" => ViewKind::Filter,
-        other => return Err(CoreError::Failed { msg: format!("unknown source kind {other}") }),
+        other => {
+            return Err(CoreError::Failed {
+                msg: format!("unknown source kind {other}"),
+            });
+        }
     };
     let id = (kind != ViewKind::Inbox).then(|| id.to_string());
     Ok(TaskView { kind, id })
@@ -282,7 +307,9 @@ mod tests {
     use super::*;
 
     fn db() -> WidgetDb {
-        WidgetDb { store: Mutex::new(Store::open_in_memory().unwrap()) }
+        WidgetDb {
+            store: Mutex::new(Store::open_in_memory().unwrap()),
+        }
     }
 
     #[test]
@@ -290,18 +317,33 @@ mod tests {
         let db = db();
         let (list, tag) = {
             let s = db.lock();
-            (s.create_list("Work").unwrap(), s.create_tag("urgent", None).unwrap())
+            (
+                s.create_list("Work").unwrap(),
+                s.create_tag("urgent", None).unwrap(),
+            )
         };
         let tz = || "Europe/Sofia".to_string();
         db.add("loose".into()).unwrap();
-        db.add_in("list".into(), list.clone(), "  report ".into(), tz()).unwrap();
-        db.add_in("tag".into(), tag.clone(), "call".into(), tz()).unwrap();
+        db.add_in("list".into(), list.clone(), "  report ".into(), tz())
+            .unwrap();
+        db.add_in("tag".into(), tag.clone(), "call".into(), tz())
+            .unwrap();
 
-        let kinds: Vec<_> = db.sources(tz()).unwrap().into_iter().map(|s| s.kind).collect();
+        let kinds: Vec<_> = db
+            .sources(tz())
+            .unwrap()
+            .into_iter()
+            .map(|s| s.kind)
+            .collect();
         assert_eq!(kinds, ["inbox", "list", "tag"]);
 
         let titles = |kind: &str, id: &str| -> Vec<String> {
-            db.tasks(kind.into(), id.into(), tz()).unwrap().rows.into_iter().map(|r| r.title).collect()
+            db.tasks(kind.into(), id.into(), tz())
+                .unwrap()
+                .rows
+                .into_iter()
+                .map(|r| r.title)
+                .collect()
         };
         let inbox = titles("inbox", ""); // tagged and listed tasks are not in the derived Inbox
         assert_eq!(inbox, ["loose"]);

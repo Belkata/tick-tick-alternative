@@ -24,7 +24,12 @@ mod tests {
     use super::*;
 
     fn env(pairs: &'static [(&'static str, &'static str)]) -> impl Fn(&str) -> Option<OsString> {
-        move |k| pairs.iter().find(|(n, _)| *n == k).map(|(_, v)| OsString::from(v))
+        move |k| {
+            pairs
+                .iter()
+                .find(|(n, _)| *n == k)
+                .map(|(_, v)| OsString::from(v))
+        }
     }
 
     #[test]
