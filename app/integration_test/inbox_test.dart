@@ -480,6 +480,7 @@ void main() {
     await settle(tester);
     var d = (await db.task(id: id))!;
     expect(d.startLabel, 'today');
+    expect(d.startAt, isNotNull);
     expect(d.row.dueLabel, 'tomorrow');
 
     await tester.tap(find.byKey(const Key('detail-repeat')));

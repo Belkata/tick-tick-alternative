@@ -102,23 +102,6 @@ void main() {
       );
     });
 
-    test('labels read back', () {
-      const t = TimeOfDay(hour: 14, minute: 30);
-      expect(parseWhenLabel('today', now), When(DateTime(2026, 11, 25)));
-      expect(
-        parseWhenLabel('tomorrow 14:30', now),
-        When(DateTime(2026, 11, 26), t),
-      );
-      expect(parseWhenLabel('yesterday', now), When(DateTime(2026, 11, 24)));
-      expect(parseWhenLabel('Sat', now), When(DateTime(2026, 11, 28)));
-      expect(parseWhenLabel('Mon 14:30', now), When(DateTime(2026, 11, 30), t));
-      expect(parseWhenLabel('Fri 4 Dec', now), When(DateTime(2026, 12, 4)));
-      expect(parseWhenLabel('3 Dec 2027', now), When(DateTime(2027, 12, 3)));
-      expect(parseWhenLabel('Sun 22 Nov', now), When(DateTime(2026, 11, 22)));
-      expect(parseWhenLabel(null, now), isNull);
-      expect(parseWhenLabel('someday', now), isNull);
-    });
-
     test('typed times', () {
       expect(parseTimeText('9'), const TimeOfDay(hour: 9, minute: 0));
       expect(parseTimeText('9:30'), const TimeOfDay(hour: 9, minute: 30));

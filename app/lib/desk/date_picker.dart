@@ -77,66 +77,6 @@ When whenFromMs(int ms, bool allDay) {
   );
 }
 
-const _months = [
-  'jan', 'feb', 'mar', 'apr', 'may', 'jun',
-  'jul', 'aug', 'sep', 'oct', 'nov', 'dec', //
-];
-const _weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-
-/// Reads back the core's `when_label` text (`today`, `Fri 14:30`, `Fri 3 Dec`,
-/// `3 Dec 2025`): the bridge only gives the start date as a label.
-/// Null when it can't be read.
-When? parseWhenLabel(String? label, DateTime now) {
-  if (label == null) return null;
-  final parts = label.trim().toLowerCase().split(RegExp(r'\s+'));
-  if (parts.isEmpty || parts.first.isEmpty) return null;
-  TimeOfDay? time;
-  final last = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(parts.last);
-  if (last != null) {
-    time = TimeOfDay(
-      hour: int.parse(last.group(1)!),
-      minute: int.parse(last.group(2)!),
-    );
-    parts.removeLast();
-  }
-  if (parts.isEmpty) return null;
-  final today = DateUtils.dateOnly(now);
-  DateTime? day;
-  if (parts.length == 1) {
-    switch (parts.first) {
-      case 'today':
-        day = today;
-      case 'tomorrow':
-        day = today.add(const Duration(days: 1));
-      case 'yesterday':
-        day = today.subtract(const Duration(days: 1));
-      default:
-        final wd = _weekdays.indexOf(parts.first);
-        if (wd >= 0) {
-          // The label only uses a bare weekday for the next 2 to 6 days.
-          for (var i = 2; i <= 6; i++) {
-            final c = DateTime(today.year, today.month, today.day + i);
-            if (c.weekday == wd + 1) day = c;
-          }
-        }
-    }
-  } else {
-    // `Fri 3 Dec` or `3 Dec 2025`.
-    final nums = [for (final p in parts) int.tryParse(p)];
-    final m = parts.map(_months.indexOf).where((i) => i >= 0);
-    if (m.isNotEmpty) {
-      final month = m.first + 1;
-      final n = nums.whereType<int>().toList();
-      if (n.length == 1) {
-        day = DateTime(today.year, month, n.first);
-      } else if (n.length == 2) {
-        day = DateTime(n[1], month, n[0]);
-      }
-    }
-  }
-  return day == null ? null : When(day, time);
-}
-
 /// The Monday after [today] (the "Next week" quick choice).
 DateTime nextWeek(DateTime today) {
   final t = DateUtils.dateOnly(today);
