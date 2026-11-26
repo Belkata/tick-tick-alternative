@@ -47,6 +47,9 @@ pub fn line(store: &Api, t: &Task, now_ms: i64, tz: Tz, indent: usize) -> String
     } else if let Some(start) = t.start_at {
         extras.push(format!("from {}", when(start, t.all_day, now_ms, tz)));
     }
+    if let Some(m) = t.duration_min {
+        extras.push(format!("⏱ {}", duration_short(m)));
+    }
     if let Some(list) = t
         .list_id
         .as_deref()
@@ -74,6 +77,15 @@ pub fn line(store: &Api, t: &Task, now_ms: i64, tz: Tz, indent: usize) -> String
         "  ".repeat(indent),
         t.title
     )
+}
+
+/// `45m`, `2h`, `1h30`: the compact form shown next to a task.
+pub fn duration_short(min: i64) -> String {
+    match (min / 60, min % 60) {
+        (0, m) => format!("{m}m"),
+        (h, 0) => format!("{h}h"),
+        (h, m) => format!("{h}h{m:02}"),
+    }
 }
 
 /// `15m`, `1h30m`, `2d` → minutes.
@@ -104,6 +116,14 @@ pub fn parse_offset(s: &str) -> Option<i64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn compact_durations() {
+        assert_eq!(duration_short(45), "45m");
+        assert_eq!(duration_short(120), "2h");
+        assert_eq!(duration_short(90), "1h30");
+        assert_eq!(duration_short(65), "1h05");
+    }
 
     #[test]
     fn offsets() {

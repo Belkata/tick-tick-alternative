@@ -59,6 +59,9 @@ pub struct TaskRow {
     pub due_label: Option<String>,
     pub overdue: bool,
     pub due_today: bool,
+    /// The task's length in minutes, when set. Defaulted for peers that don't send it.
+    #[serde(default)]
+    pub duration_min: Option<i64>,
     pub done: bool,
     pub deleted: bool,
     pub repeating: bool,
@@ -604,6 +607,7 @@ fn task_row(s: &Store, t: Task, now: i64, tz: Tz) -> utre_core::Result<TaskRow> 
         due_today: t
             .due_at
             .is_some_and(|d| local_day(d, t.all_day, tz) == today),
+        duration_min: t.duration_min,
         done: t.status == Status::Done,
         deleted: t.status == Status::Deleted,
         repeating: t.repeat_rule.is_some(),
@@ -709,6 +713,41 @@ mod tests {
         // Clearing the dates by hand brings a task back too.
         set_start(&s, &start_only, None, now, tz).unwrap();
         assert_eq!(ids(None).len(), 3);
+
+    fn rows_and_detail_carry_the_duration() {
+        let s = Store::open_in_memory().unwrap();
+        let tz = Tz::Europe__Sofia;
+        let now = 1_795_600_000_000;
+        let id = s.add_task("Gym").unwrap().id;
+        assert_eq!(
+            task_detail(&s, &id, now, tz)
+                .unwrap()
+                .unwrap()
+                .row
+                .duration_min,
+            None
+        );
+        s.set_task_duration(&id, Some(75)).unwrap();
+        let d = task_detail(&s, &id, now, tz).unwrap().unwrap();
+        assert_eq!(d.row.duration_min, Some(75));
+        // Setting dates keeps it; clearing removes it.
+        set_due(&s, &id, Some("2026-12-02 09:00"), now, tz).unwrap();
+        let d = task_detail(&s, &id, now, tz).unwrap().unwrap();
+        assert_eq!(d.row.duration_min, Some(75));
+        s.set_task_duration(&id, None).unwrap();
+        assert_eq!(
+            task_detail(&s, &id, now, tz)
+                .unwrap()
+                .unwrap()
+                .row
+                .duration_min,
+            None
+        );
+        // A row from an older daemon (no `duration_min`) still decodes.
+        let mut v = serde_json::to_value(&d.row).unwrap();
+        v.as_object_mut().unwrap().remove("duration_min");
+        let old: TaskRow = serde_json::from_value(v).unwrap();
+        assert_eq!(old.duration_min, None);
     }
 
     #[test]
