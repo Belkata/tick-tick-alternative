@@ -125,6 +125,22 @@ ThemeData softTheme(Brightness brightness) {
     scaffoldBackgroundColor: c.bg,
     extensions: [c],
     dividerColor: c.line,
+    canvasColor: c.panel,
+    // Material 3 tints dialogs and menus with a grey-green surface; Soft wants the panel colour.
+    dialogTheme: DialogThemeData(
+      backgroundColor: c.panel,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      titleTextStyle: manrope(17, FontWeight.w800, color: c.fg),
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: c.panel,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: c.line),
+      ),
+    ),
     textTheme: base.textTheme
         .apply(bodyColor: c.fg, displayColor: c.fg)
         .copyWith(
