@@ -69,3 +69,8 @@ Back to [[00 Overview]] · [[10 Roadmap]] · [[05 P2P Sync]].
 - **Check with the user:** the Devices page and the tray line in the real app, and a real second device (the Mac, or the phone after M4). `git push`: these commits are local.
 - Still open in M3: QR pairing (Android, M4). Subtask cycles from concurrent moves (from plan/14's known gaps) need a convergent resolution.
 - ✅ **`network_sim` fixed (2026-11-26).** Not a convergence bug: the replicas' *state* was always equal. After `compact()` a replica keeps the HLC of the ops it dropped in `device_clock` (so its vector can't go backwards), but nobody can send a dropped op, so that counter never reaches the others and the vectors differed (same wall time, counter 3 vs 6). The test now compares full vectors only when nothing compacted; with compaction it checks the same devices are covered, equal state and nothing owed (`missing` empty). The seed is saved in `core/tests/network_sim.proptest-regressions`, and CI no longer skips the test.
+
+## Hardening review (2026-11-26, v0.8.0; no schema change, still v9)
+- Synced numeric ranges are bounded in `core/src/oplog.rs` `field_spec` (instants +-2^47 ms, `duration_min` 0..=1e8, `offset_min` +-1e8). The HLC counter rolling over is handled. Ticket unhex/decode panics fixed.
+- Op frames are batched to about 1 MiB; a 30 s first-frame timeout; `utre.key` is created atomically (temp file plus no-clobber hard link).
+- Left as recommendations (see plan/11): reject far-future HLC wall times, validate trust device ids as 64 hex, an overall sync-session timeout.

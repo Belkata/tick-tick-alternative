@@ -62,3 +62,8 @@ Back to [[00 Overview]] · [[10 Roadmap]]. How M1 was built, and where it differ
 - No auto-purge of Trash after 30 days, and no op-log compaction (M3).
 - Arch: the CLI hasn't been built or run there yet (the M1 exit criterion).
 - The Android app hasn't been rebuilt on the new core. The Dart and Kotlin APIs didn't change, and the bridge compiles. The app's spike DB will migrate on first launch.
+
+## Hardening review (2026-11-26, v0.8.0)
+- Huge filter offsets return an error instead of panicking. `Store::write` rolls back when the closure panics. Tags caught in a concurrent-move loop show at the top instead of being hidden.
+- API socket: 16 MiB request cap, request panics caught, binding never deletes a non-socket path. Daemon: the reminder window only advances on success; SIGTERM shuts down cleanly. CLI: short-id panic fixed.
+- Open: the socket's chmod window in the macOS fallback directory.
