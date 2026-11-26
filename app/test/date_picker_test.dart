@@ -209,6 +209,29 @@ void main() {
       expect(result!.text, isNull);
     });
 
+    testWidgets('PageDown moves the chosen day a month, keeping it in view', (
+      t,
+    ) async {
+      await open(t, initial: When(DateTime(2026, 1, 31)));
+      await t.sendKeyEvent(LogicalKeyboardKey.pageDown);
+      await t.pumpAndSettle();
+      expect(find.text('February 2026'), findsOneWidget);
+      // The 31st clamps to the end of February, and is the day that gets saved.
+      await tapKey(t, 'when-done');
+      expect(result!.when, When(DateTime(2026, 2, 28)));
+    });
+
+    testWidgets('PageUp with no day chosen only turns the month', (t) async {
+      await open(t);
+      await t.sendKeyEvent(LogicalKeyboardKey.pageUp);
+      await t.pumpAndSettle();
+      expect(find.text('October 2026'), findsOneWidget);
+      expect(
+        t.widget<FilledButton>(find.byKey(const Key('when-done'))).onPressed,
+        isNull,
+      );
+    });
+
     testWidgets('a day in another month; the month arrows work', (t) async {
       await open(t);
       await tapKey(t, 'when-next');

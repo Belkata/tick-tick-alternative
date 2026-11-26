@@ -306,6 +306,13 @@ class _WhenPickerPanelState extends State<WhenPickerPanel> {
   void _shiftMonth(int by) =>
       setState(() => _month = DateTime(_month.year, _month.month + by));
 
+  /// The same day [by] months on (the 31st clamps to the end of a shorter month).
+  static DateTime _addMonths(DateTime d, int by) {
+    final first = DateTime(d.year, d.month + by);
+    final last = DateUtils.getDaysInMonth(first.year, first.month);
+    return DateTime(first.year, first.month, d.day > last ? last : d.day);
+  }
+
   void _done() {
     final c = _chosen;
     if (c == null || _problem != null) return;
@@ -336,7 +343,14 @@ class _WhenPickerPanelState extends State<WhenPickerPanel> {
       return KeyEventResult.handled;
     }
     if (k == LogicalKeyboardKey.pageUp || k == LogicalKeyboardKey.pageDown) {
-      _shiftMonth(k == LogicalKeyboardKey.pageUp ? -1 : 1);
+      final by = k == LogicalKeyboardKey.pageUp ? -1 : 1;
+      // With a day chosen it moves too: the saved day must stay on screen.
+      final d = _day;
+      if (d == null) {
+        _shiftMonth(by);
+      } else {
+        _pick(_addMonths(d, by));
+      }
       return KeyEventResult.handled;
     }
     if (k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) {
@@ -367,11 +381,26 @@ class _WhenPickerPanelState extends State<WhenPickerPanel> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.title,
-              style: manrope(16, FontWeight.w800, color: s.fg),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: manrope(16, FontWeight.w800, color: s.fg),
+                  ),
+                ),
+                // Clearing is not a date to choose, so it isn't one of the quick
+                // choices (which then fit on one line).
+                TextButton(
+                  key: const Key('when-clear'),
+                  style: _btn(touch),
+                  onPressed: () =>
+                      Navigator.of(context).pop(const PickedWhen.cleared()),
+                  child: Text('No date', style: TextStyle(color: s.mute)),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 4),
             _quick(context),
             const SizedBox(height: 8),
             _monthHeader(context),
@@ -468,11 +497,6 @@ class _WhenPickerPanelState extends State<WhenPickerPanel> {
           on: is_(tomorrow),
         ),
         chip('when-next-week', 'Next week', () => _pick(nw), on: is_(nw)),
-        chip(
-          'when-clear',
-          'No date',
-          () => Navigator.of(context).pop(const PickedWhen.cleared()),
-        ),
       ],
     );
   }
