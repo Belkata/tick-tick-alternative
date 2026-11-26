@@ -491,6 +491,9 @@ pub fn decode_ticket(ticket: &str) -> Result<EndpointAddr> {
         .trim()
         .strip_prefix(TICKET_PREFIX)
         .context("not a Utre ticket (expected tt1…)")?;
+    if !hex.is_ascii() {
+        bail!("ticket is not hex");
+    }
     if hex.len() % 2 != 0 {
         bail!("ticket has odd length; was it cut off?");
     }
@@ -527,6 +530,11 @@ mod tests {
         let addr = EndpointAddr::new(id).with_ip_addr("192.168.1.5:4433".parse().unwrap());
         assert_eq!(decode_ticket(&encode_ticket(&addr).unwrap()).unwrap(), addr);
         assert!(decode_ticket("nope").is_err());
+        // Pasted text with multi-byte characters must be an error, not a slicing panic.
+        assert!(decode_ticket("tt1é1").is_err());
+        assert!(decode_ticket("tt1ééé").is_err());
+        assert!(replicate::decode_pair_ticket("tt2日本語日本語").is_err());
+        assert!(replicate::decode_pair_ticket("tt2a€").is_err());
     }
 
     /// Two nodes on loopback, no relays: B pulls A's open tasks.
