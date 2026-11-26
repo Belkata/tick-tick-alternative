@@ -49,7 +49,11 @@ void main() {
   });
 
   test('negated groups wrap in not; a bare condition root becomes a group', () {
-    final g = RuleGroup(all: false, negate: true, children: [RuleCond.of(RuleField.inbox)]);
+    final g = RuleGroup(
+      all: false,
+      negate: true,
+      children: [RuleCond.of(RuleField.inbox)],
+    );
     expect(g.toJson(), {
       'not': {
         'any': [
@@ -71,6 +75,9 @@ void main() {
   test('has_time keeps its JSON name', () {
     final c = RuleCond.of(RuleField.hasTime);
     expect((c.toJson() as Map)['field'], 'has_time');
-    expect(RuleNode.fromJson({'field': 'has_time', 'op': 'is', 'value': false}), isA<RuleCond>());
+    expect(
+      RuleNode.fromJson({'field': 'has_time', 'op': 'is', 'value': false}),
+      isA<RuleCond>(),
+    );
   });
 }

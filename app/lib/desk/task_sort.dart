@@ -52,3 +52,46 @@ List<TaskRow> applyTaskMove(List<TaskRow> rows, String id, String? before) {
   if (at < 0) return rows;
   return [...rest.sublist(0, at), moved, ...rest.sublist(at)];
 }
+
+/// The date buckets a due-date sort is split into (Todoist and Things group alike).
+enum DueGroup {
+  overdue('Overdue'),
+  today('Today'),
+  tomorrow('Tomorrow'),
+  week('Next 7 days'),
+  later('Later'),
+  none('No date');
+
+  const DueGroup(this.label);
+  final String label;
+}
+
+/// Which bucket a task falls in on the day of [now] (local time; all-day dates are
+/// stored as UTC midnight, so their calendar day is read in UTC).
+DueGroup dueGroupOf(TaskRow r, DateTime now) {
+  final ms = r.dueAt;
+  if (ms == null) return DueGroup.none;
+  if (r.overdue) return DueGroup.overdue;
+  if (r.dueToday) return DueGroup.today;
+  final d = DateTime.fromMillisecondsSinceEpoch(ms, isUtc: r.allDay);
+  final days = DateTime.utc(
+    d.year,
+    d.month,
+    d.day,
+  ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
+  if (days <= 0) return DueGroup.today;
+  if (days == 1) return DueGroup.tomorrow;
+  return days <= 7 ? DueGroup.week : DueGroup.later;
+}
+
+/// [rows] split into non-empty buckets, in bucket order; each keeps the rows' own order.
+List<(DueGroup, List<TaskRow>)> groupByDue(List<TaskRow> rows, DateTime now) {
+  final by = {for (final g in DueGroup.values) g: <TaskRow>[]};
+  for (final r in rows) {
+    by[dueGroupOf(r, now)]!.add(r);
+  }
+  return [
+    for (final g in DueGroup.values)
+      if (by[g]!.isNotEmpty) (g, by[g]!),
+  ];
+}

@@ -49,4 +49,68 @@ void main() {
     expect(sortChoiceOf(const []), isNull);
     expect(sortable(ViewKind.trash), isFalse);
   });
+
+  group('due groups', () {
+    final now = DateTime(2026, 11, 26, 12);
+    TaskRow due(
+      String id,
+      DateTime? at, {
+      bool overdue = false,
+      bool today = false,
+      bool allDay = false,
+    }) => TaskRow(
+      id: id,
+      title: id,
+      priority: 0,
+      dueAt: at?.millisecondsSinceEpoch,
+      allDay: allDay,
+      overdue: overdue,
+      dueToday: today,
+      done: false,
+      deleted: false,
+      repeating: false,
+      tags: const [],
+      checklistDone: 0,
+      checklistTotal: 0,
+      subtasks: 0,
+    );
+
+    test('buckets by calendar day, overdue first, no date last', () {
+      final rows = [
+        due('late', DateTime(2026, 11, 25), overdue: true),
+        due('now', DateTime(2026, 11, 26, 18), today: true),
+        due('tom', DateTime(2026, 11, 27, 9)),
+        due('wk', DateTime(2026, 12, 3)),
+        due('far', DateTime(2026, 12, 4)),
+        due('none', null),
+      ];
+      expect(
+        [for (final r in rows) dueGroupOf(r, now)],
+        [
+          DueGroup.overdue,
+          DueGroup.today,
+          DueGroup.tomorrow,
+          DueGroup.week,
+          DueGroup.later,
+          DueGroup.none,
+        ],
+      );
+    });
+
+    test('groups keep row order and skip empty buckets', () {
+      final rows = [
+        due('b', DateTime(2026, 11, 27, 11)),
+        due('x', null),
+        due('a', DateTime(2026, 11, 27, 8)),
+      ];
+      final g = groupByDue(rows, now);
+      expect([for (final e in g) e.$1], [DueGroup.tomorrow, DueGroup.none]);
+      expect([for (final r in g.first.$2) r.id], ['b', 'a']);
+    });
+
+    test('an all-day date is read as its UTC day', () {
+      final r = due('d', DateTime.utc(2026, 11, 27), allDay: true);
+      expect(dueGroupOf(r, now), DueGroup.tomorrow);
+    });
+  });
 }
