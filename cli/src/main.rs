@@ -478,6 +478,12 @@ struct Ctx {
     now: i64,
 }
 
+/// The first 10 characters of a device id for display. Ids can come from a peer's trust
+/// list, so don't slice by bytes (a short or non-ASCII id would panic).
+fn peer_short(id: &str) -> &str {
+    id.char_indices().nth(10).map_or(id, |(i, _)| &id[..i])
+}
+
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -1345,7 +1351,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
                 let seen = p.last_seen.map_or("never synced".into(), |t| {
                     format!("synced {}", when(t, false, now, tz))
                 });
-                println!("{}  {}  ({seen})", &p.node_id[..10], p.name);
+                println!("{}  {}  ({seen})", peer_short(&p.node_id), p.name);
             }
         }
         SyncCommand::Forget { device: who } => {
@@ -1384,7 +1390,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
                     _ = tokio::signal::ctrl_c() => break,
                     ev = synced.recv() => match ev {
                         Ok(SyncEvent::Synced(r)) => print_report(&r),
-                        Ok(SyncEvent::Refused { peer_id, reason }) => println!("refused {}: {reason}", &peer_id[..10]),
+                        Ok(SyncEvent::Refused { peer_id, reason }) => println!("refused {}: {reason}", peer_short(&peer_id)),
                         _ => {}
                     },
                     s = served.recv() => if let Ok(s) = s {
@@ -1392,7 +1398,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
                             "served {} tasks to {} ({})",
                             s.task_count,
                             s.peer_device,
-                            &s.peer_id[..10]
+                            peer_short(&s.peer_id)
                         );
                     }
                 }
@@ -1406,7 +1412,7 @@ async fn run_sync(db: PathBuf, cmd: SyncCommand) -> Result<()> {
                 "{} tasks from {} ({}) in {} ms",
                 r.tasks.len(),
                 r.peer_device,
-                &r.peer_id[..10],
+                peer_short(&r.peer_id),
                 r.elapsed.as_millis()
             );
             println!(
@@ -1458,7 +1464,7 @@ fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
         SyncCommand::Peers => {
             let (now, tz) = (now_ms(), local_tz());
             let status = api.sync_status()?;
-            println!("This device: {} (utre-daemon)", &status.node_id[..10]);
+            println!("This device: {} (utre-daemon)", peer_short(&status.node_id));
             let peers = api.peers()?;
             if peers.is_empty() {
                 println!("No paired devices.");
@@ -1467,7 +1473,7 @@ fn sync_via_daemon(api: Api, cmd: SyncCommand) -> Result<()> {
                 let seen = p.last_seen.map_or("never synced".into(), |t| {
                     format!("synced {}", when(t, false, now, tz))
                 });
-                println!("{}  {}  ({seen})", &p.node_id[..10], p.name);
+                println!("{}  {}  ({seen})", peer_short(&p.node_id), p.name);
             }
         }
         SyncCommand::Forget { device: who } => {
@@ -1541,4 +1547,15 @@ fn hostname() -> String {
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "desktop".into())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn peer_short_ids_never_panic() {
+        assert_eq!(super::peer_short("0123456789abcdef"), "0123456789");
+        assert_eq!(super::peer_short("abc"), "abc");
+        assert_eq!(super::peer_short("ééééééééééééé"), "éééééééééé");
+        assert_eq!(super::peer_short(""), "");
+    }
 }
