@@ -10,14 +10,20 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use utre_api::GoogleStatus;
+use tokio::sync::broadcast;
+use utre_api::{GooglePushStatus, GoogleStatus};
 use utre_core::Store;
-use utre_google::{ClientSecrets, FileTokenStore, Session, sync_calendars};
+use utre_google::{ClientSecrets, FileTokenStore, Session, push_tasks, sync_calendars};
 
 /// How often events are fetched while signed in (plan/06: desktop polls every 5 minutes).
 const POLL: Duration = Duration::from_secs(5 * 60);
 /// A short wait after startup, so the first fetch doesn't compete with startup work.
 const FIRST_POLL: Duration = Duration::from_secs(20);
+/// After a change, wait this long for more before pushing (an edit is often several writes).
+const PUSH_DEBOUNCE: Duration = Duration::from_secs(5);
+/// Push at least this often even when nothing changed here (repairs events deleted on
+/// Google, picks up a date that arrived through sync).
+const PUSH_EVERY: Duration = Duration::from_secs(15 * 60);
 /// How long a sign-in request waits for the browser URL to be ready.
 const URL_WAIT: Duration = Duration::from_secs(10);
 
@@ -26,6 +32,8 @@ struct State {
     signing_in: bool,
     last_sync_ms: Option<i64>,
     last_error: Option<String>,
+    /// What the last push did (`enabled` is read from the database when asked).
+    push: GooglePushStatus,
 }
 
 pub struct GoogleService {
@@ -36,6 +44,8 @@ pub struct GoogleService {
     state: Mutex<State>,
     /// One fetch at a time (the poll, `utre google sync` and the app's button can overlap).
     busy: tokio::sync::Mutex<()>,
+    /// One push at a time, apart from fetching (a push can wait on Google's back-off).
+    push_busy: tokio::sync::Mutex<()>,
 }
 
 fn now_ms() -> i64 {
@@ -63,6 +73,7 @@ impl GoogleService {
             db_file,
             state: Mutex::new(State::default()),
             busy: tokio::sync::Mutex::new(()),
+            push_busy: tokio::sync::Mutex::new(()),
         })
     }
 
@@ -189,6 +200,87 @@ impl GoogleService {
     }
 }
 
+impl GoogleService {
+    /// What pushing tasks out did last, with the switch's current position.
+    pub fn push_status(&self) -> GooglePushStatus {
+        let enabled = Store::open(&self.db_file)
+            .and_then(|s| s.gcal_push_enabled())
+            .unwrap_or(false);
+        GooglePushStatus {
+            enabled,
+            ..self.state().push.clone()
+        }
+    }
+
+    /// Pushes tasks to the "Tasks" calendar now (plan/19 slice 4). Does nothing when the
+    /// switch is off here. Per-event failures are in the status, not an error.
+    pub async fn push_now(&self) -> Result<GooglePushStatus, String> {
+        let session = self.session()?;
+        if !session.is_signed_in().map_err(|e| e.to_string())? {
+            return Err("not signed in to Google".into());
+        }
+        let _one_at_a_time = self.push_busy.lock().await;
+        let mut store = Store::open(&self.db_file).map_err(|e| e.to_string())?;
+        if !store.gcal_push_enabled().map_err(|e| e.to_string())? {
+            return Ok(self.push_status());
+        }
+        let result = push_tasks(session, &mut store, now_ms()).await;
+        {
+            let mut state = self.state();
+            match &result {
+                Ok(r) => {
+                    state.push = GooglePushStatus {
+                        enabled: true,
+                        last_push_ms: if r.failed == 0 {
+                            Some(now_ms())
+                        } else {
+                            state.push.last_push_ms
+                        },
+                        created: r.created,
+                        updated: r.updated,
+                        deleted: r.deleted,
+                        unchanged: r.unchanged,
+                        last_error: r.first_error.clone(),
+                    }
+                }
+                Err(e) => state.push.last_error = Some(e.to_string()),
+            }
+        }
+        result.map_err(|e| e.to_string())?;
+        Ok(self.push_status())
+    }
+
+    /// Keeps the Tasks calendar current: shortly after startup, a few seconds after the
+    /// database changes (an edit here, a sync, a fetch), and every 15 minutes. Idle until
+    /// the switch is on and Google is signed in.
+    pub fn spawn_push(self: &Arc<Self>, mut changes: broadcast::Receiver<u64>) {
+        if self.session.is_none() {
+            return;
+        }
+        let this = self.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(FIRST_POLL + Duration::from_secs(10)).await;
+            loop {
+                if this.status().signed_in
+                    && let Err(e) = this.push_now().await
+                {
+                    eprintln!("utre-daemon: Google push: {e}");
+                }
+                tokio::select! {
+                    got = changes.recv() => {
+                        if matches!(got, Err(broadcast::error::RecvError::Closed)) {
+                            return;
+                        }
+                        tokio::time::sleep(PUSH_DEBOUNCE).await;
+                        while changes.try_recv().is_ok() {}
+                    }
+                    _ = tokio::time::sleep(PUSH_EVERY) => {}
+                }
+            }
+        });
+    }
+}
+
 /// Asks the desktop to open `url` in the user's browser. If it can't, the caller still has
 /// the URL to show.
 fn open_url(url: &str) {
@@ -198,6 +290,8 @@ fn open_url(url: &str) {
     let opener = "xdg-open";
     match std::process::Command::new(opener).arg(url).spawn() {
         Ok(mut child) => drop(std::thread::spawn(move || child.wait())),
-        Err(e) => eprintln!("utre-daemon: could not open the browser ({e}); open this link:\n{url}"),
+        Err(e) => {
+            eprintln!("utre-daemon: could not open the browser ({e}); open this link:\n{url}")
+        }
     }
 }

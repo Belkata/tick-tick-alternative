@@ -189,9 +189,9 @@ impl Session {
 }
 
 /// Brings the Tasks calendar in line with the tasks. A no-op, with no network traffic,
-/// when pushing is off here or nobody is signed in. Needs `&Store` only for the plan and
-/// the calendar id; it is not held across a request longer than a call.
-pub async fn push_tasks(session: &Session, store: &Store, now_ms: i64) -> Result<PushReport> {
+/// when pushing is off here or nobody is signed in. `&mut` keeps the future `Send`; the
+/// store itself is only read for the plan and written for the calendar id.
+pub async fn push_tasks(session: &Session, store: &mut Store, now_ms: i64) -> Result<PushReport> {
     if !store.gcal_push_enabled()? || !session.is_signed_in()? {
         return Ok(PushReport::default());
     }
@@ -429,7 +429,7 @@ mod tests {
 
     #[tokio::test]
     async fn creates_a_missing_event_with_the_deterministic_id() {
-        let r = rig(
+        let mut r = rig(
             vec![
                 list_route(&listing(&[])),
                 Route::new(CAL, 200, "{}").method("POST"),
@@ -438,7 +438,7 @@ mod tests {
         )
         .await;
         let t = task(&r.store, "Dentist", NOW + DAY);
-        let report = push_tasks(&r.session, &r.store, NOW).await.unwrap();
+        let report = push_tasks(&r.session, &mut r.store, NOW).await.unwrap();
         assert_eq!((report.created, report.updated, report.deleted), (1, 0, 0));
         let posts = calls(&r, "POST");
         assert_eq!(posts.len(), 1);
@@ -459,8 +459,8 @@ mod tests {
         let t = task(&store, "Dentist", NOW + DAY);
         let id = utre_core::task_event_id(&t.id).unwrap();
         let hash = hash_of(&store, &t);
-        let r = rig_with(store, vec![list_route(&listing(&[(&id, &hash)]))], true).await;
-        let report = push_tasks(&r.session, &r.store, NOW).await.unwrap();
+        let mut r = rig_with(store, vec![list_route(&listing(&[(&id, &hash)]))], true).await;
+        let report = push_tasks(&r.session, &mut r.store, NOW).await.unwrap();
         assert_eq!(report.unchanged, 1);
         assert_eq!(report.changed(), 0);
         assert_eq!(requests(&r).len(), 1, "only the list");
@@ -473,7 +473,7 @@ mod tests {
         let b = task(&store, "Taken", NOW + 2 * DAY);
         let ida = utre_core::task_event_id(&a.id).unwrap();
         let idb = utre_core::task_event_id(&b.id).unwrap();
-        let r = rig_with(
+        let mut r = rig_with(
             store,
             vec![
                 // `a` is on Google with an old hash; `b` isn't listed but its id is taken.
@@ -485,7 +485,7 @@ mod tests {
             true,
         )
         .await;
-        let report = push_tasks(&r.session, &r.store, NOW).await.unwrap();
+        let report = push_tasks(&r.session, &mut r.store, NOW).await.unwrap();
         assert_eq!((report.created, report.updated), (0, 2));
         let puts = calls(&r, "PUT");
         assert_eq!(puts.len(), 2);
@@ -495,7 +495,7 @@ mod tests {
 
     #[tokio::test]
     async fn events_without_a_task_are_deleted_but_foreign_ones_stay() {
-        let r = rig(
+        let mut r = rig(
             vec![
                 list_route(
                     &json!({"items": [
@@ -514,7 +514,7 @@ mod tests {
         // A trashed task is just absent from the plan.
         let t = task(&r.store, "Trashed", NOW + DAY);
         r.store.trash_task(&t.id).unwrap();
-        let report = push_tasks(&r.session, &r.store, NOW).await.unwrap();
+        let report = push_tasks(&r.session, &mut r.store, NOW).await.unwrap();
         assert_eq!(report.deleted, 2, "404 on delete counts as gone");
         let deletes = calls(&r, "DELETE");
         assert_eq!(deletes.len(), 2);
@@ -523,7 +523,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_repeating_task_goes_out_as_occurrences() {
-        let r = rig(
+        let mut r = rig(
             vec![
                 list_route(&listing(&[])),
                 Route::new(CAL, 200, "{}").method("POST"),
@@ -541,7 +541,7 @@ mod tests {
                 }),
             )
             .unwrap();
-        let report = push_tasks(&r.session, &r.store, NOW).await.unwrap();
+        let report = push_tasks(&r.session, &mut r.store, NOW).await.unwrap();
         assert!((16..=19).contains(&report.created), "{}", report.created);
         let base = utre_core::task_event_id(&t.id).unwrap();
         let posts = calls(&r, "POST");
@@ -555,7 +555,7 @@ mod tests {
 
     #[tokio::test]
     async fn rate_limits_are_retried_with_backoff() {
-        let r = rig(
+        let mut r = rig(
             vec![
                 list_route(&listing(&[])),
                 Route::new(CAL, 429, "{}").method("POST").times(1),
@@ -573,14 +573,14 @@ mod tests {
         )
         .await;
         task(&r.store, "Dentist", NOW + DAY);
-        let report = push_tasks(&r.session, &r.store, NOW).await.unwrap();
+        let report = push_tasks(&r.session, &mut r.store, NOW).await.unwrap();
         assert_eq!(report.created, 1);
         assert_eq!(calls(&r, "POST").len(), 4);
     }
 
     #[tokio::test]
     async fn a_refused_event_is_counted_and_the_rest_still_go() {
-        let r = rig(
+        let mut r = rig(
             vec![
                 list_route(&listing(&[])),
                 Route::new(
@@ -597,24 +597,24 @@ mod tests {
         .await;
         task(&r.store, "A", NOW + DAY);
         task(&r.store, "B", NOW + 2 * DAY);
-        let report = push_tasks(&r.session, &r.store, NOW).await.unwrap();
+        let report = push_tasks(&r.session, &mut r.store, NOW).await.unwrap();
         assert_eq!((report.created, report.failed), (1, 1));
         assert!(report.first_error.unwrap().contains("400"));
     }
 
     #[tokio::test]
     async fn signed_out_or_switched_off_does_nothing() {
-        let r = rig(vec![], false).await;
+        let mut r = rig(vec![], false).await;
         task(&r.store, "Dentist", NOW + DAY);
         assert_eq!(
-            push_tasks(&r.session, &r.store, NOW).await.unwrap(),
+            push_tasks(&r.session, &mut r.store, NOW).await.unwrap(),
             PushReport::default()
         );
-        let r = rig(vec![], true).await;
+        let mut r = rig(vec![], true).await;
         task(&r.store, "Dentist", NOW + DAY);
         r.store.gcal_set_push(false).unwrap();
         assert_eq!(
-            push_tasks(&r.session, &r.store, NOW).await.unwrap(),
+            push_tasks(&r.session, &mut r.store, NOW).await.unwrap(),
             PushReport::default()
         );
         assert!(requests(&r).is_empty());
@@ -623,7 +623,7 @@ mod tests {
     #[tokio::test]
     async fn the_tasks_calendar_is_found_by_its_marker_or_created_once() {
         // Another device made it: reuse, don't create.
-        let r = rig(
+        let mut r = rig(
             vec![
                 Route::new(
                     &format!("{API}/users/me/calendarList"),
@@ -645,7 +645,7 @@ mod tests {
         )
         .await;
         r.store.gcal_set_tasks_calendar(None).unwrap();
-        push_tasks(&r.session, &r.store, NOW).await.unwrap();
+        push_tasks(&r.session, &mut r.store, NOW).await.unwrap();
         assert_eq!(
             r.store.gcal_tasks_calendar().unwrap().as_deref(),
             Some("theirs")
@@ -653,7 +653,7 @@ mod tests {
         assert!(calls(&r, "POST").is_empty());
 
         // Nobody made it: create it, remember its id.
-        let r = rig(
+        let mut r = rig(
             vec![
                 Route::new(
                     &format!("{API}/users/me/calendarList"),
@@ -668,7 +668,7 @@ mod tests {
         )
         .await;
         r.store.gcal_set_tasks_calendar(None).unwrap();
-        push_tasks(&r.session, &r.store, NOW).await.unwrap();
+        push_tasks(&r.session, &mut r.store, NOW).await.unwrap();
         assert_eq!(
             r.store.gcal_tasks_calendar().unwrap().as_deref(),
             Some("fresh")
@@ -680,7 +680,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_deleted_calendar_is_replaced() {
-        let r = rig(
+        let mut r = rig(
             vec![
                 Route::new(&format!("{API}/calendars/tasks-cal/events"), 404, "{}").method("GET"),
                 Route::new(
@@ -697,7 +697,7 @@ mod tests {
         )
         .await;
         task(&r.store, "Dentist", NOW + DAY);
-        let report = push_tasks(&r.session, &r.store, NOW).await.unwrap();
+        let report = push_tasks(&r.session, &mut r.store, NOW).await.unwrap();
         assert_eq!(report.created, 1);
         assert_eq!(
             r.store.gcal_tasks_calendar().unwrap().as_deref(),

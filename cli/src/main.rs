@@ -192,6 +192,15 @@ enum GoogleCmd {
         #[arg(long, default_value_t = 7)]
         days: i64,
     },
+    /// Whether this device sends tasks to Google's "Tasks" calendar, and what the last push did.
+    PushStatus,
+    /// Turn sending tasks to Google on or off for this device.
+    Push {
+        #[arg(value_parser = ["on", "off"])]
+        state: String,
+    },
+    /// Send tasks to Google's "Tasks" calendar now (utre-daemon also does this after edits).
+    PushNow,
 }
 
 #[derive(Args)]
@@ -1056,6 +1065,22 @@ impl Ctx {
     }
 
     fn google(&self, cmd: GoogleCmd) -> Result<()> {
+        fn print_push(st: &utre_api::GooglePushStatus, app: &Ctx) {
+            match st.last_push_ms {
+                Some(t) => println!(
+                    "Last pushed {}: {} created, {} updated, {} deleted, {} up to date.",
+                    when(t, false, app.now, app.tz),
+                    st.created,
+                    st.updated,
+                    st.deleted,
+                    st.unchanged
+                ),
+                None => println!("Nothing pushed yet."),
+            }
+            if let Some(e) = &st.last_error {
+                println!("Last error: {e}");
+            }
+        }
         let s = &self.store;
         match cmd {
             GoogleCmd::Status => {
@@ -1073,7 +1098,9 @@ impl Ctx {
                             "Signed in. Last fetched {}.",
                             when(t, false, self.now, self.tz)
                         ),
-                        None => println!("Signed in. Nothing fetched yet (try `utre google sync`)."),
+                        None => {
+                            println!("Signed in. Nothing fetched yet (try `utre google sync`).")
+                        }
                     }
                 } else {
                     println!("Not signed in. Run `utre google sign-in`.");
@@ -1095,6 +1122,35 @@ impl Ctx {
             GoogleCmd::Sync => {
                 s.google_sync()?;
                 println!("Fetched.");
+            }
+            GoogleCmd::PushStatus => {
+                let st = s.google_push_status()?;
+                if !st.enabled {
+                    println!("Off. Turn it on with `utre google push on`.");
+                } else {
+                    println!("On.");
+                    print_push(&st, self);
+                }
+            }
+            GoogleCmd::Push { state } => {
+                s.gcal_push_set(state == "on")?;
+                if state == "on" {
+                    println!(
+                        "On. Tasks with a date go to the \"Tasks\" calendar in Google; `utre google push-status` shows how it went."
+                    );
+                } else {
+                    println!(
+                        "Off. Events already on Google stay until you delete the \"Tasks\" calendar there."
+                    );
+                }
+            }
+            GoogleCmd::PushNow => {
+                let st = s.google_push_now()?;
+                if !st.enabled {
+                    println!("Off. Turn it on with `utre google push on`.");
+                } else {
+                    print_push(&st, self);
+                }
             }
             GoogleCmd::Calendars => {
                 let all = s.gcal_calendars()?;

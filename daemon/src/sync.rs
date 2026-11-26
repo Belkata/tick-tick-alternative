@@ -69,6 +69,8 @@ impl SyncControl for Control {
                     self.google()?.sync_now().await?;
                     serde_json::to_value(())
                 }
+                Request::GooglePushStatus => serde_json::to_value(self.google()?.push_status()),
+                Request::GooglePushNow => serde_json::to_value(self.google()?.push_now().await?),
                 other => return Err(format!("not a control request: {other:?}")),
             };
             v.map_err(|e| e.to_string())
