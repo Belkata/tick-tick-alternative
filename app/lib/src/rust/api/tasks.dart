@@ -146,6 +146,12 @@ abstract class TaskDb implements RustOpaqueInterface {
     required bool allDay,
   });
 
+  /// Arrange a saved filter: right before `before`, or last with `None`.
+  Future<void> placeFilter({required String id, String? before});
+
+  /// Arrange a list: right before `before`, or last with `None`.
+  Future<void> placeList({required String id, String? before});
+
   /// Arrange a tag among its siblings: right before `before`, or last with `None`.
   Future<void> placeTag({required String id, String? before});
 

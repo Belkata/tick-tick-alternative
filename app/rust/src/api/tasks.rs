@@ -559,6 +559,11 @@ impl TaskDb {
         self.write(Request::UpdateFilter { id, filter }).map(drop)
     }
 
+    /// Arrange a saved filter: right before `before`, or last with `None`.
+    pub fn place_filter(&self, id: String, before: Option<String>) -> anyhow::Result<()> {
+        self.write(Request::PlaceFilter { id, before }).map(drop)
+    }
+
     pub fn delete_filter(&self, id: String) -> anyhow::Result<()> {
         self.write(Request::DeleteFilter { id }).map(drop)
     }
@@ -626,6 +631,11 @@ impl TaskDb {
 
     pub fn rename_list(&self, id: String, name: String) -> anyhow::Result<()> {
         self.write(Request::RenameList { id, name }).map(drop)
+    }
+
+    /// Arrange a list: right before `before`, or last with `None`.
+    pub fn place_list(&self, id: String, before: Option<String>) -> anyhow::Result<()> {
+        self.write(Request::PlaceList { id, before }).map(drop)
     }
 
     /// Delete a list. Its tasks stay, with no list.
