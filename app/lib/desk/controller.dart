@@ -31,9 +31,17 @@ class DeskController extends ChangeNotifier {
   String? error;
 
   int _generation = 0;
+  bool _disposed = false;
+
+  @override
+  void notifyListeners() {
+    // A reload or command that finishes after the shell is gone must not notify.
+    if (!_disposed) super.notifyListeners();
+  }
 
   @override
   void dispose() {
+    _disposed = true;
     _sub.cancel();
     super.dispose();
   }
