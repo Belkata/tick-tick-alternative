@@ -1,3 +1,5 @@
+import 'ago.dart';
+
 import 'dart:async';
 
 // ignore: deprecated_member_use
@@ -211,7 +213,7 @@ class _GooglePageState extends State<GooglePage> {
     if (!p.enabled) return 'Off. Nothing is sent to Google.';
     final when = p.lastPushMs == null
         ? 'Not sent yet'
-        : 'Sent ${_ago(p.lastPushMs!)}';
+        : 'Sent ${agoText(p.lastPushMs!)}';
     return '$when. ${p.unchanged + p.created + p.updated} events on Google.';
   }
 
@@ -306,7 +308,7 @@ class _GooglePageState extends State<GooglePage> {
       ]);
     } else {
       final line = status.lastSyncMs != null
-          ? 'Fetched ${_ago(status.lastSyncMs!)}'
+          ? 'Fetched ${agoText(status.lastSyncMs!)}'
           : (_calendars.any((c) => c.selected)
                 ? 'Not fetched yet'
                 : 'Choose the calendars to show');
@@ -492,14 +494,6 @@ class _Card extends StatelessWidget {
       ),
     );
   }
-}
-
-String _ago(int ms) {
-  final s = (DateTime.now().millisecondsSinceEpoch - ms) ~/ 1000;
-  if (s < 60) return 'just now';
-  if (s < 3600) return '${s ~/ 60} min ago';
-  if (s < 86400) return '${s ~/ 3600} h ago';
-  return '${s ~/ 86400} days ago';
 }
 
 String _clean(Object e) => '$e'

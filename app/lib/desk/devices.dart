@@ -1,3 +1,5 @@
+import 'ago.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -256,7 +258,7 @@ class _DevicesPageState extends State<DevicesPage> {
       );
     } else {
       final line = status.lastSyncMs != null
-          ? 'Last synced ${_ago(status.lastSyncMs!)}'
+          ? 'Last synced ${agoText(status.lastSyncMs!)}'
           : (status.peers == 0 ? 'No paired devices yet' : 'Not synced yet');
       body.addAll([
         _Card(
@@ -345,7 +347,7 @@ class _DevicesPageState extends State<DevicesPage> {
                     children: [
                       Text(p.name, style: manrope(14, FontWeight.w700)),
                       Text(
-                        '${p.lastSeen == null ? 'never synced' : 'synced ${_ago(p.lastSeen!)}'}'
+                        '${p.lastSeen == null ? 'never synced' : 'synced ${agoText(p.lastSeen!)}'}'
                         ' · id ${p.nodeId.substring(0, 10)}',
                         style: manrope(12, FontWeight.w500, color: s.mute),
                       ),
@@ -395,14 +397,6 @@ class _Card extends StatelessWidget {
       ),
     );
   }
-}
-
-String _ago(int ms) {
-  final s = (DateTime.now().millisecondsSinceEpoch - ms) ~/ 1000;
-  if (s < 60) return 'just now';
-  if (s < 3600) return '${s ~/ 60} min ago';
-  if (s < 86400) return '${s ~/ 3600} h ago';
-  return '${s ~/ 86400} days ago';
 }
 
 String _clean(Object e) => '$e'
