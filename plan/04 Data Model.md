@@ -31,7 +31,7 @@ erDiagram
 | `parent_id` | UUID? | Subtask. Max depth 3 (TickTick allows 5, which is more than needed). Set from the detail's Parent picker (`Store::parent_candidates` lists the tasks that fit). |
 | `priority` | 0–3 | none, low, med, high |
 | `start_at`, `due_at` | timestamp? | With `all_day` bool and `tz` (IANA, or `floating` for all-day). |
-| `duration_min` | int? | For calendar blocks. Defaults to 30 when dropped on the grid (decided 2026-11-25, [[18 M5 Calendar Log]]). |
+| `duration_min` | int? | For calendar blocks. Defaults to 30 when dropped on the grid (decided 2026-11-25, [[18 M5 Calendar Log]]). User-editable since v0.8.7 (detail Duration row, `utre edit --duration`, `Store::set_task_duration`; no schema change). |
 | `status` | enum | `open`, `done`, `deleted` (Trash). |
 | `completed_at` | timestamp? | |
 | `sort_key` | text | Fractional index, for manual ordering inside a list or tag. |
