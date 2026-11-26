@@ -243,8 +243,7 @@ fn depth(conn: &Connection, id: &str) -> Result<usize> {
 
 /// How many levels the subtree under `id` adds below it (a leaf adds 0).
 fn subtree_height(conn: &Connection, id: &str) -> Result<usize> {
-    let mut stmt =
-        conn.prepare("SELECT id FROM task WHERE parent_id = ?1")?;
+    let mut stmt = conn.prepare("SELECT id FROM task WHERE parent_id = ?1")?;
     let children: Vec<String> = stmt
         .query_map([id], |r| r.get(0))?
         .collect::<rusqlite::Result<_>>()?;
@@ -453,9 +452,11 @@ impl Store {
             // The check above looks at the forest as it is now. Removing this task's old
             // link can also free older links that lost (oplog::resolve_parents), so
             // make sure the move really took; if not, the write rolls back.
-            let effective: Option<String> = w
-                .conn
-                .query_row("SELECT parent_id FROM task WHERE id = ?1", [id], |r| r.get(0))?;
+            let effective: Option<String> =
+                w.conn
+                    .query_row("SELECT parent_id FROM task WHERE id = ?1", [id], |r| {
+                        r.get(0)
+                    })?;
             if effective.as_deref() != parent_id {
                 return Err(Error::Invalid(
                     "that move would clash with other subtask moves".into(),

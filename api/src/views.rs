@@ -418,7 +418,13 @@ pub fn set_due(s: &Store, id: &str, text: Option<&str>, now: i64, tz: Tz) -> utr
 }
 
 /// The same for the start date (it drops the due date on a kind switch).
-pub fn set_start(s: &Store, id: &str, text: Option<&str>, now: i64, tz: Tz) -> utre_core::Result<()> {
+pub fn set_start(
+    s: &Store,
+    id: &str,
+    text: Option<&str>,
+    now: i64,
+    tz: Tz,
+) -> utre_core::Result<()> {
     set_date(s, id, DateField::Start, text, now, tz)
 }
 

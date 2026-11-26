@@ -299,7 +299,9 @@ impl Store {
                  ON CONFLICT (key) DO UPDATE SET value = excluded.value",
                 params![key, v],
             )?,
-            None => self.conn.execute("DELETE FROM meta WHERE key = ?1", [key])?,
+            None => self
+                .conn
+                .execute("DELETE FROM meta WHERE key = ?1", [key])?,
         };
         Ok(())
     }
@@ -656,7 +658,10 @@ mod tests {
         assert_eq!(plan, s.gcal_push_plan(NOW).unwrap());
         s.set_title(&a.id, "Dentist 2").unwrap();
         let again = s.gcal_push_plan(NOW).unwrap();
-        assert_ne!(again[0].body["extendedProperties"]["private"]["tt_hash"], hash);
+        assert_ne!(
+            again[0].body["extendedProperties"]["private"]["tt_hash"],
+            hash
+        );
         // Done tasks stay with a check mark, for 30 days.
         s.complete_task(&a.id).unwrap();
         assert_eq!(

@@ -634,12 +634,8 @@ mod tests {
                     ]})
                     .to_string(),
                 ),
-                Route::new(
-                    format!("{API}/calendars/theirs/events"),
-                    200,
-                    &listing(&[]),
-                )
-                .method("GET"),
+                Route::new(format!("{API}/calendars/theirs/events"), 200, &listing(&[]))
+                    .method("GET"),
             ],
             true,
         )

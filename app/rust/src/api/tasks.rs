@@ -5,8 +5,8 @@
 //! (plan/15 M2 Desktop Log). The Dart API is the same either way.
 
 use std::path::Path;
-use std::sync::{Arc, OnceLock};
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use flutter_rust_bridge::frb;
@@ -17,8 +17,8 @@ use utre_core::{
 };
 
 use crate::changes::Changes;
-use crate::phone::{self, Phone};
 use crate::frb_generated::StreamSink;
+use crate::phone::{self, Phone};
 
 pub use utre_api::{
     CalendarItem, ChecklistRow, NavItem, ReminderRow, Sidebar, TagChip, TaskDetail, TaskRow,
@@ -518,8 +518,7 @@ impl TaskDb {
         let kind = ReminderKind::Relative {
             offset_min: minutes,
         };
-        self.write(Request::AddReminder { task_id, kind })
-            .map(drop)
+        self.write(Request::AddReminder { task_id, kind }).map(drop)
     }
 
     /// A reminder at a date and time typed like `tomorrow 09:00`.
@@ -529,8 +528,7 @@ impl TaskDb {
             anyhow::bail!("give a time too, e.g. \"{} 09:00\"", text.trim());
         }
         let kind = ReminderKind::Absolute { at };
-        self.write(Request::AddReminder { task_id, kind })
-            .map(drop)
+        self.write(Request::AddReminder { task_id, kind }).map(drop)
     }
 
     pub fn remove_reminder(&self, id: String) -> anyhow::Result<()> {
@@ -864,7 +862,9 @@ fn now_ms() -> i64 {
 /// on macOS).
 #[frb(sync)]
 pub fn desktop_db_path() -> anyhow::Result<String> {
-    Ok(utre_api::paths::default_db()?.to_string_lossy().into_owned())
+    Ok(utre_api::paths::default_db()?
+        .to_string_lossy()
+        .into_owned())
 }
 
 /// Android: tell the core the device's IANA zone (e.g. `Europe/Sofia`). There's no

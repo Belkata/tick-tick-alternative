@@ -14,7 +14,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use utre_api::GoogleStatus;
 use utre_core::Store;
-use utre_google::{AccessTokenProvider, AndroidAuthorizer, Endpoints, FileTokenStore, Session, sync_calendars};
+use utre_google::{
+    AccessTokenProvider, AndroidAuthorizer, Endpoints, FileTokenStore, Session, sync_calendars,
+};
 
 use crate::changes::Changes;
 
@@ -26,11 +28,15 @@ const FIRST_POLL: Duration = Duration::from_secs(30);
 /// What Kotlin answers when asked for an access token (no UI).
 #[derive(uniffi::Enum)]
 pub enum TokenAnswer {
-    Token { value: String },
+    Token {
+        value: String,
+    },
     /// The user has to consent again: never signed in, or revoked the access.
     ConsentNeeded,
     /// A passing problem (no network, Play services busy). Stay signed in.
-    Unavailable { message: String },
+    Unavailable {
+        message: String,
+    },
 }
 
 /// Implemented in Kotlin: Google Play services' `AuthorizationClient`, silently.
@@ -103,7 +109,11 @@ pub fn get() -> Option<Arc<PhoneGoogle>> {
 
 /// Install the service (the first call wins; later ones return it). Tokens live next to the
 /// database in `google-token.json`, in the app's private directory, owner-only.
-pub fn install(db: &Path, source: Arc<dyn AccessTokenSource>, configured: bool) -> Arc<PhoneGoogle> {
+pub fn install(
+    db: &Path,
+    source: Arc<dyn AccessTokenSource>,
+    configured: bool,
+) -> Arc<PhoneGoogle> {
     let mut slot = slot().lock().unwrap_or_else(|e| e.into_inner());
     if let Some(g) = &*slot {
         return g.clone();
@@ -168,7 +178,9 @@ impl PhoneGoogle {
 
     /// The consent screen succeeded with this first token.
     pub fn signed_in(&self, access_token: String) -> Result<(), String> {
-        self.auth.signed_in(access_token).map_err(|e| e.to_string())?;
+        self.auth
+            .signed_in(access_token)
+            .map_err(|e| e.to_string())?;
         self.state().last_error = None;
         self.changed();
         Ok(())
@@ -259,7 +271,8 @@ mod tests {
     }
 
     fn dir(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("utre-phone-google-{name}-{}", std::process::id()));
+        let d =
+            std::env::temp_dir().join(format!("utre-phone-google-{name}-{}", std::process::id()));
         std::fs::create_dir_all(&d).unwrap();
         d
     }
@@ -272,11 +285,21 @@ mod tests {
         let unset = PhoneGoogle::new(&db, Arc::new(Never), false, Endpoints::default());
         let s = unset.status();
         assert!(!s.configured && !s.signed_in && !s.signing_in);
-        assert!(runtime().block_on(unset.sync_now()).unwrap_err().contains("isn't set up"));
+        assert!(
+            runtime()
+                .block_on(unset.sync_now())
+                .unwrap_err()
+                .contains("isn't set up")
+        );
 
         let g = PhoneGoogle::new(&db, Arc::new(Never), true, Endpoints::default());
         assert!(g.status().configured && !g.status().signed_in);
-        assert!(runtime().block_on(g.sync_now()).unwrap_err().contains("not signed in"));
+        assert!(
+            runtime()
+                .block_on(g.sync_now())
+                .unwrap_err()
+                .contains("not signed in")
+        );
         assert!(!runtime().block_on(g.sync_if_stale(Duration::ZERO)).unwrap());
 
         g.signed_in("t1".into()).unwrap();
@@ -286,7 +309,10 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            assert_eq!(std::fs::metadata(&token_file).unwrap().permissions().mode() & 0o077, 0);
+            assert_eq!(
+                std::fs::metadata(&token_file).unwrap().permissions().mode() & 0o077,
+                0
+            );
         }
 
         g.sign_out().unwrap();
