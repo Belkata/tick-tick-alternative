@@ -16,6 +16,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dev.utre.core.backgroundSync
 import dev.utre.utre.R
+import dev.utre.utre.google.GoogleAuth
 import dev.utre.utre.reminders.Reminders
 import dev.utre.utre.widget.TaskListWidget
 import dev.utre.utre.widget.UtreCore
@@ -43,6 +44,8 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val ctx = applicationContext
         try {
+            // The job may run with no Activity: install the Google service so the fetch below works.
+            GoogleAuth.init(ctx)
             val summary = backgroundSync(UtreCore.dbPath(ctx), keyPath(ctx), deviceName())
             android.util.Log.i("Utre", "background sync: $summary")
         } catch (e: Exception) {

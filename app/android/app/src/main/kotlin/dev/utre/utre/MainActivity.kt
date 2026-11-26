@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import dev.utre.utre.google.GoogleAuth
 import dev.utre.utre.reminders.Reminders
 import dev.utre.utre.sync.SyncWorker
 import java.util.TimeZone
@@ -29,7 +30,9 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        val ch = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "utre/widget")
+        // The core's Google service must exist before the Google page or the calendar ask for it.
+        GoogleAuth.init(applicationContext)
+        val ch =MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "utre/widget")
         channel = ch
         ch.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -67,6 +70,8 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(null)
                 }
+                // Google's consent screen (plan/19 slice 5); answers ok, cancelled, not_configured or error: ...
+                "googleSignIn" -> GoogleAuth.signIn(this, result)
                 // Ask the launcher to place the widget; it shows its own confirmation.
                 "pin" -> {
                     val manager = AppWidgetManager.getInstance(this)
@@ -87,6 +92,13 @@ class MainActivity : FlutterActivity() {
         pendingTask = openedTask(intent)
         Reminders.ensureChannel(this)
         SyncWorker.enqueue(applicationContext)
+    }
+
+    @Deprecated("FlutterActivity still routes plugin results through it")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (GoogleAuth.onActivityResult(this, requestCode, data)) return
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     // Shared again while the app is open: hand it straight to Flutter.
