@@ -91,14 +91,41 @@ pub(crate) fn load_tags(conn: &Connection) -> Result<Vec<Tag>> {
         children.entry(parent).or_default().push(t);
     }
     let mut out = Vec::with_capacity(rows.len());
-    let mut stack: Vec<(&Tag, String, usize)> = children
+    let mut seen: std::collections::HashSet<&str> = Default::default();
+    let top: Vec<_> = children
         .get(&None)
         .into_iter()
         .flatten()
-        .rev()
-        .map(|t| (*t, t.name.clone(), 0))
+        .map(|t| (*t, t.name.clone()))
         .collect();
+    walk_tags(&children, top, &mut seen, &mut out);
+    // Tags the walk never reached sit in a loop (concurrent moves on two devices) or under
+    // a chain that is too deep. Don't hide them: show each such tag at the top, in sibling
+    // order, with whatever hangs under it. Every device picks the same ones.
+    for t in &rows {
+        if !seen.contains(t.id.as_str()) {
+            walk_tags(&children, vec![(t, t.name.clone())], &mut seen, &mut out);
+        }
+    }
+    Ok(out)
+}
+
+type TagChildren<'a> = std::collections::HashMap<Option<&'a str>, Vec<&'a Tag>>;
+
+/// Depth-first from `roots` (each with its path), children in sibling order, skipping
+/// tags already `seen`.
+fn walk_tags<'a>(
+    children: &TagChildren<'a>,
+    roots: Vec<(&'a Tag, String)>,
+    seen: &mut std::collections::HashSet<&'a str>,
+    out: &mut Vec<Tag>,
+) {
+    let mut stack: Vec<(&Tag, String, usize)> =
+        roots.into_iter().rev().map(|(t, p)| (t, p, 0)).collect();
     while let Some((t, path, depth)) = stack.pop() {
+        if !seen.insert(t.id.as_str()) {
+            continue;
+        }
         if depth < MAX_TAG_DEPTH {
             for c in children
                 .get(&Some(t.id.as_str()))
@@ -111,7 +138,6 @@ pub(crate) fn load_tags(conn: &Connection) -> Result<Vec<Tag>> {
         }
         out.push(Tag { path, ..t.clone() });
     }
-    Ok(out)
 }
 
 /// The live siblings of `id` (itself included), in display order. Like [load_tags],
@@ -493,6 +519,38 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use crate::Store;
+
+    #[test]
+    fn tags_in_a_loop_from_concurrent_moves_are_not_hidden() {
+        use crate::hlc::Hlc;
+        use crate::oplog::{Entity, Op};
+        let s = Store::open_in_memory().unwrap();
+        let a = s.create_tag("a", None).unwrap();
+        let b = s.create_tag("b", None).unwrap();
+        let c = s.ensure_tag_path("c/d").unwrap();
+        // Device 1 moved a under b while device 2 moved b under a.
+        let far = 4_000_000_000_000;
+        let mv = |n: u64, id: &str, parent: &str| Op {
+            hlc: Hlc { wall: far + n, counter: 0, device: 9 },
+            entity: Entity::Tag,
+            entity_id: id.into(),
+            field: "parent_id".into(),
+            value: serde_json::json!(parent),
+        };
+        assert_eq!(s.apply_remote(&[mv(1, &a, &b), mv(2, &b, &a)]).unwrap(), 2);
+        let tags = s.tags().unwrap();
+        assert_eq!(tags.len(), 4, "nothing disappears: {tags:?}");
+        let ids: Vec<_> = tags.iter().map(|t| t.id.as_str()).collect();
+        for id in [&a, &b, &c] {
+            assert!(ids.contains(&id.as_str()));
+        }
+        // The same result every time, and each tag once.
+        assert_eq!(s.tags().unwrap(), tags);
+        let mut unique = ids.clone();
+        unique.sort();
+        unique.dedup();
+        assert_eq!(unique.len(), 4);
+    }
 
     #[test]
     fn tag_paths_nest_and_dedupe() {
