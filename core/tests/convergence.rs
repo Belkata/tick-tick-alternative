@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{edit, run, seed};
+use common::{edit, forest_ok, run, seed, tree};
 use proptest::prelude::*;
 use utre_core::Store;
 
@@ -49,8 +49,11 @@ proptest! {
         }
 
         let dump = replicas[0].state_dump().unwrap();
-        for r in &replicas[1..] {
+        let shape = tree(&replicas[0], &seed);
+        for r in &replicas {
             prop_assert_eq!(&r.state_dump().unwrap(), &dump);
+            prop_assert_eq!(&tree(r, &seed), &shape);
+            prop_assert!(forest_ok(r, &seed), "loop or too deep: {:?}", shape);
         }
     }
 }

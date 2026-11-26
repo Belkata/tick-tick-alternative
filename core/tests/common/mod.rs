@@ -16,6 +16,8 @@ pub enum Edit {
     Restore(usize),
     List(usize, Option<usize>),
     Check(usize, bool),
+    /// Move a task under another (or to the top level); refused locally if it would loop.
+    Parent(usize, Option<usize>),
 }
 
 pub fn edit() -> impl Strategy<Value = Edit> {
@@ -30,7 +32,9 @@ pub fn edit() -> impl Strategy<Value = Edit> {
         t.clone().prop_map(Edit::Trash),
         t.clone().prop_map(Edit::Restore),
         (t.clone(), proptest::option::of(0..2usize)).prop_map(|(t, l)| Edit::List(t, l)),
-        (t, any::<bool>()).prop_map(|(t, d)| Edit::Check(t, d)),
+        (t.clone(), any::<bool>()).prop_map(|(t, d)| Edit::Check(t, d)),
+        (t.clone(), proptest::option::of(t)).prop_map(|(t, p)| Edit::Parent(t, p)),
+        (0..4usize, 0..4usize).prop_map(|(t, p)| Edit::Parent(t, Some(p))),
     ]
 }
 
@@ -76,5 +80,30 @@ pub fn run(s: &Store, seed: &Seed, e: &Edit) {
         Edit::Restore(t) => s.restore_task(&seed.tasks[*t]).map(|_| ()),
         Edit::List(t, l) => s.set_task_list(&seed.tasks[*t], l.map(|l| seed.lists[l].as_str())),
         Edit::Check(t, d) => s.set_checklist_done(&seed.items[*t], *d),
+        Edit::Parent(t, p) => s.set_parent(&seed.tasks[*t], p.map(|p| seed.tasks[p].as_str())),
     };
+}
+
+/// The effective subtask tree has no loops and nothing nested deeper than 3 levels.
+pub fn forest_ok(s: &Store, seed: &Seed) -> bool {
+    seed.tasks.iter().all(|id| {
+        let mut level = 1;
+        let mut cur = id.clone();
+        while let Some(p) = s.get_task(&cur).unwrap().unwrap().parent_id {
+            level += 1;
+            if level > 3 {
+                return false;
+            }
+            cur = p;
+        }
+        true
+    })
+}
+
+/// Every task's effective parent, for comparing trees between replicas.
+pub fn tree(s: &Store, seed: &Seed) -> Vec<Option<String>> {
+    seed.tasks
+        .iter()
+        .map(|id| s.get_task(id).unwrap().unwrap().parent_id)
+        .collect()
 }

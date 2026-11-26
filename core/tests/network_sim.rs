@@ -7,7 +7,7 @@
 
 mod common;
 
-use common::{Edit, edit, run, seed};
+use common::{Edit, edit, forest_ok, run, seed, tree};
 use proptest::prelude::*;
 use utre_core::Store;
 
@@ -124,6 +124,11 @@ proptest! {
             }
         }
         let (dump, vv) = (rs[0].state_dump().unwrap(), rs[0].version_vector().unwrap());
+        let shape = tree(&rs[0], &seed);
+        for r in &rs {
+            prop_assert!(forest_ok(r, &seed), "loop or too deep: {:?}", shape);
+            prop_assert_eq!(&tree(r, &seed), &shape);
+        }
         for r in &rs[1..] {
             prop_assert_eq!(&r.state_dump().unwrap(), &dump);
             if compacted {
