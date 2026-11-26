@@ -166,3 +166,11 @@ Left: page routes (detail on phones) keep Material's default transition.
 - **Fix:** `app/linux/runner/main.cc` calls `gdk_set_allowed_backends("x11,wayland")` before GTK starts, unless `GDK_BACKEND` is set. `UTRE_WAYLAND=1` forces native Wayland, to re-test when the embedder improves.
 - **WM_CLASS:** GTK capitalised it under X11 (`Dev.utre.utre`), which broke Hyprland rules. `gtk_window_set_wmclass` per window (`gdk_set_program_class` alone was not enough) keeps `dev.utre.utre`.
 - Checked with `hyprctl clients -j`: default xwayland true, `UTRE_WAYLAND=1` false, `GDK_BACKEND=wayland` false, `GDK_BACKEND=x11` true; class `dev.utre.utre` in all.
+
+## Round 12: Duration field (2026-11-26, v0.8.7; PR 44)
+- **Detail:** a "Duration" row between Start and Repeat shows "45 min", "1 h 30 min" or "No duration", plus the time range for timed tasks. The picker is a dialog on desktop and a sheet on the phone: presets 15m to 3h, typed `90`, `45m`, `1h30`, `1:30` or `1.5h` (up to a week), and clear.
+- **Cards:** a facts chip with a timelapse icon ("1h30").
+- **CLI:** `utre add|edit --duration 90m|1h30|1:30|none`; `utre show` and list output (`⏱ 1h30`) use the shared `core::parse_duration`.
+- **Calendar:** blocks, resizing, Google tasks-out and the Unscheduled drag preview use the length.
+- **Label gap:** at the minimum detail-pane width "Duration" sat about 6 px from its value. `PropRow`'s label column went from 58 to 66 px, so every row keeps a consistent gap; shell goldens regenerated.
+- Unverified on the phone, the Mac and real Google.
