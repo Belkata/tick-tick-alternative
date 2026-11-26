@@ -51,6 +51,13 @@ Back to [[00 Overview]] · [[10 Roadmap]]. How M1 was built, and where it differ
 - **Device id:** 64 random bits stored in `meta`. M3 should tie it to the iroh key.
 - **Spike databases migrate:** v1 rows get ops backfilled. Tested on the Spike 2 Mac DB: 3 tasks became 21 ops.
 
+## Automatic reminder at due time (2026-11-26, v0.8.2, PR 36)
+- `reminder::auto_due_reminder`, called in the same `Store::write` as the due change from `set_schedule`, `set_task_due` and `create_task`. When a local edit takes due from none or all-day to timed and the task has no live reminders, it adds one relative reminder at offset 0. Time tweaks on an already-timed due add nothing, so a deleted auto reminder stays deleted until the date is cleared and set again. Existing reminders are untouched.
+- When due becomes all-day or is cleared and the only live reminder is the auto one, it is removed (relative reminders on all-day tasks fire at 09:00 local, `ALL_DAY_REMINDER_TIME`).
+- Not triggered by remote ops, `utre import ticktick` (`create_task_with(.., false)`), recurrence advancing, start-date edits, or calendar `place_block`/`unschedule`. With a start date, relative reminders still anchor to the start.
+- The auto reminder id is UUIDv5(task id + "/auto-due"), so concurrent creation on two devices converges to one row (`uuid` crate `v5` feature). No schema, wire or bridge change.
+- Unverified: a real alarm on the phone; detail pane refresh in the running app.
+
 ## Known gaps, for later milestones
 - **Subtask cycles from concurrent moves are resolved convergently (2026-11-26, schema v9).**
   - Local commands refuse cycles and depth over 3.
