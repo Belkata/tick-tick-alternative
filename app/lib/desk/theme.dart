@@ -225,15 +225,20 @@ class TagPill extends StatelessWidget {
             ),
           ),
           if (onDeleted != null)
-            InkWell(
-              onTap: onDeleted,
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                // A finger needs more than 12 px to hit the x.
-                padding: isTouch(context)
-                    ? const EdgeInsets.fromLTRB(6, 9, 8, 9)
-                    : const EdgeInsets.only(left: 2),
-                child: Icon(Icons.close, size: 12, color: s.mute),
+            Semantics(
+              button: true,
+              label: 'Remove tag $label',
+              excludeSemantics: true,
+              child: InkWell(
+                onTap: onDeleted,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  // A finger needs more than 12 px to hit the x.
+                  padding: isTouch(context)
+                      ? const EdgeInsets.fromLTRB(6, 9, 8, 9)
+                      : const EdgeInsets.only(left: 2),
+                  child: Icon(Icons.close, size: 12, color: s.mute),
+                ),
               ),
             ),
         ],
@@ -269,6 +274,8 @@ class PriorityCheck extends StatelessWidget {
     return Semantics(
       checked: done,
       button: true,
+      label: done ? 'Mark as not done' : 'Mark as done',
+      excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(6),
