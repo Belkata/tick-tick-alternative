@@ -730,6 +730,7 @@ class TaskDetail {
   final String notes;
   final String? listId;
   final String? startLabel;
+  final PlatformInt64? startAt;
   final String? repeatRule;
   final bool repeatAfterCompletion;
   final List<ChecklistRow> checklist;
@@ -743,6 +744,7 @@ class TaskDetail {
     required this.notes,
     this.listId,
     this.startLabel,
+    this.startAt,
     this.repeatRule,
     required this.repeatAfterCompletion,
     required this.checklist,
@@ -758,6 +760,7 @@ class TaskDetail {
       notes.hashCode ^
       listId.hashCode ^
       startLabel.hashCode ^
+      startAt.hashCode ^
       repeatRule.hashCode ^
       repeatAfterCompletion.hashCode ^
       checklist.hashCode ^
@@ -775,6 +778,7 @@ class TaskDetail {
           notes == other.notes &&
           listId == other.listId &&
           startLabel == other.startLabel &&
+          startAt == other.startAt &&
           repeatRule == other.repeatRule &&
           repeatAfterCompletion == other.repeatAfterCompletion &&
           checklist == other.checklist &&
