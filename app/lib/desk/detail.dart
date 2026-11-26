@@ -837,7 +837,7 @@ class PropRow extends StatelessWidget {
                 const SizedBox(width: 12),
               ],
               SizedBox(
-                width: 58,
+                width: 66,
                 child: Text(
                   label,
                   style: manrope(12, FontWeight.w600, color: s.mute),
