@@ -96,7 +96,8 @@ fn fire_time(task: &Task, kind: ReminderKind, tz: Tz) -> Option<i64> {
             } else {
                 anchor
             };
-            Some(base - offset_min * 60_000)
+            // Synced values can be any i64: saturate rather than overflow.
+            Some(base.saturating_sub(offset_min.saturating_mul(60_000)))
         }
     }
 }
@@ -176,6 +177,22 @@ mod tests {
 
     fn d(s: &str) -> NaiveDate {
         NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap()
+    }
+
+    #[test]
+    fn absurd_offsets_do_not_overflow() {
+        let s = Store::open_in_memory().unwrap();
+        let t = s
+            .create_task(&NewTask {
+                title: "x".into(),
+                schedule: Schedule { due_at: Some(HOUR), tz: Some("UTC".into()), ..Default::default() },
+                ..Default::default()
+            })
+            .unwrap();
+        for offset_min in [i64::MAX, i64::MIN] {
+            s.add_reminder(&t.id, ReminderKind::Relative { offset_min }).unwrap();
+        }
+        s.upcoming_reminders(0, i64::MAX, Tz::UTC).unwrap();
     }
 
     #[test]
