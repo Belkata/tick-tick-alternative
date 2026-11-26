@@ -54,6 +54,13 @@ Future<void> main() async {
   }
 }
 
+/// `UTRE_THEME=light|dark` forces a theme (screenshots and QA); otherwise the system's.
+final ThemeMode _themeMode = switch (Platform.environment['UTRE_THEME']) {
+  'light' => ThemeMode.light,
+  'dark' => ThemeMode.dark,
+  _ => ThemeMode.system,
+};
+
 class UtreApp extends StatelessWidget {
   const UtreApp({super.key, required this.db, this.peer});
 
@@ -68,6 +75,7 @@ class UtreApp extends StatelessWidget {
       title: 'Utre',
       theme: softTheme(Brightness.light),
       darkTheme: softTheme(Brightness.dark),
+      themeMode: _themeMode,
       home: DeskShell(
         db: db,
         pages: [

@@ -68,3 +68,13 @@ Before / after: `attachments/ui2-detail-before.jpg`, `attachments/ui2-detail-aft
 
 Before / after of the narrow pane: `attachments/ui3-narrow-detail-before.jpg`,
 `attachments/ui3-narrow-detail-after.jpg`; quick add: `ui3-quickadd-idle.jpg`, `ui3-quickadd-typing.jpg`.
+
+## Round 4: light mode contrast
+
+Checked every screen in light mode (`UTRE_THEME=light` forces a theme for screenshots and QA; the
+default is still the system's). The light mute grey (#7A8197, 3.6:1 on the page) and the teal / red
+used as small text (3.7-4.0:1) were below WCAG AA for 11-12 px text. Computed ratios and moved to:
+mute #646B80 (5.1:1), teal text #0B7A6D (4.9:1), late text #C93540 (4.9:1). The accent fill, priority
+colours and dark theme (all above 5.6:1 for text) are unchanged. Empty states also checked in light.
+
+Before / after: `attachments/ui4-light-before.jpg`, `attachments/ui4-light-after.jpg`, `attachments/ui4-empty-light.jpg`.
