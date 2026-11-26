@@ -78,3 +78,26 @@ mute #646B80 (5.1:1), teal text #0B7A6D (4.9:1), late text #C93540 (4.9:1). The 
 colours and dark theme (all above 5.6:1 for text) are unchanged. Empty states also checked in light.
 
 Before / after: `attachments/ui4-light-before.jpg`, `attachments/ui4-light-after.jpg`, `attachments/ui4-empty-light.jpg`.
+
+## Round 5: the phone, seen for the first time
+
+Method: a release x86_64 build on the `tt_pixel` emulator (headless), a seeded DB pushed with
+`adb root` + `adb push` into `/data/data/dev.utre.utre/files/` (made with the `utre` CLI on a private
+`$UTRE_DB`), screenshots by coordinates, light and dark (`adb shell cmd uimode night yes|no`).
+List, drawer, quick add with the keyboard and the calendar views were already good. Fixed:
+- Detail: the last section ("Add a reminder") sat under the gesture bar. Scroll lists on the detail,
+  task list, Devices and Google pages now add the bottom system inset.
+- Detail rows were 43 dp and the tag x and `+ tag` about 20 dp high: rows are 48 dp and the tag chips
+  about 30 dp on touch (`isTouch` in `theme.dart`).
+- Going back from a task left it tinted as selected on the single-pane list; selection is cleared on return.
+- Calendar: a 45 minute block clipped its time line (short threshold 34 -> 42 dp); Month weekday headers
+  wrapped ("Wednesd/ay") and are now three letters on narrow screens.
+- Google page used 20 dp padding and Devices 24/18: both 24/18, so the titles line up.
+- Sidebar: an empty Filters section was just a gap; it now says "Save a search with +".
+
+Seen and left: in Week on a phone the seven columns leave 2-4 letters per title (kalender's layout; the
+real answer is probably a 3-day view, a decision for the user), the month FAB covers the last row's
+right cell when scrolled to the end, Devices only shows "Starting sync..." on the emulator (no network).
+
+Before / after: `attachments/ui5-phone-detail-before.jpg`, `ui5-phone-detail-after-dark.jpg`,
+`ui5-phone-month-before.jpg`, `ui5-phone-month-after.jpg`; also `ui5-phone-week.jpg`, `ui5-phone-list-dark.jpg`.
