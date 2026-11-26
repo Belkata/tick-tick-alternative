@@ -478,8 +478,8 @@ mod tests {
             vec![
                 // `a` is on Google with an old hash; `b` isn't listed but its id is taken.
                 list_route(&listing(&[(&ida, "stale")])),
-                Route::new(&format!("{CAL}/{ida}"), 200, "{}").method("PUT"),
-                Route::new(&format!("{CAL}/{idb}"), 200, "{}").method("PUT"),
+                Route::new(format!("{CAL}/{ida}"), 200, "{}").method("PUT"),
+                Route::new(format!("{CAL}/{idb}"), 200, "{}").method("PUT"),
                 Route::new(CAL, 409, r#"{"error":{"code":409}}"#).method("POST"),
             ],
             true,
@@ -505,8 +505,8 @@ mod tests {
                     ]})
                     .to_string(),
                 ),
-                Route::new(&format!("{CAL}/gone2"), 404, "{}").method("DELETE"),
-                Route::new(&format!("{CAL}/gone"), 204, "").method("DELETE"),
+                Route::new(format!("{CAL}/gone2"), 404, "{}").method("DELETE"),
+                Route::new(format!("{CAL}/gone"), 204, "").method("DELETE"),
             ],
             true,
         )
@@ -626,7 +626,7 @@ mod tests {
         let mut r = rig(
             vec![
                 Route::new(
-                    &format!("{API}/users/me/calendarList"),
+                    format!("{API}/users/me/calendarList"),
                     200,
                     &json!({"items": [
                         {"id": "impostor", "summary": "Tasks", "description": "mine"},
@@ -635,7 +635,7 @@ mod tests {
                     .to_string(),
                 ),
                 Route::new(
-                    &format!("{API}/calendars/theirs/events"),
+                    format!("{API}/calendars/theirs/events"),
                     200,
                     &listing(&[]),
                 )
@@ -656,12 +656,12 @@ mod tests {
         let mut r = rig(
             vec![
                 Route::new(
-                    &format!("{API}/users/me/calendarList"),
+                    format!("{API}/users/me/calendarList"),
                     200,
                     r#"{"items":[]}"#,
                 ),
-                Route::new(&format!("{API}/calendars"), 200, r#"{"id":"fresh"}"#).method("POST"),
-                Route::new(&format!("{API}/calendars/fresh/events"), 200, &listing(&[]))
+                Route::new(format!("{API}/calendars"), 200, r#"{"id":"fresh"}"#).method("POST"),
+                Route::new(format!("{API}/calendars/fresh/events"), 200, &listing(&[]))
                     .method("GET"),
             ],
             true,
@@ -682,16 +682,16 @@ mod tests {
     async fn a_deleted_calendar_is_replaced() {
         let mut r = rig(
             vec![
-                Route::new(&format!("{API}/calendars/tasks-cal/events"), 404, "{}").method("GET"),
+                Route::new(format!("{API}/calendars/tasks-cal/events"), 404, "{}").method("GET"),
                 Route::new(
-                    &format!("{API}/users/me/calendarList"),
+                    format!("{API}/users/me/calendarList"),
                     200,
                     r#"{"items":[]}"#,
                 ),
-                Route::new(&format!("{API}/calendars"), 200, r#"{"id":"fresh"}"#).method("POST"),
-                Route::new(&format!("{API}/calendars/fresh/events"), 200, &listing(&[]))
+                Route::new(format!("{API}/calendars"), 200, r#"{"id":"fresh"}"#).method("POST"),
+                Route::new(format!("{API}/calendars/fresh/events"), 200, &listing(&[]))
                     .method("GET"),
-                Route::new(&format!("{API}/calendars/fresh/events"), 200, "{}").method("POST"),
+                Route::new(format!("{API}/calendars/fresh/events"), 200, "{}").method("POST"),
             ],
             true,
         )
