@@ -251,17 +251,38 @@ class _QuickAddState extends State<_QuickAdd> {
   final _text = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    widget.focus.addListener(_onFocus);
+    _text.addListener(_onFocus);
+  }
+
+  void _onFocus() => setState(() {});
+
+  @override
   void dispose() {
+    widget.focus.removeListener(_onFocus);
     _text.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = context.soft;
     final where = switch (widget.c.view.kind) {
       ViewKind.list || ViewKind.tag => widget.c.title,
       _ => 'Inbox',
     };
+    final touch = switch (Theme.of(context).platform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
+    // Desktop: tell the shortcut while idle, and what Enter does while typing.
+    final hint = touch
+        ? null
+        : widget.focus.hasFocus
+        ? (_text.text.trim().isEmpty ? null : 'Enter to add')
+        : 'N';
     return TextField(
       key: const Key('add-field'),
       controller: _text,
@@ -269,8 +290,30 @@ class _QuickAddState extends State<_QuickAdd> {
       textInputAction: TextInputAction.done,
       decoration: InputDecoration(
         hintText: 'Add a task to $where',
-        prefixIcon: Icon(Icons.add, size: 18, color: context.soft.mute),
+        prefixIcon: Icon(Icons.add, size: 18, color: s.mute),
         prefixIconConstraints: const BoxConstraints(minWidth: 36),
+        suffixIcon: hint == null
+            ? null
+            : Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Center(
+                  widthFactor: 1,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: s.line),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      hint,
+                      style: manrope(10.5, FontWeight.w700, color: s.mute),
+                    ),
+                  ),
+                ),
+              ),
       ),
       onSubmitted: (v) async {
         _text.clear();

@@ -56,3 +56,15 @@ Before / after (Work list, dark): `attachments/ui1-list-before.jpg`, `attachment
   least 48 high; the check is centred on the row there (`PriorityCheck.hit`).
 
 Before / after: `attachments/ui2-detail-before.jpg`, `attachments/ui2-detail-after.jpg`.
+
+## Round 3: narrow detail pane and quick add hints
+
+- In the Calendar the detail pane is about 250 px wide, and the Repeat dropdown (as wide as its
+  longest rule) and the Calendar switch row overflowed (debug overflow stripe seen in the
+  screenshot). The dropdown is now capped to the room there is, the switch is scaled in layout
+  (not just painted), and tag chips ellipsize their label.
+- Quick add on desktop shows an `N` key hint while idle (the shortcut already existed) and
+  "Enter to add" while there is text. Not shown on touch.
+
+Before / after of the narrow pane: `attachments/ui3-narrow-detail-before.jpg`,
+`attachments/ui3-narrow-detail-after.jpg`; quick add: `ui3-quickadd-idle.jpg`, `ui3-quickadd-typing.jpg`.

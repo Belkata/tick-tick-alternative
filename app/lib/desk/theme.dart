@@ -199,7 +199,14 @@ class TagPill extends StatelessWidget {
               decoration: BoxDecoration(color: tc, shape: BoxShape.circle),
             ),
           const SizedBox(width: 4),
-          Text(label, style: manrope(11, FontWeight.w500, color: s.fg)),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: manrope(11, FontWeight.w500, color: s.fg),
+            ),
+          ),
           if (onDeleted != null)
             InkWell(
               onTap: onDeleted,
