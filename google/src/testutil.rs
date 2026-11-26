@@ -7,7 +7,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
 pub struct Route {
-    path: &'static str,
+    path: String,
+    method: Option<&'static str>,
     query: Vec<&'static str>,
     status: u16,
     body: String,
@@ -16,15 +17,22 @@ pub struct Route {
 }
 
 impl Route {
-    pub fn new(path: &'static str, status: u16, body: &str) -> Route {
+    pub fn new(path: impl Into<String>, status: u16, body: &str) -> Route {
         Route {
-            path,
+            path: path.into(),
+            method: None,
             query: vec![],
             status,
             body: body.to_string(),
             max_hits: usize::MAX,
             hits: AtomicUsize::new(0),
         }
+    }
+
+    /// Only requests with this HTTP method.
+    pub fn method(mut self, m: &'static str) -> Route {
+        self.method = Some(m);
+        self
     }
 
     /// Only requests whose target contains every one of these.
@@ -92,7 +100,8 @@ pub async fn serve(routes: Vec<Route>) -> Fake {
                     .unwrap()
                     .push(format!("{method} {target}\n{body}"));
                 let route = routes.iter().find(|r| {
-                    target.starts_with(r.path)
+                    target.starts_with(&r.path)
+                        && r.method.is_none_or(|m| m == method)
                         && r.query
                             .iter()
                             .all(|q| target.contains(q) || body.contains(q))
