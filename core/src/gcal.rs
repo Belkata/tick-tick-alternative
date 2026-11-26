@@ -7,13 +7,13 @@
 
 use chrono::NaiveDate;
 use chrono_tz::Tz;
-use rusqlite::params;
+use rusqlite::{OptionalExtension, params};
 use serde_json::{Value, json};
 
 use crate::calendar::DEFAULT_BLOCK_MIN;
 use crate::dates::{DAY_MS, floating_day, floating_ms, local_midnight_ms};
 use crate::recur::task_zone;
-use crate::task::{Status, Task};
+use crate::task::{Status, TASK_COLUMNS, Task, query_tasks};
 use crate::{Error, Result, Store};
 
 const B32HEX: &[u8; 32] = b"0123456789abcdefghijklmnopqrstuv";
@@ -41,7 +41,8 @@ pub fn task_event_id(task_id: &str) -> Result<String> {
 
 /// The body for `events.insert` / `events.update` of a task, or `None` when the task has
 /// no place on the calendar (deleted, hidden from it, or without a date). Done tasks stay
-/// on Google with a `✓` prefix (decided 2026-11-24). Repeats are not expanded here yet.
+/// on Google with a `✓` prefix (decided 2026-11-24). Repeats are not expanded here: the
+/// push plan ([`Store::gcal_push_plan`]) sends each occurrence as its own event.
 pub fn task_event_body(t: &Task) -> Result<Option<Value>> {
     let Some(start) = t.anchor() else {
         return Ok(None);
@@ -49,12 +50,25 @@ pub fn task_event_body(t: &Task) -> Result<Option<Value>> {
     if t.status == Status::Deleted || !t.in_calendar {
         return Ok(None);
     }
-    let title = if t.status == Status::Done {
+    let end = start + t.duration_min.unwrap_or(DEFAULT_BLOCK_MIN) * 60_000;
+    Ok(Some(event_body(
+        t,
+        &task_event_id(&t.id)?,
+        start,
+        end,
+        t.all_day,
+        t.status == Status::Done,
+    )))
+}
+
+/// One event of `t`: `start`/`end` in epoch ms (all-day: floating dates, end ignored).
+fn event_body(t: &Task, id: &str, start: i64, end: i64, all_day: bool, done: bool) -> Value {
+    let title = if done {
         format!("✓ {}", t.title)
     } else {
         t.title.clone()
     };
-    let (start_v, end_v) = if t.all_day {
+    let (start_v, end_v) = if all_day {
         let day = floating_day(start);
         let next = day.succ_opt().unwrap_or(day);
         (
@@ -63,20 +77,56 @@ pub fn task_event_body(t: &Task) -> Result<Option<Value>> {
         )
     } else {
         let zone = task_zone(t).name();
-        let end = start + t.duration_min.unwrap_or(DEFAULT_BLOCK_MIN) * 60_000;
         (
             json!({ "dateTime": rfc3339(start), "timeZone": zone }),
             json!({ "dateTime": rfc3339(end), "timeZone": zone }),
         )
     };
-    Ok(Some(json!({
-        "id": task_event_id(&t.id)?,
+    json!({
+        "id": id,
         "summary": title,
         "description": t.notes,
         "start": start_v,
         "end": end_v,
         "extendedProperties": { "private": { "tt_task_id": t.id } },
-    })))
+    })
+}
+
+/// How far back done tasks and past occurrences stay on Google, and how far ahead the
+/// occurrences of a repeating task are pushed (plan/19 slice 4).
+pub const PUSH_PAST_DAYS: i64 = 30;
+pub const PUSH_FUTURE_DAYS: i64 = 120;
+
+/// One event the "Tasks" calendar on Google should hold.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PushEvent {
+    /// Google's event id: the task's [`task_event_id`], plus `v` and the occurrence's UTC
+    /// start (`yyyymmddhhmm`) for the occurrences of a repeating task.
+    pub id: String,
+    pub task_id: String,
+    /// The `events.insert` body, with a `tt_hash` of its content in the private properties.
+    pub body: Value,
+}
+
+/// FNV-1a 64 over the body's JSON: stable across builds (unlike `DefaultHasher`), so two
+/// devices agree on whether an event on Google is up to date.
+fn content_hash(body: &Value) -> String {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in body.to_string().bytes() {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("{h:016x}")
+}
+
+fn seal(task_id: &str, mut body: Value) -> PushEvent {
+    let hash = content_hash(&body);
+    body["extendedProperties"]["private"]["tt_hash"] = Value::String(hash);
+    PushEvent {
+        id: body["id"].as_str().unwrap_or_default().to_string(),
+        task_id: task_id.to_string(),
+        body,
+    }
 }
 
 fn date_str(d: NaiveDate) -> String {
@@ -216,11 +266,98 @@ impl Store {
         Ok(())
     }
 
+    /// Whether this device pushes tasks to Google (off until the user turns it on).
+    pub fn gcal_push_enabled(&self) -> Result<bool> {
+        Ok(self.meta_get("gcal_push")?.as_deref() == Some("1"))
+    }
+
+    /// Turn pushing on or off for this device. Local only, never synced.
+    pub fn gcal_set_push(&self, on: bool) -> Result<()> {
+        self.meta_set("gcal_push", Some(if on { "1" } else { "0" }))
+    }
+
+    /// The id of this device's "Tasks" calendar on Google, once found or created.
+    pub fn gcal_tasks_calendar(&self) -> Result<Option<String>> {
+        self.meta_get("gcal_tasks_calendar")
+    }
+
+    pub fn gcal_set_tasks_calendar(&self, id: Option<&str>) -> Result<()> {
+        self.meta_set("gcal_tasks_calendar", id)
+    }
+
+    fn meta_get(&self, key: &str) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row("SELECT value FROM meta WHERE key = ?1", [key], |r| r.get(0))
+            .optional()?)
+    }
+
+    fn meta_set(&self, key: &str, value: Option<&str>) -> Result<()> {
+        match value {
+            Some(v) => self.conn.execute(
+                "INSERT INTO meta (key, value) VALUES (?1, ?2)
+                 ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+                params![key, v],
+            )?,
+            None => self.conn.execute("DELETE FROM meta WHERE key = ?1", [key])?,
+        };
+        Ok(())
+    }
+
+    /// Everything the "Tasks" calendar on Google should hold at `now_ms`, by event id.
+    ///
+    /// - A task with a date that is shown on the calendar becomes one event (`task_event_id`).
+    ///   Open ones always; done ones for [`PUSH_PAST_DAYS`] after their date.
+    /// - **Repeats go out as a window of single events**, not as a Google recurring event:
+    ///   the app's own occurrences (`Store::calendar`, so "repeat after completion" shows
+    ///   only the next one and COUNT/UNTIL are honoured) from [`PUSH_PAST_DAYS`] back to
+    ///   [`PUSH_FUTURE_DAYS`] ahead, past ones from the completion history marked done.
+    ///   Each occurrence's id carries its UTC start, so it is stable while the task lives.
+    ///   Plan/19 slice 4 explains why this beats an RRULE.
+    pub fn gcal_push_plan(&self, now_ms: i64) -> Result<Vec<PushEvent>> {
+        let mut out = std::collections::BTreeMap::new();
+        let sql = format!(
+            "SELECT {TASK_COLUMNS} FROM task
+              WHERE task.status != 'deleted' AND task.in_calendar = 1
+                AND task.repeat_rule IS NULL
+                AND coalesce(task.start_at, task.due_at) IS NOT NULL
+                AND (task.status = 'open' OR coalesce(task.start_at, task.due_at) >= ?1)"
+        );
+        for t in query_tasks(&self.conn, &sql, params![now_ms - PUSH_PAST_DAYS * DAY_MS])? {
+            if let Some(body) = task_event_body(&t)? {
+                let e = seal(&t.id, body);
+                out.insert(e.id.clone(), e);
+            }
+        }
+        let blocks = self.calendar(
+            now_ms - PUSH_PAST_DAYS * DAY_MS,
+            now_ms + PUSH_FUTURE_DAYS * DAY_MS,
+            Tz::UTC,
+        )?;
+        let mut tasks: std::collections::HashMap<String, Option<Task>> = Default::default();
+        for b in blocks.into_iter().filter(|b| b.repeating) {
+            if !tasks.contains_key(&b.task_id) {
+                tasks.insert(b.task_id.clone(), self.get_task(&b.task_id)?);
+            }
+            let Some(Some(t)) = tasks.get(&b.task_id) else {
+                continue;
+            };
+            let stamp = chrono::DateTime::from_timestamp_millis(b.start_at)
+                .map(|d| d.format("%Y%m%d%H%M").to_string())
+                .unwrap_or_default();
+            let id = format!("{}v{stamp}", task_event_id(&t.id)?);
+            let body = event_body(t, &id, b.start_at, b.end_at, b.all_day, b.done);
+            out.insert(id, seal(&t.id, body));
+        }
+        Ok(out.into_values().collect())
+    }
+
     /// Drops every cached Google calendar and event (signing out of Google).
     pub fn gcal_forget(&self) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
         tx.execute("DELETE FROM gcal_event", [])?;
         tx.execute("DELETE FROM gcal_calendar", [])?;
+        tx.execute("DELETE FROM meta WHERE key = 'gcal_tasks_calendar'", [])?;
         tx.commit()?;
         Ok(())
     }
@@ -474,5 +611,101 @@ mod tests {
         // Signing out forgets everything.
         s.gcal_forget().unwrap();
         assert!(s.gcal_calendars().unwrap().is_empty());
+    }
+
+    fn dated(s: &Store, title: &str, due: i64, repeat: Option<&str>) -> Task {
+        let t = s
+            .create_task(&crate::NewTask {
+                title: title.into(),
+                schedule: crate::Schedule {
+                    start_at: Some(due),
+                    due_at: Some(due),
+                    tz: Some("Europe/Sofia".into()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap();
+        if let Some(rule) = repeat {
+            s.set_repeat(
+                &t.id,
+                Some(&crate::Repeat {
+                    rule: rule.into(),
+                    mode: crate::RepeatMode::Fixed,
+                }),
+            )
+            .unwrap();
+        }
+        t
+    }
+
+    const NOW: i64 = 1_796_000_000_000;
+
+    #[test]
+    fn push_plan_follows_the_task() {
+        let s = Store::open_in_memory().unwrap();
+        let a = dated(&s, "Dentist", NOW + 2 * DAY_MS, None);
+        let id = task_event_id(&a.id).unwrap();
+        let plan = s.gcal_push_plan(NOW).unwrap();
+        assert_eq!(plan.len(), 1);
+        assert_eq!(plan[0].id, id);
+        assert_eq!(plan[0].body["summary"], "Dentist");
+        let hash = plan[0].body["extendedProperties"]["private"]["tt_hash"].clone();
+        assert!(hash.is_string());
+        // Same task, same plan; an edit changes the hash.
+        assert_eq!(plan, s.gcal_push_plan(NOW).unwrap());
+        s.set_title(&a.id, "Dentist 2").unwrap();
+        let again = s.gcal_push_plan(NOW).unwrap();
+        assert_ne!(again[0].body["extendedProperties"]["private"]["tt_hash"], hash);
+        // Done tasks stay with a check mark, for 30 days.
+        s.complete_task(&a.id).unwrap();
+        assert_eq!(
+            s.gcal_push_plan(NOW).unwrap()[0].body["summary"],
+            "✓ Dentist 2"
+        );
+        assert!(s.gcal_push_plan(NOW + 60 * DAY_MS).unwrap().is_empty());
+        // Hidden from the calendar, or trashed: no event.
+        let b = dated(&s, "B", NOW + DAY_MS, None);
+        assert_eq!(s.gcal_push_plan(NOW).unwrap().len(), 2);
+        s.set_in_calendar(&b.id, false).unwrap();
+        assert_eq!(s.gcal_push_plan(NOW).unwrap().len(), 1);
+        s.set_in_calendar(&b.id, true).unwrap();
+        s.trash_task(&b.id).unwrap();
+        assert_eq!(s.gcal_push_plan(NOW).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn repeats_become_a_window_of_occurrences() {
+        let s = Store::open_in_memory().unwrap();
+        let t = dated(&s, "Water plants", NOW + DAY_MS, Some("FREQ=DAILY"));
+        let plan = s.gcal_push_plan(NOW).unwrap();
+        // About PUSH_FUTURE_DAYS occurrences, each its own id under the task's.
+        assert!(plan.len() >= 118 && plan.len() <= 122, "{}", plan.len());
+        let base = task_event_id(&t.id).unwrap();
+        assert!(plan.iter().all(|e| e.id.starts_with(&format!("{base}v"))));
+        let ids: std::collections::HashSet<_> = plan.iter().map(|e| &e.id).collect();
+        assert_eq!(ids.len(), plan.len());
+        // Completing moves the series on: the done occurrence stays, marked.
+        s.complete_task(&t.id).unwrap();
+        let after = s.gcal_push_plan(NOW).unwrap();
+        let done: Vec<_> = after
+            .iter()
+            .filter(|e| e.body["summary"] == "✓ Water plants")
+            .collect();
+        assert_eq!(done.len(), 1);
+        assert_eq!(done[0].id, plan[0].id);
+    }
+
+    #[test]
+    fn push_settings_are_per_device_and_forgotten_on_sign_out() {
+        let s = Store::open_in_memory().unwrap();
+        assert!(!s.gcal_push_enabled().unwrap());
+        s.gcal_set_push(true).unwrap();
+        assert!(s.gcal_push_enabled().unwrap());
+        s.gcal_set_tasks_calendar(Some("cal1")).unwrap();
+        assert_eq!(s.gcal_tasks_calendar().unwrap().as_deref(), Some("cal1"));
+        s.gcal_forget().unwrap();
+        assert_eq!(s.gcal_tasks_calendar().unwrap(), None);
+        assert!(s.gcal_push_enabled().unwrap(), "the switch stays");
     }
 }

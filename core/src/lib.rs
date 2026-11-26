@@ -27,7 +27,10 @@ pub use calendar::{Block, DEFAULT_BLOCK_MIN};
 pub use checklist::ChecklistItem;
 pub use dates::{Day, is_overdue, local_day, local_tz, offset_label, parse_when, when_label};
 pub use filter::{Cond, Filter, FilterRule, SavedFilter};
-pub use gcal::{GcalCalendar, GcalEvent, GcalEventUpdate, task_event_body, task_event_id};
+pub use gcal::{
+    GcalCalendar, GcalEvent, GcalEventUpdate, PUSH_FUTURE_DAYS, PUSH_PAST_DAYS, PushEvent,
+    task_event_body, task_event_id,
+};
 pub use import::{ImportReport, parse_export};
 pub use organize::{List, Tag};
 pub use recur::{Completion, Repeat};
