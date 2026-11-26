@@ -184,7 +184,12 @@ void main() {
         lastSyncMs: 1,
       ),
       calendars: const [
-        GcalCalendar(id: 'a', summary: 'Work', color: '#16a765', selected: true),
+        GcalCalendar(
+          id: 'a',
+          summary: 'Work',
+          color: '#16a765',
+          selected: true,
+        ),
         GcalCalendar(id: 'b', summary: 'Family', selected: false),
       ],
     );

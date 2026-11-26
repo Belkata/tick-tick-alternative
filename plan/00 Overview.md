@@ -72,3 +72,5 @@ A personal, local-first task manager. It replaces the parts of TickTick I actual
 2. **Small scope, done well.** No habits, Pomodoro, matrix, kanban or collaboration in v1.
 3. **One core, thin UIs.** Data rules (the Inbox rule, filters, recurrence, sync) live in one shared Rust core. UIs only render and edit.
 4. **No server of my own.** Devices talk directly to each other. Google is only an external calendar.
+
+UI iteration log (overnight design rounds): [[20 UI Iteration Log]]

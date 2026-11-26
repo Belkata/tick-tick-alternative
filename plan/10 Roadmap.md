@@ -83,3 +83,5 @@ Split into **M5a** (local calendar on real tasks) and **M5b** (Google). Plan and
 - Command palette.
 - Optional homelab relay or always-on peer.
 - DB encryption.
+
+UI iteration rounds: see [[20 UI Iteration Log]].

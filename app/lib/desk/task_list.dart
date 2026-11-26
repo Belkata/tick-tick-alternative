@@ -27,6 +27,26 @@ class TaskListPane extends StatelessWidget {
 
   bool get _manual => sortable(c.view.kind) && c.sort.firstOrNull == 'manual';
 
+  /// Sorted by due date: split the list under Overdue / Today / Tomorrow… headers.
+  /// Only when something is dated (an all-undated list needs no single "No date" header).
+  bool get _grouped =>
+      sortable(c.view.kind) &&
+      sortChoiceOf(c.sort)?.id == 'due' &&
+      c.tasks.any((t) => t.dueAt != null);
+
+  Widget _groupedList(List<TaskRow> rows) {
+    final groups = groupByDue(rows, DateTime.now());
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      children: [
+        for (final (g, items) in groups) ...[
+          _GroupHeader(group: g, count: items.length),
+          for (final r in items) _card(r),
+        ],
+      ],
+    );
+  }
+
   Widget _card(TaskRow row) => TaskCard(
     key: ValueKey(row.id),
     row: row,
@@ -93,14 +113,11 @@ class TaskListPane extends StatelessWidget {
             child: !c.loaded
                 ? const SizedBox.shrink()
                 : rows.isEmpty
-                ? Center(
-                    child: Text(
-                      empty,
-                      style: manrope(13.5, FontWeight.w500, color: s.mute),
-                    ),
-                  )
+                ? _EmptyState(kind: c.view.kind, title: empty)
                 : _manual
                 ? _ReorderableTasks(c: c, onOpen: onOpen)
+                : _grouped
+                ? _groupedList(rows)
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
                     itemCount: rows.length,
@@ -265,8 +282,103 @@ class _QuickAddState extends State<_QuickAdd> {
   }
 }
 
-/// One rounded task card (Soft): priority checkbox, title, then tags and date on the right.
-class TaskCard extends StatelessWidget {
+/// A section header in a date-sorted list: Overdue, Today, Tomorrow…
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader({required this.group, required this.count});
+
+  final DueGroup group;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    final color = switch (group) {
+      DueGroup.overdue => s.late,
+      DueGroup.today => s.today,
+      _ => s.mute,
+    };
+    return Semantics(
+      header: true,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 14, 8, 6),
+        child: Row(
+          children: [
+            Text(
+              group.label,
+              key: Key('group-${group.name}'),
+              style: manrope(12, FontWeight.w800, color: color),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$count',
+              style: manrope(11.5, FontWeight.w600, color: s.mute),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// What a view shows when it has no tasks: a quiet icon, the headline and a hint.
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.kind, required this.title});
+
+  final ViewKind kind;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.soft;
+    final (icon, hint) = switch (kind) {
+      ViewKind.inbox => (
+        Icons.inbox_outlined,
+        'Capture anything above. Press n to jump to it.',
+      ),
+      ViewKind.completed => (
+        Icons.check_circle_outline,
+        'Tasks you finish show up here.',
+      ),
+      ViewKind.trash => (Icons.delete_outline, 'Deleted tasks wait here.'),
+      ViewKind.filter => (
+        Icons.filter_alt_outlined,
+        'Nothing matches this filter right now.',
+      ),
+      _ => (Icons.task_alt, 'Add one above.'),
+    };
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: s.accent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 26, color: s.selFg),
+            ),
+            const SizedBox(height: 14),
+            Text(title, style: manrope(14.5, FontWeight.w700, color: s.fg)),
+            const SizedBox(height: 4),
+            Text(
+              hint,
+              textAlign: TextAlign.center,
+              style: manrope(12.5, FontWeight.w500, color: s.mute),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One rounded task card (Soft): priority checkbox and title, with a quiet line of
+/// facts under the title (due date first, then checklist, subtasks, list and tags).
+class TaskCard extends StatefulWidget {
   const TaskCard({
     super.key,
     required this.row,
@@ -283,8 +395,16 @@ class TaskCard extends StatelessWidget {
   final VoidCallback onCheck;
 
   @override
+  State<TaskCard> createState() => _TaskCardState();
+}
+
+class _TaskCardState extends State<TaskCard> {
+  bool _hover = false;
+
+  @override
   Widget build(BuildContext context) {
     final s = context.soft;
+    final row = widget.row;
     final dueColor = row.done
         ? s.mute
         : row.overdue
@@ -293,6 +413,22 @@ class TaskCard extends StatelessWidget {
         ? s.today
         : s.mute;
     final meta = <Widget>[
+      if (row.dueLabel != null)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              row.repeating ? Icons.repeat : Icons.calendar_today_outlined,
+              size: 12,
+              color: dueColor,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              row.dueLabel!,
+              style: manrope(11.5, FontWeight.w600, color: dueColor),
+            ),
+          ],
+        ),
       if (row.checklistTotal > 0)
         _Meta(
           icon: Icons.checklist,
@@ -300,88 +436,105 @@ class TaskCard extends StatelessWidget {
         ),
       if (row.subtasks > 0)
         _Meta(icon: Icons.subdirectory_arrow_right, text: '${row.subtasks}'),
-      if (showList && row.listName != null)
+      if (widget.showList && row.listName != null)
         _Meta(icon: Icons.format_list_bulleted, text: row.listName!),
       for (final t in row.tags)
         TagPill(label: t.name, color: t.color, icon: t.icon),
-      if (row.dueLabel != null)
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (row.repeating) Icon(Icons.repeat, size: 12, color: dueColor),
-            if (row.repeating) const SizedBox(width: 2),
-            Text(
-              row.dueLabel!,
-              style: manrope(11.5, FontWeight.w600, color: dueColor),
-            ),
-          ],
-        ),
       if (row.whenLabel != null)
         Text(
           row.whenLabel!,
           style: manrope(11.5, FontWeight.w500, color: s.mute),
         ),
     ];
+    // Selected: a teal wash and a bar on the left edge. Hover: a faint wash.
+    final fill = widget.selected
+        ? Color.alphaBlend(s.accent.withValues(alpha: 0.11), s.panel)
+        : _hover
+        ? Color.alphaBlend(s.fg.withValues(alpha: 0.04), s.panel)
+        : s.panel;
+    final titleStyle = manrope(
+      13.5,
+      FontWeight.w500,
+      color: row.done ? s.mute : s.fg,
+    ).copyWith(decoration: row.done ? TextDecoration.lineThrough : null);
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
-        color: s.panel,
+        color: fill,
         elevation: s.cardShadow ? 0.6 : 0,
         shadowColor: const Color(0x22141E3C),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: selected
-              ? BorderSide(color: s.accent, width: 2)
-              : BorderSide.none,
-        ),
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 44),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
-              child: Row(
-                children: [
-                  PriorityCheck(
-                    key: Key('check-${row.id}'),
-                    priority: row.priority,
-                    done: row.done,
-                    onTap: onCheck,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      row.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          manrope(
-                            13.5,
-                            FontWeight.w500,
-                            color: row.done ? s.mute : s.fg,
-                          ).copyWith(
-                            decoration: row.done
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
-                    ),
-                  ),
-                  if (meta.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Wrap(
-                        alignment: WrapAlignment.end,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: meta,
+          onTap: widget.onTap,
+          onHover: (h) => setState(() => _hover = h),
+          hoverColor: Colors.transparent,
+          child: Stack(
+            children: [
+              if (widget.selected)
+                Positioned(
+                  left: 0,
+                  top: 10,
+                  bottom: 10,
+                  child: Container(
+                    width: 3,
+                    decoration: BoxDecoration(
+                      color: s.accent,
+                      borderRadius: const BorderRadius.horizontal(
+                        right: Radius.circular(3),
                       ),
                     ),
-                  ],
-                ],
+                  ),
+                ),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(top: meta.isEmpty ? 3 : 5),
+                        child: PriorityCheck(
+                          key: Key('check-${row.id}'),
+                          priority: row.priority,
+                          done: row.done,
+                          onTap: widget.onCheck,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: meta.isEmpty ? 10 : 8,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                row.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: titleStyle,
+                              ),
+                              if (meta.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: meta,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
