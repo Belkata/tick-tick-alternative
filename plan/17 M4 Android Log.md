@@ -75,3 +75,9 @@ Back to [[00 Overview]] · [[10 Roadmap]] · [[07 Android App & Widget]] · [[16
 - **+** opens `QuickAddActivity`, a small dialog (no app start). It adds through `WidgetDb.addIn`, so the task lands in the shown list or tag, or gets what a filter asks for (as the app's quick add does), then refreshes the widgets and syncs soon.
 - **Midnight:** `WidgetRefresh` sets an inexact alarm at the next local midnight + 5 s. `DATE_CHANGED`, `TIMEZONE_CHANGED`, `TIME_SET`, boot and app update also redraw and re-arm (and reschedule reminders). Test: `WidgetRefreshTest` (zones, DST).
 - **Open:** tapping a row starts the app with `dev.utre.OPEN_TASK` and the task id. `MainActivity` keeps it (`takeOpenTask` / `openTask` on the `utre/widget` channel), but the Dart UI doesn't select the task yet, so for now the tap only opens the app.
+
+## Android review and build upgrade (2026-11-26, v0.8.0)
+- Share and widget intents are not replayed after process death; the reminders channel is set up off the main thread; snoozes persist across a reboot (prefs `reminders`, key `snoozes`); a notification tap opens the task; reminders re-arm when the exact-alarm permission changes, with an inexact fallback; completing from the widget cancels the reminder; the quick-add dialog guards against a double add.
+- `SyncWorker`'s foreground notice has its own minimum-importance channel `sync`. `allowBackup=false`: the sync key must not travel through Android backup.
+- `syncSoon` uses APPEND_OR_REPLACE and a process-wide mutex, so rounds never overlap; stale reminder notifications are cancelled after a sync.
+- Build: AGP 9.5.3, Kotlin 2.4.21 (Compose plugin 2.4.21), Gradle 9.9.2.
