@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:utre/calendar/google_event_details.dart';
 import 'package:utre/main.dart';
 import 'package:utre/src/rust/api/tasks.dart';
 import 'package:utre/src/rust/frb_generated.dart';
@@ -263,6 +264,14 @@ void main() {
     expect(find.byKey(const Key('google-event-dialog')), findsOneWidget);
     expect(find.text('Work Blocks'), findsOneWidget);
     expect(find.byKey(const Key('google-event-copy-link')), findsOneWidget);
+    final opened = <String>[];
+    GoogleEventLink.open = (url) async {
+      opened.add(url);
+      return true;
+    };
+    await tester.tap(find.byKey(const Key('google-event-open')));
+    await settle(tester);
+    expect(opened, ['https://www.google.com/calendar/event?eid=e1']);
     await tester.tap(find.text('Close'));
     await settle(tester);
     expect(find.byKey(const Key('google-event-dialog')), findsNothing);
