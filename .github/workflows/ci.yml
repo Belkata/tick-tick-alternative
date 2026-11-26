@@ -14,9 +14,15 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Least privilege: CI only reads the repo.
+permissions:
+  contents: read
+
+# A new push to a PR cancels its older run. Runs on main are never cancelled, so every
+# main commit finishes and saves the caches (and its result stays visible).
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -28,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Rust 1.100
         run: |
@@ -36,16 +42,72 @@ jobs:
           rustup default 1.100.0
 
       - name: Cache cargo registry and target/
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           # Only main writes the cache; PRs restore it.
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
+      # -D warnings is passed to clippy only (not through RUSTFLAGS), so the build
+      # artifacts stay shared with the test step.
       - name: Clippy
-        run: cargo clippy --workspace --all-targets
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
+      # Covers core (incl. convergence and the network_sim proptests with their fixed
+      # case counts and the tracked proptest-regressions seeds), api, sync, daemon, cli,
+      # google and the app's Rust bridge.
       - name: Tests
-        run: cargo test --workspace
+        run: cargo test --workspace --locked
+
+      # The Kotlin (UniFFI) bindings are generated and committed; fail if they're stale.
+      - name: Kotlin bindings are up to date
+        run: |
+          scripts/gen-kotlin-bindings.sh
+          git diff --exit-code -- app/android/app/src/main/kotlin \
+            || { echo "::error::Kotlin bindings are stale: run scripts/gen-kotlin-bindings.sh and commit"; exit 1; }
+
+  # Informational until the tree is formatted once (see the PR notes): the generated
+  # frb_generated.rs is excluded from the report, because `cargo fmt` rewrites it.
+  fmt:
+    name: Rust (rustfmt, informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Rust 1.100
+        run: |
+          rustup toolchain install 1.100.0 --profile minimal --component rustfmt
+          rustup default 1.100.0
+      - name: cargo fmt --check
+        run: |
+          cargo fmt --all -- --check > "$RUNNER_TEMP/fmt.diff" || true
+          grep '^Diff in' "$RUNNER_TEMP/fmt.diff" | grep -v frb_generated.rs | tee "$RUNNER_TEMP/fmt.files" || true
+          if [ -s "$RUNNER_TEMP/fmt.files" ]; then
+            echo "::warning::rustfmt would change $(wc -l < "$RUNNER_TEMP/fmt.files") hunk(s); run cargo fmt --all and revert app/rust/src/frb_generated.rs"
+            exit 1
+          fi
+
+  # Advisories, banned/duplicate sources. Non-blocking: new advisories appear without
+  # any change of ours, so they shouldn't stop an unrelated PR.
+  deny:
+    name: cargo-deny (advisories, informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: EmbarkStudios/cargo-deny-action@81891abc19297b21343b15ef67dc61e4aea74fda # v2.1.4
+        with:
+          command: check advisories bans sources
+
+  # shellcheck ships on the ubuntu runner image.
+  shellcheck:
+    name: Shell scripts (shellcheck)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: shellcheck --severity=warning scripts/*.sh
 
   flutter:
     name: Flutter (analyze + test)
@@ -55,11 +117,11 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # cache: true keeps the SDK download; pub-cache-key ties the pub cache to the lockfile.
       - name: Flutter 3.50.1
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: "3.50.1"
           channel: stable
@@ -68,4 +130,12 @@ jobs:
 
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test
+      - run: flutter test --coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: flutter-lcov
+          path: app/coverage/lcov.info
+          retention-days: 7
+          if-no-files-found: ignore
