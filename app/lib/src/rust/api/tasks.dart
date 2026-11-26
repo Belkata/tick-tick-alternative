@@ -96,6 +96,18 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Whether the Google page can work: only through utre-daemon.
   bool googleAvailable();
 
+  /// Whether this device sends tasks with a date to Google's "Tasks" calendar.
+  Future<bool> googlePushEnabled();
+
+  /// Push tasks to Google's "Tasks" calendar now.
+  Future<GooglePushStatus> googlePushNow();
+
+  /// Turn sending tasks to Google on or off (the daemon pushes after the change).
+  Future<void> googlePushSet({required bool enabled});
+
+  /// What the last push to Google did.
+  Future<GooglePushStatus> googlePushStatus();
+
   /// Opens the browser sign-in; returns its URL (to show if the browser didn't open).
   Future<String> googleSignIn();
 
@@ -399,6 +411,49 @@ class GcalEvent {
           allDay == other.allDay &&
           htmlLink == other.htmlLink &&
           color == other.color;
+}
+
+class GooglePushStatus {
+  final bool enabled;
+  final PlatformInt64? lastPushMs;
+  final BigInt created;
+  final BigInt updated;
+  final BigInt deleted;
+  final BigInt unchanged;
+  final String? lastError;
+
+  const GooglePushStatus({
+    required this.enabled,
+    this.lastPushMs,
+    required this.created,
+    required this.updated,
+    required this.deleted,
+    required this.unchanged,
+    this.lastError,
+  });
+
+  @override
+  int get hashCode =>
+      enabled.hashCode ^
+      lastPushMs.hashCode ^
+      created.hashCode ^
+      updated.hashCode ^
+      deleted.hashCode ^
+      unchanged.hashCode ^
+      lastError.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GooglePushStatus &&
+          runtimeType == other.runtimeType &&
+          enabled == other.enabled &&
+          lastPushMs == other.lastPushMs &&
+          created == other.created &&
+          updated == other.updated &&
+          deleted == other.deleted &&
+          unchanged == other.unchanged &&
+          lastError == other.lastError;
 }
 
 class GoogleStatus {
