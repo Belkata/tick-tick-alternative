@@ -35,6 +35,8 @@ mod sync;
     path = "tray_none.rs"
 )]
 mod tray;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod tray_mark;
 
 use std::sync::Arc;
 

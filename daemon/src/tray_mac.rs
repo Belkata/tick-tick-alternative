@@ -5,13 +5,14 @@
 //! touches the icon hops to the main thread through GCD's main queue and keeps its state in a
 //! main-thread `thread_local`. The process is an accessory app: no Dock icon or menu bar.
 //!
-//! Shows a template icon (filled while the Inbox has tasks, an outline when it's empty) with
+//! Shows a template icon (the u-check, with its dot while the Inbox has tasks) with
 //! the Inbox count beside it. Menu: the first Inbox tasks, Open, Refresh, the sync status and
 //! Sync now, Quit.
 
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
+use crate::tray_mark::Mark;
 use anyhow::Result;
 use dispatch2::DispatchQueue;
 use objc2::MainThreadMarker;
@@ -206,46 +207,20 @@ impl State {
     }
 }
 
-/// A template image (only alpha counts; macOS tints it for the menu bar), RGBA.
-/// Active: a filled rounded square with the check mark cut out. Empty: the square's outline
-/// with the check mark drawn in it.
+/// A template image (only alpha counts; macOS tints it for the menu bar), RGBA: the app
+/// icon's u-check, with its dot while the Inbox has tasks.
 fn check_icon(size: u32, active: bool) -> Icon {
-    let s = size as f32;
-    let inset = s * 0.12;
-    let radius = s * 0.2;
-    let border = s * 0.075;
-    let seg = [((0.29, 0.52), (0.44, 0.67)), ((0.44, 0.67), (0.72, 0.36))];
-    let stroke = s * 0.1;
+    let mark = Mark::new(size as f32, 0.8);
     let mut rgba = Vec::with_capacity((size * size * 4) as usize);
     for y in 0..size {
         for x in 0..size {
             let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
-            // Signed distance to the rounded square (negative inside).
-            let (lo, hi) = (inset + radius, s - inset - radius);
-            let dx = (lo - px).max(px - hi).max(0.0);
-            let dy = (lo - py).max(py - hi).max(0.0);
-            let sd = (dx * dx + dy * dy).sqrt() - radius;
-            let inside = (0.5 - sd).clamp(0.0, 1.0);
-            let ring = inside * (0.5 + sd + border).clamp(0.0, 1.0);
-            let d = seg
-                .iter()
-                .map(|&((ax, ay), (bx, by))| seg_dist(px, py, ax * s, ay * s, bx * s, by * s))
-                .fold(f32::MAX, f32::min);
-            let check = (stroke / 2.0 - d + 0.5).clamp(0.0, 1.0);
-            let alpha = if active {
-                inside * (1.0 - check)
-            } else {
-                ring.max(check)
-            };
+            let mut alpha = mark.stroke(px, py);
+            if active {
+                alpha = alpha.max(mark.dot(px, py));
+            }
             rgba.extend([0, 0, 0, (alpha * 255.0) as u8]);
         }
     }
     Icon::from_rgba(rgba, size, size).expect("icon size matches its pixels")
-}
-
-fn seg_dist(px: f32, py: f32, ax: f32, ay: f32, bx: f32, by: f32) -> f32 {
-    let (vx, vy) = (bx - ax, by - ay);
-    let t = (((px - ax) * vx + (py - ay) * vy) / (vx * vx + vy * vy)).clamp(0.0, 1.0);
-    let (cx, cy) = (ax + t * vx - px, ay + t * vy - py);
-    (cx * cx + cy * cy).sqrt()
 }
