@@ -58,3 +58,11 @@ Work happens on branch `worktree-google-calendar` (a git worktree under `.claude
 - Schema v8 means an older build refuses a v8 database (per device, so only a concern if a DB file is copied between machines).
 - **The app is unverified** (the user's call, 2026-11-26: fix later). Sign-in works now behind Google's "unverified app" warning (Advanced, then continue). Verification is Google's review process: https://support.google.com/cloud/answer/7454865. Check what it asks for the two scopes before starting; likely a verified domain (`utre.party` is live), the privacy policy and homepage already published, and a demo of the sign-in. Until then: the warning on every new device, and the 100-user cap (irrelevant here). Also check the consent screen is **In production**, or refresh tokens last 7 days.
 - Tokens go in the keychain (libsecret on Linux, Keychain on macOS); check the crate and its version before use.
+
+## Choose visible Google calendars (2026-11-26, v0.8.1, PR 35; schema v10)
+- **Per device, nothing synced.** `010_gcal_visibility.sql` adds `google_selected`, `chosen`, `is_primary` and `access_role` to the per-device `gcal_calendar` table. The migration keeps already enabled calendars as chosen.
+- Until the user chooses, a calendar follows Google's own `selected` flag on every list refresh. `gcal_select` marks it chosen, and from then on the choice wins.
+- Hidden calendars are not fetched; their cache and sync token are dropped. Enabling one fetches at once. Utre's own "Tasks" calendar is not listed.
+- `GcalCalendar` gained `primary` and `access_role` (serde default, so old daemons still parse).
+- UI: desktop calendar toolbar "Calendars" button, a menu with colour dots and checkboxes ("My calendars", "Other calendars", "Applies to this device only"). Phone: "Google calendars..." in the view menu opens a bottom sheet.
+- An older build refuses a v10 database, so rebuild the daemon first. **Unverified with a real Google account and on the phone.**

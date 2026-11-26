@@ -74,3 +74,8 @@ Back to [[00 Overview]] · [[10 Roadmap]] · [[05 P2P Sync]].
 - Synced numeric ranges are bounded in `core/src/oplog.rs` `field_spec` (instants +-2^47 ms, `duration_min` 0..=1e8, `offset_min` +-1e8). The HLC counter rolling over is handled. Ticket unhex/decode panics fixed.
 - Op frames are batched to about 1 MiB; a 30 s first-frame timeout; `utre.key` is created atomically (temp file plus no-clobber hard link).
 - Left as recommendations (see plan/11): reject far-future HLC wall times, validate trust device ids as 64 hex, an overall sync-session timeout.
+
+## network_sim flake explained (2026-11-26, v0.8.1, PR 32)
+- It was a **test bug**, not a convergence bug. In a ring (0-1, 1-2, 2-3, 3-0) plus compaction, one replica can be left holding a superseded op that nobody else has (the others dropped it before it reached them). Its version vector then differs, while the state is identical.
+- The test now asserts identical state on every replica after the ring. Log-level checks (version vectors equal, nothing owed) run after one all-pairs pass in compacted runs. The failing case is committed as `a_superseded_op_can_be_stranded_by_compaction_in_a_ring`; 50 consecutive runs passed.
+- CI prints the minimal failing input, since proptest can't persist regressions there.

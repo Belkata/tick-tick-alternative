@@ -144,3 +144,10 @@ Left: page routes (detail on phones) keep Material's default transition.
 - **Keyboard focus:** `FocusRing` and `SoftColors.ring`; Tab order grouped per pane.
 - **Golden tests:** 26, Linux-only, in `app/test/golden/` (procedure in its README), a `goldens` CI job, and a `Flutter (integration, Linux)` job under xvfb (not required). They exposed calendar bugs, fixed in the same release: all-day tasks missing in Day and Month, the "+N" count, narrow overlap columns, "1 days", a green-tinted dark picker.
 - **App icon "u-tick":** a teal u whose right arm is a tick, an amber sun in the bowl. Masters in `packaging/icon/`, `scripts/render-icons.sh` makes the Android adaptive and monochrome icons, the status-bar glyph `ic_stat_utre`, the Linux SVG and the macOS appiconset. Tray icons still use the old art.
+
+## Round 9: tray icon and golden-found fixes (2026-11-26, v0.8.1)
+- **Tray icons use the u-tick mark** (PR 33): `daemon/src/tray_mark.rs` rasterises it in code from the monochrome SVG path. Linux (SNI): teal rounded square with a white u-check, an amber dot while the Inbox has tasks, grey when empty. macOS: a template image. **Not seen in waybar, and the macOS build is unbuilt and unverified.**
+- **Calendar and sheets** (PR 34), found by the goldens:
+  - All-day tasks missing in Day and Month came from a zero-length fixture, not a time-zone bug (the core sends full local days, `core/src/calendar.rs::block`). `TaskEvent` now stretches empty all-day blocks as a guard. Month "+N" is correct.
+  - Tiles under 60 px are one compact line. A shared `agoText` (`app/lib/desk/ago.dart`) fixes "1 days ago".
+  - `bottomSheetTheme` removes the green surface tint from every bottom sheet. The phone view picker has an `arrow_drop_down` icon. Goldens regenerated.
