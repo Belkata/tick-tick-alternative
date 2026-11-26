@@ -26,6 +26,10 @@ run 2 'gh run watch 123'
 run 2 'sleep 120'
 run 2 'sleep 5m'
 run 2 'echo hi; sleep 3600 && echo done'
+run 2 'pkill -f flutter_tester'
+run 2 'pkill utre'
+run 2 'killall dart'
+run 2 'cd x && pkill -9 -f gradle'
 
 # Allowed: normal work, and bounded variants.
 run 0 'cargo test -p utre-core'
@@ -45,6 +49,11 @@ run 0 'sleep 60'
 run 0 "timeout 10m bash -c 'until test -f /tmp/done; do sleep 2; done'"
 run 0 'scripts/update-desktop.sh --no-restart'
 run 0 'git commit -m "fix: stop the wait loop"'
+run 0 'kill 12345'
+run 0 'kill -9 12345'
+run 0 'kill -TERM 12345'
+run 0 'scripts/agent-reap.sh --kill --worktree x'
+run 0 'systemctl --user restart utre.service'
 
 [ "$fail" -eq 0 ] && echo "bash-guard: all cases ok"
 exit "$fail"

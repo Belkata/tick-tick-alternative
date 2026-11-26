@@ -63,4 +63,9 @@ while [[ "$rest" =~ $sleep_re ]]; do
   rest="${rest#*"${BASH_REMATCH[0]}"}"
 done
 
+# 5. Killing by pattern can take down other agents' and the user's processes.
+if [[ "$flat" =~ (^|[;\&|\(\{[:space:]\"\'])(pkill|killall)([[:space:]]|$) ]]; then
+  block "pkill/killall kill by name or pattern and can hit other agents' and the user's processes. Kill only processes you started, by PID (kill <pid>), or use scripts/agent-reap.sh --worktree <name> --kill."
+fi
+
 exit 0

@@ -250,6 +250,7 @@ Local for the inner loop, GitHub Actions as the merge gate.
   - Wrap every potentially long command in `timeout`: `cargo test --workspace` 20m, `flutter build apk` 30m, `flutter test integration_test` 15m, `scripts/update-desktop.sh` 30m, `gh pr checks <n> --watch` 30m.
   - Logs go in the worktree's `.agent/` dir, never the shared scratchpad (other agents use it too).
   - Before reporting, kill by PID whatever you started (test daemons, `flutter_tester`, watchers).
+  - Never `pkill`/`killall` by pattern: it can kill other agents' and the user's processes (the hook blocks it). Use `kill <pid>` or `scripts/agent-reap.sh --worktree <name> --kill`.
   - `scripts/hooks/bash-guard.sh` (a PreToolUse hook in `.claude/settings.json`) rejects `pgrep` wait loops, `while`/`until` loops with `sleep`, `gh pr checks --watch` / `gh run watch`, and `sleep` over 60 s. The legitimate bypass is wrapping the whole command in `timeout <dur>`. `scripts/hooks/test-bash-guard.sh` tests it (also run in CI).
   - `scripts/agent-reap.sh [--kill] [--older-than MIN] [--worktree NAME]` lists or kills leftovers (old sleep loops, watchers on merged PRs, processes in removed worktrees). `agent-worktree.sh rm` runs it for that worktree. The integrator runs it before each release and at session end.
 - The emulator is shared: before using it, check for `/tmp/utre-emulator.lock` (holds the owner's session name). If it's under 30 minutes old, do something else; otherwise create it, and delete it when done.
