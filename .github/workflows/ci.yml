@@ -47,11 +47,9 @@ jobs:
           # Only main writes the cache; PRs restore it.
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      # Not -D warnings yet: api/src/paths.rs trips clippy::items_after_test_module (a source
-      # fix in another area). Once clean, add `-- -D warnings` (passed to clippy only, not
-      # via RUSTFLAGS, so the build artifacts stay shared with the test step).
+      # -D warnings goes to clippy only (not RUSTFLAGS), so build artifacts stay shared with tests.
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --locked
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
       # Covers core (incl. convergence and the network_sim proptests with their fixed
       # case counts and the tracked proptest-regressions seeds), api, sync, daemon, cli,
@@ -66,10 +64,9 @@ jobs:
           git diff --exit-code -- app/android/app/src/main/kotlin \
             || { echo "::error::Kotlin bindings are stale: run scripts/gen-kotlin-bindings.sh and commit"; exit 1; }
 
-  # Informational until the tree is formatted once (see the PR notes): the generated
-  # frb_generated.rs is excluded from the report, because `cargo fmt` rewrites it.
+  # frb_generated.rs is skipped via #[rustfmt::skip] in app/rust/src/lib.rs.
   fmt:
-    name: Rust (rustfmt, informational)
+    name: Rust (rustfmt)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -79,12 +76,7 @@ jobs:
           rustup toolchain install 1.100.0 --profile minimal --component rustfmt
           rustup default 1.100.0
       - name: cargo fmt --check
-        run: |
-          cargo fmt --all -- --check > "$RUNNER_TEMP/fmt.diff" || true
-          grep '^Diff in' "$RUNNER_TEMP/fmt.diff" | grep -v frb_generated.rs | tee "$RUNNER_TEMP/fmt.files" || true
-          if [ -s "$RUNNER_TEMP/fmt.files" ]; then
-            echo "::warning::rustfmt would change $(wc -l < "$RUNNER_TEMP/fmt.files") hunk(s); run cargo fmt --all and revert app/rust/src/frb_generated.rs"
-          fi
+        run: cargo fmt --all --check
 
   # Advisories, banned/duplicate sources. Non-blocking: new advisories appear without
   # any change of ours, so they shouldn't stop an unrelated PR.
