@@ -160,3 +160,9 @@ Left: page routes (detail on phones) keep Material's default transition.
   - `DebouncedEdit` for title and notes: saves after 300 ms, and flushes on blur, Enter, task switch and dispose. Synced values never overwrite unsaved typing. This also fixed a blur writing stale text over a newer synced value.
   - Worst frame under visible writes went from 53 to 38 ms. `fake_async` is a new dev dependency.
 - **Remaining suspects for the lag:** GPU raster on Intel UHD (Mesa EGL), or GTK-on-Wayland input and frame pacing under Hyprland. No IME is running. Check these first if it comes back.
+
+## Round 11: XWayland by default (2026-11-26, v0.8.5; PR 41)
+- **Cause of the typing lag found by A/B:** the same build is smooth under XWayland (`GDK_BACKEND=x11`) and laggy on native Wayland (Hyprland 0.57, Intel UHD, Mesa EGL). So it is Flutter's GTK3 embedder on Wayland, not Utre's Dart code (round 10's defensive fixes stay).
+- **Fix:** `app/linux/runner/main.cc` calls `gdk_set_allowed_backends("x11,wayland")` before GTK starts, unless `GDK_BACKEND` is set. `UTRE_WAYLAND=1` forces native Wayland, to re-test when the embedder improves.
+- **WM_CLASS:** GTK capitalised it under X11 (`Dev.utre.utre`), which broke Hyprland rules. `gtk_window_set_wmclass` per window (`gdk_set_program_class` alone was not enough) keeps `dev.utre.utre`.
+- Checked with `hyprctl clients -j`: default xwayland true, `UTRE_WAYLAND=1` false, `GDK_BACKEND=wayland` false, `GDK_BACKEND=x11` true; class `dev.utre.utre` in all.
