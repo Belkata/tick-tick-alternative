@@ -5,10 +5,12 @@
 //! connection to the same database file; SQLite in WAL mode handles that.
 
 use std::path::Path;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use utre_api::views::{self, TaskView, ViewKind};
 use utre_core::{Store, Task};
+
+pub use crate::google::{AccessTokenSource, TokenAnswer};
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum CoreError {
@@ -215,7 +217,35 @@ pub fn background_sync(db_path: String, key_path: String, device: String) -> Res
     let phone = crate::phone::start(Path::new(&db_path), Path::new(&key_path), device).map_err(failed)?;
     let outcomes = phone.rt.block_on(phone.svc.round());
     let ok = outcomes.iter().filter(|o| o.error.is_none()).count();
-    Ok(format!("synced with {ok} of {} devices", outcomes.len()))
+    let mut summary = format!("synced with {ok} of {} devices", outcomes.len());
+    // Google events, about every 15 minutes (the job's period; expedited runs skip it).
+    if let Some(google) = crate::google::get() {
+        match crate::google::runtime().block_on(google.sync_if_stale(GOOGLE_STALE)) {
+            Ok(true) => summary.push_str(", Google events fetched"),
+            Ok(false) => {}
+            Err(e) => summary.push_str(&format!(", Google: {e}")),
+        }
+    }
+    Ok(summary)
+}
+
+/// A job-triggered Google fetch is skipped when one succeeded this recently.
+const GOOGLE_STALE: std::time::Duration = std::time::Duration::from_secs(14 * 60);
+
+/// Install the phone's Google service (Kotlin calls this at app and job start; the first
+/// call wins). `source` answers token requests; `configured` says whether this build has its
+/// Android OAuth client (plan/19 slice 5).
+#[uniffi::export]
+pub fn google_init(db_path: String, source: Arc<dyn AccessTokenSource>, configured: bool) {
+    crate::google::install(Path::new(&db_path), source, configured);
+}
+
+/// The consent screen succeeded: remember the first access token (the app then fetches).
+#[uniffi::export]
+pub fn google_signed_in(access_token: String) -> Result<(), CoreError> {
+    let failed = |msg: String| CoreError::Failed { msg };
+    let google = crate::google::get().ok_or_else(|| failed("Google isn't initialised".into()))?;
+    google.signed_in(access_token).map_err(failed)
 }
 
 fn now_ms() -> i64 {

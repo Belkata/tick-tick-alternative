@@ -13,6 +13,7 @@ flutter_rust_bridge = "=2.13.0"
 utre-api = { path = "../../api" }
 utre-core = { path = "../../core" }
 utre-sync = { path = "../../sync" }
+utre-google = { path = "../../google" }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 anyhow = "1.0.105"
 uniffi = "=0.32.2"
