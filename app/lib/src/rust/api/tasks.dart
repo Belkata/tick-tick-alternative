@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `local_phone`, `now_ms`, `tz_name`, `watch`, `write`
+// These functions are ignored because they are not marked as `pub`: `local_phone`, `now_ms`, `phone_google`, `tz_name`, `watch`, `write`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
 /// The desktop database: the same file `utre` and `utre-daemon` use (`$UTRE_DB`, else
@@ -93,7 +93,7 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// Show or hide a Google calendar's events (hiding drops its cache on this device).
   Future<void> gcalSelect({required String calendarId, required bool selected});
 
-  /// Whether the Google page can work: only through utre-daemon.
+  /// Whether the Google page can work: through utre-daemon, or the phone's own service.
   bool googleAvailable();
 
   /// Whether this device sends tasks with a date to Google's "Tasks" calendar.
@@ -108,7 +108,8 @@ abstract class TaskDb implements RustOpaqueInterface {
   /// What the last push to Google did.
   Future<GooglePushStatus> googlePushStatus();
 
-  /// Opens the browser sign-in; returns its URL (to show if the browser didn't open).
+  /// Desktop: opens the browser sign-in; returns its URL (to show if the browser didn't
+  /// open). Android signs in through its consent screen (Kotlin), not through here.
   Future<String> googleSignIn();
 
   Future<void> googleSignOut();
@@ -117,6 +118,10 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   /// Fetch Google's calendars and events now.
   Future<void> googleSync();
+
+  /// Android, when the calendar opens: fetch unless one succeeded less than `max_age_secs`
+  /// ago. Does nothing on desktop (utre-daemon polls) or when signed out.
+  Future<void> googleSyncIfStale({required int maxAgeSecs});
 
   Future<List<TaskItem>> inbox();
 
