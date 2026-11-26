@@ -225,7 +225,8 @@ impl Store {
                     duration_min: Some(min),
                 }
             };
-            write_schedule(w, id, &s)
+            write_schedule(w, id, &s)?;
+            crate::reminder::auto_due_reminder(w, id, (t.anchor(), t.all_day), &s)
         })
     }
 
@@ -239,14 +240,12 @@ impl Store {
                     "stop the repeat before taking the task off the calendar".into(),
                 ));
             }
-            write_schedule(
-                w,
-                id,
-                &Schedule {
-                    duration_min: t.duration_min,
-                    ..Default::default()
-                },
-            )
+            let s = Schedule {
+                duration_min: t.duration_min,
+                ..Default::default()
+            };
+            write_schedule(w, id, &s)?;
+            crate::reminder::auto_due_reminder(w, id, (t.anchor(), t.all_day), &s)
         })
     }
 }
@@ -594,5 +593,106 @@ mod tests {
         )
         .unwrap();
         assert!(s.unschedule(&r.id).is_err());
+    }
+    fn reminders_of(s: &Store, id: &str) -> Vec<crate::ReminderKind> {
+        s.reminders(id)
+            .unwrap()
+            .into_iter()
+            .map(|r| r.kind)
+            .collect()
+    }
+
+    const AT_START: crate::ReminderKind = crate::ReminderKind::Relative { offset_min: 0 };
+
+    #[test]
+    fn dropping_a_task_on_a_time_slot_adds_a_reminder_at_the_block_start() {
+        let s = Store::open_in_memory().unwrap();
+        let t = s.add_task("plan trip").unwrap();
+        let start = at("2026-11-25", 14, 0);
+        s.place_block(&t.id, start, None, false, SOFIA).unwrap();
+        assert_eq!(reminders_of(&s, &t.id), [AT_START]);
+        let fires = s.upcoming_reminders(start - 1, start + 1, SOFIA).unwrap();
+        assert_eq!(fires.len(), 1);
+        assert_eq!(fires[0].fire_at, start);
+        // Moving and resizing the block add nothing and keep the one reminder (now later).
+        s.place_block(&t.id, at("2026-11-26", 9, 0), None, false, SOFIA)
+            .unwrap();
+        s.place_block(
+            &t.id,
+            at("2026-11-26", 9, 0),
+            Some(at("2026-11-26", 12, 0)),
+            false,
+            SOFIA,
+        )
+        .unwrap();
+        assert_eq!(reminders_of(&s, &t.id), [AT_START]);
+    }
+
+    #[test]
+    fn dropping_into_the_all_day_row_adds_nothing_and_timed_after_that_does() {
+        let s = Store::open_in_memory().unwrap();
+        let t = s.add_task("taxes").unwrap();
+        s.place_block(&t.id, at("2026-11-25", 10, 0), None, true, SOFIA)
+            .unwrap();
+        assert!(reminders_of(&s, &t.id).is_empty());
+        s.place_block(&t.id, at("2026-11-25", 10, 0), None, false, SOFIA)
+            .unwrap();
+        assert_eq!(reminders_of(&s, &t.id), [AT_START]);
+        // Back to the all-day row removes the automatic one.
+        s.place_block(&t.id, at("2026-11-25", 10, 0), None, true, SOFIA)
+            .unwrap();
+        assert!(reminders_of(&s, &t.id).is_empty());
+    }
+
+    #[test]
+    fn unscheduling_removes_only_the_automatic_reminder() {
+        let s = Store::open_in_memory().unwrap();
+        let t = s.add_task("a").unwrap();
+        s.place_block(&t.id, at("2026-11-25", 10, 0), None, false, SOFIA)
+            .unwrap();
+        s.unschedule(&t.id).unwrap();
+        assert!(reminders_of(&s, &t.id).is_empty());
+        // A user's own reminder, or an extra one next to the automatic one, stays.
+        let u = s.add_task("b").unwrap();
+        s.add_reminder(&u.id, AT_START).unwrap();
+        s.place_block(&u.id, at("2026-11-25", 10, 0), None, false, SOFIA)
+            .unwrap();
+        s.unschedule(&u.id).unwrap();
+        assert_eq!(reminders_of(&s, &u.id), [AT_START]);
+        let v = s.add_task("c").unwrap();
+        s.place_block(&v.id, at("2026-11-25", 10, 0), None, false, SOFIA)
+            .unwrap();
+        s.add_reminder(&v.id, crate::ReminderKind::Relative { offset_min: 5 })
+            .unwrap();
+        s.unschedule(&v.id).unwrap();
+        assert_eq!(reminders_of(&s, &v.id).len(), 2);
+    }
+
+    #[test]
+    fn a_deleted_automatic_reminder_is_not_revived_by_moving_the_block() {
+        let s = Store::open_in_memory().unwrap();
+        let t = s.add_task("a").unwrap();
+        s.place_block(&t.id, at("2026-11-25", 10, 0), None, false, SOFIA)
+            .unwrap();
+        let id = s.reminders(&t.id).unwrap()[0].id.clone();
+        s.remove_reminder(&id).unwrap();
+        s.place_block(&t.id, at("2026-11-26", 10, 0), None, false, SOFIA)
+            .unwrap();
+        assert!(reminders_of(&s, &t.id).is_empty());
+    }
+
+    #[test]
+    fn a_timed_task_with_a_due_gains_no_reminder_when_its_block_is_placed() {
+        let s = Store::open_in_memory().unwrap();
+        let t = timed(&s, "report", None, Some(at("2026-11-25", 17, 0)));
+        let before = reminders_of(&s, &t.id);
+        assert_eq!(
+            before,
+            [AT_START],
+            "created timed, so it has the automatic one"
+        );
+        s.place_block(&t.id, at("2026-11-25", 9, 0), None, false, SOFIA)
+            .unwrap();
+        assert_eq!(reminders_of(&s, &t.id), before);
     }
 }
