@@ -66,3 +66,10 @@ Work happens on branch `worktree-google-calendar` (a git worktree under `.claude
 - `GcalCalendar` gained `primary` and `access_role` (serde default, so old daemons still parse).
 - UI: desktop calendar toolbar "Calendars" button, a menu with colour dots and checkboxes ("My calendars", "Other calendars", "Applies to this device only"). Phone: "Google calendars..." in the view menu opens a bottom sheet.
 - An older build refuses a v10 database, so rebuild the daemon first. **Unverified with a real Google account and on the phone.**
+
+## Event details and Open in Google Calendar (2026-11-26, v0.8.6, PR 42; schema v11)
+- Clicking a Google event opens a details view: a compact dialog on desktop, a bottom sheet on the phone (48 px buttons). It shows the title, the time range or all-day, the calendar name with its colour dot, the location and the description. The description is plain text (tags stripped) and is never rendered as HTML or linkified.
+- **Open in Google Calendar** (focused, Enter) and **Copy link**; both are hidden when the event has no `htmlLink`. Esc closes. Failure toast: "Could not open Google Calendar".
+- Desktop opens `htmlLink` with `url_launcher` 6.3.3 (http and https only). Android: `MainActivity.openInCalendarApp` sends ACTION_VIEW pinned to `com.google.android.calendar`, and falls back to the browser through url_launcher. No `<queries>` entry and no calendar permission.
+- **Schema v11** (`011_gcal_details.sql`): per-device `gcal_event.location` and `description`, nothing synced. The migration clears the calendar sync tokens so the caches refetch once. `GcalEvent` gained `location` and `description` (serde default). An older build refuses a v11 DB, so rebuild the daemon and app together.
+- **Unverified:** the Android intent and its browser fallback at runtime, whether the Calendar app claims `www.google.com/calendar/event?eid=...`, a real Google account, the real phone, and the release Linux build opening the browser under XWayland.
