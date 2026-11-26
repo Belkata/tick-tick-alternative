@@ -4593,6 +4593,7 @@ const _: fn() = || {
         let _: String = TaskDetail.notes;
         let _: Option<String> = TaskDetail.list_id;
         let _: Option<String> = TaskDetail.start_label;
+        let _: Option<i64> = TaskDetail.start_at;
         let _: Option<String> = TaskDetail.repeat_rule;
         let _: bool = TaskDetail.repeat_after_completion;
         let _: Vec<crate::api::tasks::ChecklistRow> = TaskDetail.checklist;
@@ -5226,6 +5227,7 @@ impl SseDecode for crate::api::tasks::TaskDetail {
         let mut var_notes = <String>::sse_decode(deserializer);
         let mut var_listId = <Option<String>>::sse_decode(deserializer);
         let mut var_startLabel = <Option<String>>::sse_decode(deserializer);
+        let mut var_startAt = <Option<i64>>::sse_decode(deserializer);
         let mut var_repeatRule = <Option<String>>::sse_decode(deserializer);
         let mut var_repeatAfterCompletion = <bool>::sse_decode(deserializer);
         let mut var_checklist = <Vec<crate::api::tasks::ChecklistRow>>::sse_decode(deserializer);
@@ -5238,6 +5240,7 @@ impl SseDecode for crate::api::tasks::TaskDetail {
             notes: var_notes,
             list_id: var_listId,
             start_label: var_startLabel,
+            start_at: var_startAt,
             repeat_rule: var_repeatRule,
             repeat_after_completion: var_repeatAfterCompletion,
             checklist: var_checklist,
@@ -5929,6 +5932,7 @@ impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::tasks::TaskDetail>
             self.0.notes.into_into_dart().into_dart(),
             self.0.list_id.into_into_dart().into_dart(),
             self.0.start_label.into_into_dart().into_dart(),
+            self.0.start_at.into_into_dart().into_dart(),
             self.0.repeat_rule.into_into_dart().into_dart(),
             self.0.repeat_after_completion.into_into_dart().into_dart(),
             self.0.checklist.into_into_dart().into_dart(),
@@ -6490,6 +6494,7 @@ impl SseEncode for crate::api::tasks::TaskDetail {
         <String>::sse_encode(self.notes, serializer);
         <Option<String>>::sse_encode(self.list_id, serializer);
         <Option<String>>::sse_encode(self.start_label, serializer);
+        <Option<i64>>::sse_encode(self.start_at, serializer);
         <Option<String>>::sse_encode(self.repeat_rule, serializer);
         <bool>::sse_encode(self.repeat_after_completion, serializer);
         <Vec<crate::api::tasks::ChecklistRow>>::sse_encode(self.checklist, serializer);

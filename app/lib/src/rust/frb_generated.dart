@@ -4023,20 +4023,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskDetail dco_decode_task_detail(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 11)
-      throw Exception('unexpected arr length: expect 11 but see ${arr.length}');
+    if (arr.length != 12)
+      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
     return TaskDetail(
       row: dco_decode_task_row(arr[0]),
       notes: dco_decode_String(arr[1]),
       listId: dco_decode_opt_String(arr[2]),
       startLabel: dco_decode_opt_String(arr[3]),
-      repeatRule: dco_decode_opt_String(arr[4]),
-      repeatAfterCompletion: dco_decode_bool(arr[5]),
-      checklist: dco_decode_list_checklist_row(arr[6]),
-      subtasks: dco_decode_list_task_row(arr[7]),
-      reminders: dco_decode_list_reminder_row(arr[8]),
-      parentTitle: dco_decode_opt_String(arr[9]),
-      inCalendar: dco_decode_bool(arr[10]),
+      startAt: dco_decode_opt_box_autoadd_i_64(arr[4]),
+      repeatRule: dco_decode_opt_String(arr[5]),
+      repeatAfterCompletion: dco_decode_bool(arr[6]),
+      checklist: dco_decode_list_checklist_row(arr[7]),
+      subtasks: dco_decode_list_task_row(arr[8]),
+      reminders: dco_decode_list_reminder_row(arr[9]),
+      parentTitle: dco_decode_opt_String(arr[10]),
+      inCalendar: dco_decode_bool(arr[11]),
     );
   }
 
@@ -4750,6 +4751,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_notes = sse_decode_String(deserializer);
     var var_listId = sse_decode_opt_String(deserializer);
     var var_startLabel = sse_decode_opt_String(deserializer);
+    var var_startAt = sse_decode_opt_box_autoadd_i_64(deserializer);
     var var_repeatRule = sse_decode_opt_String(deserializer);
     var var_repeatAfterCompletion = sse_decode_bool(deserializer);
     var var_checklist = sse_decode_list_checklist_row(deserializer);
@@ -4762,6 +4764,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       notes: var_notes,
       listId: var_listId,
       startLabel: var_startLabel,
+      startAt: var_startAt,
       repeatRule: var_repeatRule,
       repeatAfterCompletion: var_repeatAfterCompletion,
       checklist: var_checklist,
@@ -5399,6 +5402,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.notes, serializer);
     sse_encode_opt_String(self.listId, serializer);
     sse_encode_opt_String(self.startLabel, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.startAt, serializer);
     sse_encode_opt_String(self.repeatRule, serializer);
     sse_encode_bool(self.repeatAfterCompletion, serializer);
     sse_encode_list_checklist_row(self.checklist, serializer);

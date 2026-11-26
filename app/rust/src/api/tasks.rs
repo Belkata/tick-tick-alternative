@@ -112,6 +112,7 @@ pub struct _TaskDetail {
     pub notes: String,
     pub list_id: Option<String>,
     pub start_label: Option<String>,
+    pub start_at: Option<i64>,
     pub repeat_rule: Option<String>,
     pub repeat_after_completion: bool,
     pub checklist: Vec<ChecklistRow>,

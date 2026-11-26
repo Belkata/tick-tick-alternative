@@ -135,6 +135,11 @@ pub struct TaskDetail {
     pub notes: String,
     pub list_id: Option<String>,
     pub start_label: Option<String>,
+    /// The raw start (epoch ms; all-day dates are UTC midnight of the calendar day), like
+    /// `row.due_at`. `row.all_day` says how to read it. Defaulted so a peer that doesn't
+    /// send it (an older daemon) still decodes.
+    #[serde(default)]
+    pub start_at: Option<i64>,
     /// The RRULE body, e.g. `FREQ=WEEKLY;BYDAY=MO`.
     pub repeat_rule: Option<String>,
     /// The next date counts from completion rather than from the schedule.
@@ -328,6 +333,7 @@ pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> utre_core::Result<O
         None => None,
     };
     let repeat_after_completion = t.repeat_mode == utre_core::RepeatMode::AfterCompletion;
+    let start_at = t.start_at;
     let start_label = t.start_at.map(|ms| when_label(ms, t.all_day, now, tz));
     let checklist = s
         .checklist(id)?
@@ -359,6 +365,7 @@ pub fn task_detail(s: &Store, id: &str, now: i64, tz: Tz) -> utre_core::Result<O
         notes,
         list_id,
         start_label,
+        start_at,
         repeat_rule,
         repeat_after_completion,
         checklist,
@@ -617,6 +624,30 @@ fn task_row(s: &Store, t: Task, now: i64, tz: Tz) -> utre_core::Result<TaskRow> 
 mod tests {
     use super::*;
     use utre_core::Filter;
+
+    #[test]
+    fn detail_carries_the_raw_dates() {
+        let s = Store::open_in_memory().unwrap();
+        let tz = Tz::Europe__Sofia;
+        let now = 1_795_600_000_000; // 2026-11-25
+        let id = s.add_task("Dates").unwrap().id;
+        set_start(&s, &id, Some("2026-12-01 14:30"), now, tz).unwrap();
+        set_due(&s, &id, Some("2026-12-02 09:00"), now, tz).unwrap();
+        let d = task_detail(&s, &id, now, tz).unwrap().unwrap();
+        let t = s.get_task(&id).unwrap().unwrap();
+        assert_eq!(d.start_at, t.start_at);
+        assert!(d.start_at.is_some());
+        assert_eq!(d.row.due_at, t.due_at);
+        assert!(!d.row.all_day);
+        set_start(&s, &id, None, now, tz).unwrap();
+        assert_eq!(task_detail(&s, &id, now, tz).unwrap().unwrap().start_at, None);
+
+        // A payload from an older daemon (no `start_at`) still decodes.
+        let mut v = serde_json::to_value(&d).unwrap();
+        v.as_object_mut().unwrap().remove("start_at");
+        let old: TaskDetail = serde_json::from_value(v).unwrap();
+        assert_eq!(old.start_at, None);
+    }
 
     #[test]
     fn quick_add_in_a_filter_stays_in_it() {
