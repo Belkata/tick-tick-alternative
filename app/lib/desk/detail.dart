@@ -213,7 +213,12 @@ class DetailPane extends StatelessWidget {
       color: s.panel,
       child: ListView(
         key: ValueKey('detail-$id'),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          28 + MediaQuery.viewPaddingOf(context).bottom,
+        ),
         children: [
           // A subtask: one tap goes up the tree.
           if (r.parentId != null)
@@ -596,7 +601,7 @@ class _PropRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.soft;
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 42),
+      constraints: BoxConstraints(minHeight: isTouch(context) ? 48 : 42),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: Row(
@@ -978,7 +983,10 @@ class _AddTagState extends State<_AddTag> {
         borderRadius: BorderRadius.circular(8),
         onTap: () => setState(() => _editing = true),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+          padding: EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: isTouch(context) ? 9 : 1,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: s.line),
