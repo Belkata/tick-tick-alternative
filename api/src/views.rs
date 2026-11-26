@@ -691,7 +691,8 @@ mod tests {
             assert_eq!(ids(src.as_deref()).len(), 6);
         }
         let t0 = now + 3_600_000;
-        s.place_block(&timed, t0, Some(t0 + 3_600_000), false, tz).unwrap();
+        s.place_block(&timed, t0, Some(t0 + 3_600_000), false, tz)
+            .unwrap();
         s.place_block(&allday, t0, None, true, tz).unwrap();
         set_start(&s, &start_only, Some("2026-12-01 14:30"), now, tz).unwrap();
         set_due(&s, &due_only, Some("2026-12-02 09:00"), now, tz).unwrap();
