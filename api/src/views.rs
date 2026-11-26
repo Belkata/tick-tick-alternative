@@ -4,8 +4,8 @@
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use utre_core::{
-    FilterRule, NewTask, ReminderKind, Schedule, Status, Store, Task, is_overdue, local_day,
-    offset_label, parse_when, when_label,
+    is_overdue, local_day, offset_label, parse_when, when_label, FilterRule, NewTask, ReminderKind,
+    Schedule, Status, Store, Task,
 };
 
 /// Which kind of view the task list shows.
@@ -640,7 +640,10 @@ mod tests {
         assert_eq!(d.row.due_at, t.due_at);
         assert!(!d.row.all_day);
         set_start(&s, &id, None, now, tz).unwrap();
-        assert_eq!(task_detail(&s, &id, now, tz).unwrap().unwrap().start_at, None);
+        assert_eq!(
+            task_detail(&s, &id, now, tz).unwrap().unwrap().start_at,
+            None
+        );
 
         // A payload from an older daemon (no `start_at`) still decodes.
         let mut v = serde_json::to_value(&d).unwrap();
