@@ -1,0 +1,12 @@
+# cargo-deny (CI job "deny", informational). Licences are not checked yet: add a
+# [licenses] allow-list once the user has decided the project licence (plan/11).
+[advisories]
+version = 2
+
+[bans]
+multiple-versions = "allow"
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "warn"
