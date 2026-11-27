@@ -12,7 +12,7 @@ pkgdesc="Local-first task manager: Flutter desktop app, tray daemon and utre CLI
 arch=(x86_64)
 url="https://github.com/Belkata/utre"
 license=(MIT)
-depends=(gtk3 glibc gcc-libs hicolor-icon-theme)
+depends=(gtk3 glibc gcc-libs zlib fontconfig libepoxy wayland hicolor-icon-theme)
 optdepends=(
   'waybar: tray icon (any StatusNotifierItem host works)'
   'dunst: reminder notifications with Done and Snooze (any notification daemon works)'
