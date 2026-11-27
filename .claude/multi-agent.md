@@ -93,28 +93,42 @@ notes for plan/.
 ## 5. Release step
 
 Rule from the user (2026-11-25): after every feature request or batch (once finished, not after each step),
-without asking: commit, push, rebuild and restart the Arch daemon and the release desktop app, bump `version:`
-in `app/pubspec.yaml`, build the release APK, tag it and upload it as a GitHub pre-release.
+without asking: commit, push, bump `version:` in `app/pubspec.yaml`, build the release APK, tag it and upload it
+as a GitHub pre-release, and update the Arch laptop. Since 2026-11-27 the laptop runs the signed `utre-bin`
+package, so it updates through pacman (run by the user, who has sudo), not by rebuilding the checkout.
 
 After a feature batch merges, spawn a release agent with explicit authorisation. Its steps:
-1. A hand `sqlite3 ".backup"` of `utre.db` before any schema change (`update-desktop.sh` backs up only
-   `utre.db`); check `user_version` and `PRAGMA integrity_check`.
+1. A hand `sqlite3 ".backup"` of `utre.db` before any schema change (the daemon does not back up before
+   migrating; `Store::open` only runs each migration in a transaction, and the user's `pacman -Syu` plus
+   daemon restart is what runs it); check `user_version` and `PRAGMA integrity_check`.
 2. Update plan/ notes and the CLAUDE.md "Latest session" line.
 3. Bump `version:` in `app/pubspec.yaml`, commit "app: version X (summary)", push.
 4. Wait for green CI on main.
 5. Run `scripts/agent-reap.sh`; check stray daemons with `pgrep -af utre-daemon` and each one's `UTRE_DB` in
-   `/proc/<pid>/environ`; then `timeout 30m scripts/update-desktop.sh`.
-6. Verify: service active, journal clean, schema version, app window `xwayland: true`, read-only `utre ls`.
-7. Build the APK (`timeout 30m`), copy to `dist/utre-X-arm64.apk`, tag, `gh release create --prerelease`
+   `/proc/<pid>/environ`. Do not run `scripts/update-desktop.sh` on this laptop: it refuses (packaged install).
+   It is only for machines running the checkout build.
+6. Build the APK (`timeout 30m`), copy to `dist/utre-X-arm64.apk`, tag, `gh release create --prerelease`
    (notes with no footer).
-8. Build the Linux tarball (`timeout 30m scripts/build-linux-tarball.sh`, writes
+7. Build the Linux tarball (`timeout 30m scripts/build-linux-tarball.sh`, writes
    `dist/utre-X-linux-x86_64.tar.gz`) and upload it to the same pre-release
    (`gh release upload vX dist/utre-X-linux-x86_64.tar.gz`).
-9. `scripts/pacman-repo-publish.sh X` (always; `--dry-run` to preview) adds the package to our pacman
-   repository on the `arch-repo` GitHub release (`packaging/arch/README.md`). It signs with the repo key in the keyring (`--unsigned` opts out).
+8. Publish: `scripts/pacman-repo-publish.sh X` (always; `--dry-run` to preview) adds the package to our pacman
+   repository on the `arch-repo` GitHub release (`packaging/arch/README.md`). It signs with the repo key in
+   the keyring (`--unsigned` opts out).
+9. Verify the repository from outside, without root. Make a short temp dir
+   (`d=$(mktemp -d "$XDG_RUNTIME_DIR/urt.XXXX")`: gpg-agent sockets fail on long paths) holding a pacman.conf
+   with `SigLevel = Required DatabaseRequired` and the `[utre]` `Server` line, plus a temp `--dbpath`,
+   `--cachedir` and `--gpgdir`. Then `fakeroot pacman-key --gpgdir $d/gpg --init`, `--add` the repo public key
+   (`packaging/arch/utre-repo.asc`) and `--lsign-key` it; `fakeroot pacman --config ... --dbpath ... --cachedir ... --gpgdir ... -Sy`
+   and `-Sw --noconfirm -dd utre-bin` must succeed and show the new version. Clean up:
+   `gpgconf --homedir $d/gpg --kill all`, then remove the temp dirs.
 10. `scripts/aur-publish.sh X` only once the user's AUR account and SSH key exist; until then skip it and
     say so in the report.
 11. Run the reaper again.
+12. The final report tells the user to run `sudo pacman -Syu`, then `systemctl --user restart utre.service`
+    and reopen the app (agents can't sudo). After they confirm, verify read-only: service active,
+    `readlink /proc/<daemon pid>/exe` is `/usr/bin/utre-daemon`, `pacman -Q utre-bin` shows the new version,
+    journal clean, schema version, app window `xwayland: true`, read-only `utre ls`.
 
 - Releases are sequential. Don't start one while another is running.
 - Docs-only or tooling-only changes don't need an app release.
@@ -135,7 +149,7 @@ A hook enforces the worst of it. Agents have left wait loops running for hours.
   write polling loops (`while`/`until` + `sleep`), and never wait with `pgrep -f` (it matches the waiting shell
   itself, so it never ends).
 - Wrap every potentially long command in `timeout`: `cargo test --workspace` 20m, `flutter build apk` 30m,
-  `flutter test integration_test` 15m, `scripts/update-desktop.sh` 30m, `gh pr checks <n> --watch` 30m.
+  `flutter test integration_test` 15m, `scripts/update-desktop.sh` 30m (checkout-build machines only), `gh pr checks <n> --watch` 30m.
 - Auto-fix events are unreliable here. Wait for CI with `gh pr checks <n> --watch` as a background command and
   read its result. Never poll in a loop.
 - Logs go in the worktree's `.agent/` dir, never the shared scratchpad (other agents use it too).
@@ -170,6 +184,8 @@ A hook enforces the worst of it. Agents have left wait loops running for hours.
 - The release app is single instance: a test launch while the user's copy is open starts nothing.
 - A test launch of the app must set `UTRE_DB` and `UTRE_SOCKET`, or it opens the real DB.
 - Merge conflicts in shared test files are normal: keep both sides.
+- The Arch laptop runs the packaged `utre-bin` since 2026-11-27: `update-desktop.sh` refuses there, and the
+  packaged daemon and app need a restart after the user's `pacman -Syu`. Never kill the app by name.
 
 ## 9. Talking to the user
 
