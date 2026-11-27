@@ -10,6 +10,7 @@
 #                                     A bundle of its own so UNUserNotificationCenter works and
 #                                     Done / Snooze reach the daemon, not the window app.
 #       utre                            the CLI
+#     Contents/Resources/install-launch-agent.sh (+ its plist template)
 # scripts/install-launch-agent.sh then starts the daemon at login.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
@@ -62,6 +63,9 @@ cat > "$daemon_app/Contents/Info.plist" <<EOF
 EOF
 plutil -lint "$daemon_app/Contents/Info.plist" >/dev/null
 cp "$repo/target/release/utre" "$helpers/utre"
+# The LaunchAgent installer travels with the app, so a downloaded copy needs no checkout.
+cp "$repo/scripts/install-launch-agent.sh" "$repo/daemon/dev.utre.daemon.plist" "$app/Contents/Resources/"
+chmod +x "$app/Contents/Resources/install-launch-agent.sh"
 
 echo "==> Signing (ad hoc)"
 codesign --force --sign - "$helpers/utre"
