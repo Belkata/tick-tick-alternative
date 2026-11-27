@@ -64,6 +64,31 @@ jobs:
           git diff --exit-code -- app/android/app/src/main/kotlin \
             || { echo "::error::Kotlin bindings are stale: run scripts/gen-kotlin-bindings.sh and commit"; exit 1; }
 
+  # The daemon has macOS-only code (tray_mac.rs, notifications) that the Linux jobs never
+  # compile. Not a required check; it exists so the macOS updater and tray code are checked.
+  macos-check:
+    name: Rust (daemon, macOS)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Rust 1.100
+        run: |
+          rustup toolchain install 1.100.0 --profile minimal --component clippy
+          rustup default 1.100.0
+
+      - name: Cache cargo registry and target/
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Check
+        run: cargo check -p utre-daemon --all-targets --locked
+
+      - name: Clippy
+        run: cargo clippy -p utre-daemon --all-targets --locked -- -D warnings
+
   # frb_generated.rs is skipped via #[rustfmt::skip] in app/rust/src/lib.rs.
   fmt:
     name: Rust (rustfmt)
