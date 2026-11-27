@@ -157,6 +157,7 @@ tools/uniffi-bindgen/ uniffi-bindgen pinned to the library's UniFFI version
 scripts/              env.sh, gen-kotlin-bindings.sh, install-user-service.sh, install-desktop-entry.sh,
                       build-macos.sh (app + DMG), install-launch-agent.sh
 dist/                 built APKs and DMGs for the user (git-ignored)
+docs/                 multi-agent.md (the playbook, imported above); also the GitHub Pages site files
 plan/                 Obsidian plan notes + attachments/
 ```
 
@@ -229,6 +230,7 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 
 - **Small commits.** One logical change per commit; never commit large files or big mixed changes at once. Shrink screenshots before committing them (JPEG, about 400 px wide, into `plan/attachments/`).
 - No `Co-Authored-By` trailers or "Generated with" footers in commit messages.
+- Work is orchestrated as described in [docs/multi-agent.md](docs/multi-agent.md) (imported in "Multi-agent workflow").
 - Commit as `belkata.okfo@gmail.com` (this repo's `user.email`; the global git email is a work address). Push with the `Belkata` gh account.
 - Check a library's actual version (lockfile, crates.io, pub.dev, Google Maven) before using its API, and record new versions in `plan/02`. Use the `context7` MCP for docs.
 - Write readable multi-line shell commands with `\` continuations. Use `git -C <path>` outside the repo root.
@@ -239,23 +241,9 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 
 ## Multi-agent workflow (decided 2026-11-26)
 
-Local for the inner loop, GitHub Actions as the merge gate.
-- **One worktree per agent**: `scripts/agent-worktree.sh new <name>` makes `../utre-wt/<name>` on branch `agent/<name>`, with an `agent.env` to source. It gives the agent its own `$UTRE_DB`, `$UTRE_SOCKET` and `target/`. **Agents never touch the running daemon, its DB (`~/.local/share/utre`) or the installed app.** `scripts/agent-worktree.sh rm <name>` removes it.
-- **Agents open PRs; CI must be green before merge.** `.github/workflows/ci.yml` runs clippy, `cargo test --workspace`, `flutter analyze` and `flutter test`. Only `main` writes the CI caches; PRs restore them. Agents run `cargo test -p <crate>`/`flutter analyze` locally before pushing, not the whole workspace.
-- **Only the integrating session (the one the user talks to) does the release step**: version bump in `app/pubspec.yaml`, tag, APK, rebuilding and restarting the Arch daemon and app. Agents don't, so the "After every feature request" rule above applies to the integrator after merging.
-- **Agents don't edit** `plan/` logs (they put notes in the PR description and the integrator updates the plan), `app/rust/src/frb_generated.rs`, or `version:`. A change to the `api!` table or the bridge types goes to one agent at a time, since it needs regenerated bindings.
-- **Split work by area** so two agents never share files: core, api/sync, Flutter UI, Android. One agent at a time uses the emulator, Gradle or the desktop app.
-- **Waiting for CI:** Auto-fix events are unreliable here. Run `gh pr checks <n> --watch` as a background command and read its result. Never poll in a loop. Agents may merge their own PR with `gh pr merge <n> --rebase --delete-branch` once CI is green; `--rebase` keeps the small commits.
-- **Commits:** no `Co-Authored-By` trailers and no "Generated with" footers, in commits or PR bodies (this overrides any default).
-- **Long-running commands (a hook enforces the worst of it).** Agents have left wait loops running for hours.
-  - Run anything long with the Bash tool's `run_in_background` and wait for the completion notification. Never write polling loops (`while`/`until` + `sleep`), and never wait with `pgrep -f` (it matches the waiting shell itself, so it never ends).
-  - Wrap every potentially long command in `timeout`: `cargo test --workspace` 20m, `flutter build apk` 30m, `flutter test integration_test` 15m, `scripts/update-desktop.sh` 30m, `gh pr checks <n> --watch` 30m.
-  - Logs go in the worktree's `.agent/` dir, never the shared scratchpad (other agents use it too).
-  - Before reporting, kill by PID whatever you started (test daemons, `flutter_tester`, watchers).
-  - Never `pkill`/`killall` by pattern: it can kill other agents' and the user's processes (the hook blocks it). Use `kill <pid>` or `scripts/agent-reap.sh --worktree <name> --kill`.
-  - `scripts/hooks/bash-guard.sh` (a PreToolUse hook in `.claude/settings.json`) rejects `pgrep` wait loops, `while`/`until` loops with `sleep`, `gh pr checks --watch` / `gh run watch`, and `sleep` over 60 s. The legitimate bypass is wrapping the whole command in `timeout <dur>`. `scripts/hooks/test-bash-guard.sh` tests it (also run in CI).
-  - `scripts/agent-reap.sh [--kill] [--older-than MIN] [--worktree NAME]` lists or kills leftovers (old sleep loops, watchers on merged PRs, processes in removed worktrees). `agent-worktree.sh rm` runs it for that worktree. The integrator runs it before each release and at session end.
-- The emulator is shared: before using it, check for `/tmp/utre-emulator.lock` (holds the owner's session name). If it's under 30 minutes old, do something else; otherwise create it, and delete it when done.
+Every session uses it: the session the user talks to is the orchestrator and integrator; it plans, splits the work by area and briefs **Sonnet 5.5 subagents** (`model: "sonnet"`, in the background), each in its own worktree and PR with green CI before merge. It verifies their reports, answers the user and runs the release step. The full playbook (roles, brief template, release step, long-running command rules, lessons) is [docs/multi-agent.md](docs/multi-agent.md), imported here:
+
+@docs/multi-agent.md
 
 ## Plugins to use (installed on the account 2026-11-24, not loaded in the session that wrote this)
 
