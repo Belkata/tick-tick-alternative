@@ -41,7 +41,7 @@ Each milestone ends with something usable. Building the core first means the CLI
   - `macos-release.yml`: the Rust targets (cargokit and `utre-daemon` for arm64 and x86_64), CocoaPods (`app/macos/Pods`, keyed on `Podfile.lock`), and Xcode's derived data if it helps.
   - `android-release.yml`: Gradle (`setup-java` `cache: gradle`), Flutter (`cache: true` plus `pub-cache-key`), and cargokit's Android Rust build.
   - The `fmt` job (rustup only, probably not worth it). `deny` and `shellcheck` are already fast.
-  - Catch: caches saved on a tag run are scoped to that tag, so the next release can't reuse them. Release workflows can restore `main`'s caches but must save under keys a `main` job also writes. So either add a `main` job that warms the release caches (e.g. weekly, or when `Cargo.lock`/`pubspec.lock`/`Podfile.lock` change), or accept cold release builds. Measure before and after (the macOS release build took ~N min cold; fill in from the first run).
+  - Catch: caches saved on a tag run are scoped to that tag, so the next release can't reuse them. Release workflows can restore `main`'s caches but must save under keys a `main` job also writes. So either add a `main` job that warms the release caches (e.g. weekly, or when `Cargo.lock`/`pubspec.lock`/`Podfile.lock` change), or accept cold release builds. Measure before and after (the macOS release build took about 18 min cold on its first run, 0.8.10).
   Asked by the user 2026-11-27.
 - [ ] Packaging: PKGBUILD and a DMG. 🟡 PKGBUILD done (`packaging/arch`, test-built with makepkg); DMG done (`scripts/build-macos.sh`, ad hoc signed, M2 slice 5). Neither installed yet.
 
