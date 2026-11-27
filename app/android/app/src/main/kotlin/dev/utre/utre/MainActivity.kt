@@ -11,6 +11,7 @@ import android.os.Bundle
 import dev.utre.utre.google.GoogleAuth
 import dev.utre.utre.reminders.Reminders
 import dev.utre.utre.sync.SyncWorker
+import dev.utre.utre.updater.Updater
 import java.util.TimeZone
 import dev.utre.utre.widget.TaskListWidget
 import dev.utre.utre.widget.TaskListWidgetReceiver
@@ -96,7 +97,7 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(supported)
                 }
-                else -> result.notImplemented()
+                else -> if (!Updater.handle(this, call, result)) result.notImplemented()
             }
         }
     }
@@ -130,6 +131,18 @@ class MainActivity : FlutterActivity() {
         }
         Reminders.ensureChannel(this)
         SyncWorker.enqueue(applicationContext)
+        Updater.enqueueDaily(applicationContext)
+        Updater.checkOnStart(applicationContext)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Updater.foreground = true
+    }
+
+    override fun onStop() {
+        Updater.foreground = false
+        super.onStop()
     }
 
     @Deprecated("FlutterActivity still routes plugin results through it")

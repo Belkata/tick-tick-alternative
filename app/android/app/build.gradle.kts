@@ -32,6 +32,15 @@ val googleAndroidClientId: String =
         ?: System.getenv("UTRE_GOOGLE_ANDROID_CLIENT_ID")
         ?: ""
 
+// Updater tests only: a feed URL and asset suffix that replace GitHub's, set with
+// -Putre.updateFeed / -Putre.updateAssetSuffix or UTRE_UPDATE_FEED / UTRE_UPDATE_ASSET_SUFFIX.
+// A build with a feed also allows cleartext to the emulator's host (10.0.2.2). Normal builds
+// leave both empty: the GitHub URL, the device ABI and HTTPS only.
+val updateFeed: String =
+    (findProperty("utre.updateFeed") as String?) ?: System.getenv("UTRE_UPDATE_FEED") ?: ""
+val updateAssetSuffix: String =
+    (findProperty("utre.updateAssetSuffix") as String?) ?: System.getenv("UTRE_UPDATE_ASSET_SUFFIX") ?: ""
+
 android {
     namespace = "dev.utre.utre"
     compileSdk = flutter.compileSdkVersion
@@ -57,6 +66,14 @@ android {
         versionName = flutter.versionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["googleAndroidClientId"] = googleAndroidClientId
+        manifestPlaceholders["networkSecurityConfig"] =
+            if (updateFeed.isEmpty()) "@xml/network_security_default" else "@xml/network_security_updater_test"
+        buildConfigField("String", "UPDATE_FEED", "\"$updateFeed\"")
+        buildConfigField("String", "UPDATE_ASSET_SUFFIX", "\"$updateAssetSuffix\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     signingConfigs {
@@ -100,6 +117,10 @@ dependencies {
 
     // Background sync (M4)
     implementation("androidx.work:work-runtime-ktx:2.12.0")
+
+    // JVM unit tests: the platform's org.json is a stub there
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 
     // Google Calendar (M5b): Google Identity's AuthorizationClient gives the phone access tokens
     implementation("com.google.android.gms:play-services-auth:22.0.0")
