@@ -13,6 +13,11 @@ utre-core = { path = "../core" }
 utre-google = { path = "../google" }
 utre-sync = { path = "../sync" }
 serde_json = "1"
+pgp = "0.21.1"
+plist = "1"
+semver = "1"
+reqwest = "0.13.5"
+serde = { version = "1", features = ["derive"] }
 
 # The tray: a StatusNotifierItem over D-Bus, Linux only.
 [target.'cfg(target_os = "linux")'.dependencies]

@@ -28,6 +28,7 @@ use anyhow::{Context, Result};
 use tokio::sync::mpsc;
 mod google;
 mod sync;
+mod update;
 #[cfg_attr(target_os = "linux", path = "tray_sni.rs")]
 #[cfg_attr(target_os = "macos", path = "tray_mac.rs")]
 #[cfg_attr(
