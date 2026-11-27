@@ -6,11 +6,14 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- The built-in updater installs new releases from GitHub (plan/17). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application
         android:label="Utre"
         android:allowBackup="false"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="${networkSecurityConfig}">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -87,6 +90,17 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+        <!-- Updater: PackageInstaller's result, and "this app was just replaced". -->
+        <receiver
+            android:name=".updater.InstallStatusReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".updater.PackageReplacedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
         <!-- Whether this build has its Android OAuth client (see build.gradle.kts); empty = Google off. -->
