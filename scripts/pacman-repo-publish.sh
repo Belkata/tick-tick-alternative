@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Publish utre-bin to our own pacman repository, hosted as assets of the GitHub release
 # `arch-repo` on Belkata/utre (repo name `utre`; see packaging/arch/README.md).
-#   scripts/pacman-repo-publish.sh X.Y.Z [--dry-run]
+#   scripts/pacman-repo-publish.sh X.Y.Z [--dry-run] [--unsigned]
 # Needs dist/utre-X.Y.Z-linux-x86_64.tar.gz (scripts/build-linux-tarball.sh) and gh logged in.
-# Signing is optional: set UTRE_REPO_GPGKEY to a key id and the package and database get signed.
+# Packages and databases are signed with UTRE_REPO_GPGKEY (default: the Utre repository key, whose
+# public half is packaging/arch/utre-repo.asc). A missing secret key is an error; --unsigned opts out.
 # --dry-run builds everything into a temp dir and lists what would change; GitHub is only read.
 # The packaging/aur/utre-bin/ template is never bumped; versions exist only in the built package.
 set -euo pipefail
@@ -17,14 +18,16 @@ keep=2
 
 version=""
 dry=0
+unsigned=0
 for arg in "$@"; do
   case "$arg" in
     --dry-run) dry=1 ;;
+    --unsigned) unsigned=1 ;;
     -*) echo "unknown option: $arg" >&2; exit 2 ;;
     *) version="$arg" ;;
   esac
 done
-[[ -n "$version" ]] || { echo "usage: $0 X.Y.Z [--dry-run]" >&2; exit 2; }
+[[ -n "$version" ]] || { echo "usage: $0 X.Y.Z [--dry-run] [--unsigned]" >&2; exit 2; }
 
 tarball="$repo/dist/utre-$version-linux-x86_64.tar.gz"
 [[ -f "$tarball" ]] || { echo "missing $tarball (run scripts/build-linux-tarball.sh)" >&2; exit 1; }
@@ -37,10 +40,15 @@ if [[ $dry == 0 ]]; then
 fi
 
 sign=()
-if [[ -n "${UTRE_REPO_GPGKEY:-}" ]]; then
-  sign=(--sign --key "$UTRE_REPO_GPGKEY")
+if [[ $unsigned == 1 ]]; then
+  echo "warning: --unsigned, building without signatures" >&2
 else
-  echo "warning: UTRE_REPO_GPGKEY not set, building unsigned" >&2
+  key="${UTRE_REPO_GPGKEY:-8D9A9E543BB6D88237D174A78BE15C9843ADD341}"
+  gpg --list-secret-keys "$key" >/dev/null 2>&1 || {
+    echo "secret key $key is not in the keyring (use --unsigned to publish without signing)" >&2
+    exit 1
+  }
+  sign=(--sign --key "$key")
 fi
 
 work="$(mktemp -d)"
@@ -103,8 +111,13 @@ if [[ $release_exists == 0 ]]; then
   notes="Pacman repository for Utre. Add to /etc/pacman.conf:
 
     [utre]
-    SigLevel = Optional TrustAll
     Server = https://github.com/$gh_repo/releases/download/$tag
+
+First trust the signing key (fingerprint 8D9A9E543BB6D88237D174A78BE15C9843ADD341):
+
+    curl -LO https://raw.githubusercontent.com/$gh_repo/main/packaging/arch/utre-repo.asc
+    sudo pacman-key --add utre-repo.asc
+    sudo pacman-key --lsign-key 8D9A9E543BB6D88237D174A78BE15C9843ADD341
 
 Then: sudo pacman -Sy utre-bin"
   gh release create "$tag" --repo "$gh_repo" --prerelease \
