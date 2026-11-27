@@ -358,6 +358,15 @@ class _DeskShellState extends State<DeskShell> with WidgetsBindingObserver {
     return DeskSidebar(
       c: c,
       viewSelected: _page == null,
+      collapsedTags: _prefs.collapsedTags,
+      onCollapseTag: (id, folded) {
+        setState(() {
+          folded
+              ? _prefs.collapsedTags.add(id)
+              : _prefs.collapsedTags.remove(id);
+        });
+        _prefs.save();
+      },
       onPicked: () {
         _showTasks();
         if (inDrawer) Navigator.of(context).pop();
