@@ -1,0 +1,124 @@
+[
+ {
+  "tag_name": "v0.10.0",
+  "draft": true,
+  "prerelease": true,
+  "assets": [
+   {
+    "name": "utre-0.10.0-arm64.apk",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.10.0/utre-0.10.0-arm64.apk"
+   },
+   {
+    "name": "utre-0.10.0-macos.zip",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.10.0/utre-0.10.0-macos.zip"
+   },
+   {
+    "name": "utre-0.10.0-macos.zip.sig",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.10.0/utre-0.10.0-macos.zip.sig"
+   }
+  ]
+ },
+ {
+  "tag_name": "v0.9.0",
+  "draft": false,
+  "prerelease": true,
+  "assets": [
+   {
+    "name": "utre-0.9.0-arm64.apk",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.9.0/utre-0.9.0-arm64.apk"
+   },
+   {
+    "name": "utre-0.9.0-macos.zip",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.9.0/utre-0.9.0-macos.zip"
+   }
+  ]
+ },
+ {
+  "tag_name": "v0.8.12",
+  "draft": false,
+  "prerelease": true,
+  "assets": [
+   {
+    "name": "utre-0.8.12-arm64.apk",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8.12/utre-0.8.12-arm64.apk"
+   },
+   {
+    "name": "utre-0.8.12-macos.zip",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8.12/utre-0.8.12-macos.zip"
+   },
+   {
+    "name": "utre-0.8.12-macos.zip.sig",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8.12/utre-0.8.12-macos.zip.sig"
+   }
+  ]
+ },
+ {
+  "tag_name": "v0.8",
+  "draft": false,
+  "prerelease": true,
+  "assets": [
+   {
+    "name": "utre-0.8-arm64.apk",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8/utre-0.8-arm64.apk"
+   },
+   {
+    "name": "utre-0.8-macos.zip",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8/utre-0.8-macos.zip"
+   },
+   {
+    "name": "utre-0.8-macos.zip.sig",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8/utre-0.8-macos.zip.sig"
+   }
+  ]
+ },
+ {
+  "tag_name": "arch-repo",
+  "draft": false,
+  "prerelease": false,
+  "assets": []
+ },
+ {
+  "tag_name": "v0.8.11",
+  "draft": false,
+  "prerelease": true,
+  "assets": [
+   {
+    "name": "utre-0.8.11-arm64.apk",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8.11/utre-0.8.11-arm64.apk"
+   },
+   {
+    "name": "utre-0.8.11-macos.zip",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8.11/utre-0.8.11-macos.zip"
+   },
+   {
+    "name": "utre-0.8.11-macos.zip.sig",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8.11/utre-0.8.11-macos.zip.sig"
+   }
+  ]
+ },
+ {
+  "tag_name": "v0.8.9",
+  "draft": false,
+  "prerelease": true,
+  "assets": [
+   {
+    "name": "utre-0.8.9-arm64.apk",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8.9/utre-0.8.9-arm64.apk"
+   },
+   {
+    "name": "utre-0.8.9-macos.zip",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8.9/utre-0.8.9-macos.zip"
+   },
+   {
+    "name": "utre-0.8.9-macos.zip.sig",
+    "browser_download_url": "https://github.com/Belkata/utre/releases/download/v0.8.9/utre-0.8.9-macos.zip.sig"
+   }
+  ]
+ },
+ {
+  "tag_name": "v0.8.2",
+  "draft": false,
+  "prerelease": true,
+  "assets": []
+ }
+]
