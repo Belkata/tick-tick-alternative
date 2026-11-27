@@ -43,7 +43,7 @@ Each milestone ends with something usable. Building the core first means the CLI
   - The `fmt` job (rustup only, probably not worth it). `deny` and `shellcheck` are already fast.
   - Catch: caches saved on a tag run are scoped to that tag, so the next release can't reuse them. Release workflows can restore `main`'s caches but must save under keys a `main` job also writes. So either add a `main` job that warms the release caches (e.g. weekly, or when `Cargo.lock`/`pubspec.lock`/`Podfile.lock` change), or accept cold release builds. Measure before and after (the macOS release build took about 18 min cold on its first run, 0.8.10).
   Asked by the user 2026-11-27.
-- [ ] Packaging: PKGBUILD and a DMG. 🟡 PKGBUILD done (`packaging/arch`, test-built with makepkg); DMG done (`scripts/build-macos.sh`, ad hoc signed, M2 slice 5). Neither installed yet.
+- [ ] Packaging: PKGBUILD and a DMG. 🟡 PKGBUILD done (`packaging/arch`, test-built with makepkg); DMG done (`scripts/build-macos.sh`, ad hoc signed, M2 slice 5). Since 2026-11-27 also a signed pacman repo, the macOS release zip and the macOS auto-update exist (see plan/08).
 
 **Exit:** usable daily on one machine.
 
@@ -61,6 +61,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [x] AlarmManager reminders with notification actions. ✅ Exact alarms, Done, Snooze 10 min and 1 h.
 - [x] WorkManager sync, QR scanner pairing. ✅ 15-min job plus expedited after outside edits; QR shown on Pair and scanned on Join (the real-phone scan isn't tested yet).
 - [ ] APK release via CI. 🟡 Workflow written (`.github/workflows/android-release.yml`); needs the user's release key and secrets.
+- [x] In-app auto-update from GitHub releases (PRs 56, 57). ✅ Daily check, silent install once Utre is the installer of record; emulator only, see [[17 M4 Android Log]] "In-app updater".
 
 **Exit:** phone ↔ desktop sync, and the widget is on the home screen.
 
