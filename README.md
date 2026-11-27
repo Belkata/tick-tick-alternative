@@ -95,7 +95,17 @@ To add the widget, long-press the home screen, choose Widgets, then Utre.
 
 ### macOS
 
-There is no prebuilt download yet. Build from source. You need Xcode, Rust, Flutter and CocoaPods.
+Download `utre-X.Y.Z-macos.zip` from the [Releases](https://github.com/Belkata/utre/releases) page and unzip it. Move `Utre.app` to `/Applications`. The app is ad hoc signed, not notarized, so the first launch needs right-click, then Open.
+
+Then start the daemon at login with a LaunchAgent. Run this once.
+
+```bash
+"/Applications/Utre.app/Contents/Resources/install-launch-agent.sh"
+```
+
+After that the daemon updates the app by itself from GitHub releases. It checks every 6 hours, and the menu-bar icon has "Check for Updates". Set `UTRE_AUTOUPDATE=0` to turn it off.
+
+To build from source instead you need Xcode, Rust, Flutter and CocoaPods.
 
 ```bash
 source scripts/env.sh
@@ -105,7 +115,7 @@ source scripts/env.sh
 scripts/build-macos.sh
 ```
 
-This builds `Utre.app` (with the daemon inside) and a DMG in `dist/`. The app is at `app/build/macos/Build/Products/Release/Utre.app`. Copy it to `/Applications`, then start the daemon at login with a LaunchAgent.
+This builds `Utre.app` (with the daemon inside) and a DMG in `dist/`. The app is at `app/build/macos/Build/Products/Release/Utre.app`. Copy it to `/Applications`, then run the LaunchAgent installer.
 
 ```bash
 scripts/install-launch-agent.sh "/Applications/Utre.app"

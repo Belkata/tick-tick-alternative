@@ -122,10 +122,17 @@ After a feature batch merges, spawn a release agent with explicit authorisation.
    (`packaging/arch/utre-repo.asc`) and `--lsign-key` it; `fakeroot pacman --config ... --dbpath ... --cachedir ... --gpgdir ... -Sy`
    and `-Sw --noconfirm -dd utre-bin` must succeed and show the new version. Clean up:
    `gpgconf --homedir $d/gpg --kill all`, then remove the temp dirs.
-10. `scripts/aur-publish.sh X` only once the user's AUR account and SSH key exist; until then skip it and
+10. macOS: pushing the tag starts `.github/workflows/macos-release.yml`, which builds `utre-X-macos.zip` and
+    uploads it to the release once the release exists (it waits up to 30 minutes, so create the release right
+    after pushing the tag in step 6). Find the run (`gh run list --workflow macos-release.yml --limit 1`), wait with
+    `timeout 60m gh run watch <id>` via `run_in_background`, then `scripts/macos-release-sign.sh X` (makes and
+    uploads the detached signature with the repo key; CI never has the key). Check both assets exist:
+    `gh release view vX --json assets --jq '.assets[].name'` lists `utre-X-macos.zip` and `utre-X-macos.zip.sig`.
+    The Mac's daemon updater needs both. Untagged re-runs: `gh workflow run macos-release.yml -f tag=vX`.
+11. `scripts/aur-publish.sh X` only once the user's AUR account and SSH key exist; until then skip it and
     say so in the report.
-11. Run the reaper again.
-12. The final report tells the user to run `sudo pacman -Syu`, then `systemctl --user restart utre.service`
+12. Run the reaper again.
+13. The final report tells the user to run `sudo pacman -Syu`, then `systemctl --user restart utre.service`
     and reopen the app (agents can't sudo). After they confirm, verify read-only: service active,
     `readlink /proc/<daemon pid>/exe` is `/usr/bin/utre-daemon`, `pacman -Q utre-bin` shows the new version,
     journal clean, schema version, app window `xwayland: true`, read-only `utre ls`.
