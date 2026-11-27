@@ -53,6 +53,7 @@ class TaskListPane extends StatelessWidget {
     row: row,
     selected: row.id == c.selectedId,
     showList: c.view.kind != ViewKind.list,
+    hideTagId: c.view.kind == ViewKind.tag ? c.view.id : null,
     onTap: () => onOpen(row.id),
     onCheck: () => c.toggleDone(row.id),
   );
@@ -216,6 +217,7 @@ class _ReorderableTasks extends StatelessWidget {
           row: row,
           selected: row.id == c.selectedId,
           showList: c.view.kind != ViewKind.list,
+          hideTagId: c.view.kind == ViewKind.tag ? c.view.id : null,
           onTap: () => onOpen(row.id),
           onCheck: () => c.toggleDone(row.id),
         );
@@ -443,11 +445,15 @@ class TaskCard extends StatefulWidget {
     required this.onTap,
     required this.onCheck,
     this.showList = true,
+    this.hideTagId,
   });
 
   final TaskRow row;
   final bool selected;
   final bool showList;
+
+  /// In a tag's view, that tag's pill is left off (every card has it).
+  final String? hideTagId;
   final VoidCallback onTap;
   final VoidCallback onCheck;
 
@@ -505,7 +511,8 @@ class _TaskCardState extends State<TaskCard> {
       if (widget.showList && row.listName != null)
         _Meta(icon: Icons.format_list_bulleted, text: row.listName!),
       for (final t in row.tags)
-        TagPill(label: t.name, color: t.color, icon: t.icon),
+        if (t.id != widget.hideTagId)
+          TagPill(label: t.name, color: t.color, icon: t.icon),
       if (row.whenLabel != null)
         Text(
           row.whenLabel!,
