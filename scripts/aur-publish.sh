@@ -9,7 +9,8 @@
 # --dry-run stops before the clone, commit and push, and prints the result from a temp dir.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
-template="$repo/packaging/aur/utre-bin"
+# shellcheck source=lib/utre-bin.sh
+source "$repo/scripts/lib/utre-bin.sh"
 
 version=""
 dry=0
@@ -24,7 +25,6 @@ done
 
 tarball="$repo/dist/utre-$version-linux-x86_64.tar.gz"
 [[ -f "$tarball" ]] || { echo "missing $tarball (run scripts/build-linux-tarball.sh)" >&2; exit 1; }
-sum="$(sha256sum "$tarball" | cut -d' ' -f1)"
 
 if [[ $dry == 0 ]]; then
   assets="$(gh release view "v$version" --json assets --jq '.assets[].name')"
@@ -36,12 +36,7 @@ fi
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-cp "$template/PKGBUILD" "$template/utre-bin.install" "$work/"
-sed -i \
-  -e "s/^pkgver=.*/pkgver=$version/" \
-  -e "s/^pkgrel=.*/pkgrel=1/" \
-  -e "s/^sha256sums=.*/sha256sums=('$sum')/" \
-  "$work/PKGBUILD"
+fill_utre_bin_template "$work" "$version" "$tarball"
 (cd "$work" && makepkg --printsrcinfo > .SRCINFO)
 if command -v namcap >/dev/null; then
   namcap "$work/PKGBUILD" || true
