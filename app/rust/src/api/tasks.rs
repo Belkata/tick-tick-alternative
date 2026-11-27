@@ -675,6 +675,37 @@ impl TaskDb {
         self.write(Request::PlaceTag { id, before }).map(drop)
     }
 
+    /// A new tag named `name` under `parent_id` (or at the top); an existing sibling with
+    /// that name is reused. Returns its id.
+    pub fn create_tag(&self, name: String, parent_id: Option<String>) -> anyhow::Result<String> {
+        Ok(serde_json::from_value(
+            self.write(Request::CreateTag { name, parent_id })?,
+        )?)
+    }
+
+    /// Find or create every level of a path like `home/garden`. Returns the leaf's id.
+    pub fn ensure_tag_path(&self, path: String) -> anyhow::Result<String> {
+        Ok(serde_json::from_value(
+            self.write(Request::EnsureTagPath { path })?,
+        )?)
+    }
+
+    /// Re-nest a tag (with the tags under it) under `parent_id`, or at the top with `None`,
+    /// right before `before` among its new siblings, or last with `None`.
+    pub fn nest_tag(
+        &self,
+        id: String,
+        parent_id: Option<String>,
+        before: Option<String>,
+    ) -> anyhow::Result<()> {
+        self.write(Request::NestTag {
+            id,
+            parent_id,
+            before,
+        })
+        .map(drop)
+    }
+
     /// Delete a tag and the tags under it; tasks lose them.
     pub fn delete_tag(&self, id: String) -> anyhow::Result<()> {
         self.write(Request::DeleteTag { id }).map(drop)

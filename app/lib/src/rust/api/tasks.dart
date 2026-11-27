@@ -67,6 +67,10 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   Future<String> createList({required String name});
 
+  /// A new tag named `name` under `parent_id` (or at the top); an existing sibling with
+  /// that name is reused. Returns its id.
+  Future<String> createTag({required String name, String? parentId});
+
   Future<void> deleteFilter({required String id});
 
   /// Delete a list. Its tasks stay, with no list.
@@ -74,6 +78,9 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   /// Delete a tag and the tags under it; tasks lose them.
   Future<void> deleteTag({required String id});
+
+  /// Find or create every level of a path like `home/garden`. Returns the leaf's id.
+  Future<String> ensureTagPath({required String path});
 
   /// A saved filter's definition as JSON (`name`, `icon`, `rule`, `sort`, `show_completed`).
   Future<String?> filterJson({required String id});
@@ -127,6 +134,10 @@ abstract class TaskDb implements RustOpaqueInterface {
 
   /// True when calls go through `utre-daemon`.
   bool isRemote();
+
+  /// Re-nest a tag (with the tags under it) under `parent_id`, or at the top with `None`,
+  /// right before `before` among its new siblings, or last with `None`.
+  Future<void> nestTag({required String id, String? parentId, String? before});
 
   /// Open (or create) the database file at `path` in this process (Android, tests).
   static Future<TaskDb> open({required String path}) =>
