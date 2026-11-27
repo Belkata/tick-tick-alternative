@@ -63,5 +63,6 @@ package() {
     "$pkgdir/usr/share/applications/dev.utre.utre.desktop"
   install -Dm644 app/linux/packaging/dev.utre.utre.svg \
     "$pkgdir/usr/share/icons/hicolor/scalable/apps/dev.utre.utre.svg"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 app/assets/fonts/OFL.txt "$pkgdir/usr/share/licenses/$pkgname/Manrope-OFL.txt"
 }
