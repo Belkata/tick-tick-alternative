@@ -13,6 +13,9 @@
 //!   `UNUserNotificationCenter`, which only works from an app bundle (`Utre Daemon.app`,
 //!   built by scripts/build-macos.sh); run bare, the daemon logs reminders instead.
 //!
+//! - **Updates (macOS, `update.rs`, `update_mac.rs`):** from inside the app bundle, the whole
+//!   `Utre.app` is replaced by the newest signed GitHub release (`UTRE_AUTOUPDATE=0` turns it off).
+//!
 //! - **Google** (M5b, `google.rs`): sign-in through the browser and a fetch of the selected
 //!   calendars' events every 5 minutes into the local cache. Needs the OAuth client file
 //!   (`utre_api::paths::google_client`); without it Google is simply unavailable.
@@ -28,7 +31,6 @@ use anyhow::{Context, Result};
 use tokio::sync::mpsc;
 mod google;
 mod sync;
-mod update;
 #[cfg_attr(target_os = "linux", path = "tray_sni.rs")]
 #[cfg_attr(target_os = "macos", path = "tray_mac.rs")]
 #[cfg_attr(
@@ -38,6 +40,9 @@ mod update;
 mod tray;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod tray_mark;
+mod update;
+#[cfg(target_os = "macos")]
+mod update_mac;
 
 use std::sync::Arc;
 
@@ -74,6 +79,12 @@ enum Cmd {
     OpenApp {
         token: Option<String>,
     },
+    /// macOS: look for a new release now (menu-bar item).
+    #[cfg(target_os = "macos")]
+    CheckUpdates,
+    /// macOS: the updater's status line for the menu.
+    #[cfg(target_os = "macos")]
+    UpdateStatus(String),
     Quit,
 }
 
@@ -364,6 +375,10 @@ async fn run() -> Result<()> {
         });
     }
 
+    // macOS: update the whole app from GitHub releases (only when run from the app bundle).
+    #[cfg(target_os = "macos")]
+    let updater = update_mac::Updater::start(tx.clone());
+
     // Auto-sync: shortly after startup, every 90 s, and a few seconds after local edits
     // (the sync's own writes arrive as outside commits, which don't count as edits).
     if let Some(svc) = &sync {
@@ -454,6 +469,14 @@ async fn run() -> Result<()> {
                     });
                 }
                 Cmd::OpenApp { token } => open_app(token),
+                #[cfg(target_os = "macos")]
+                Cmd::CheckUpdates => if let Some(u) = &updater {
+                    u.check_now();
+                },
+                #[cfg(target_os = "macos")]
+                Cmd::UpdateStatus(line) => if let Some(h) = &handle {
+                    h.set_update_line(line).await;
+                },
                 Cmd::Quit => break,
             },
             _ = tokio::signal::ctrl_c() => break,
