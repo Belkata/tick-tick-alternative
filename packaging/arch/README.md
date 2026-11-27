@@ -3,11 +3,19 @@
 ## Prebuilt, from our own pacman repository (recommended)
 
 The repository `utre` lives on the `arch-repo` GitHub release and is refreshed by
-`scripts/pacman-repo-publish.sh` on every release. Add this to `/etc/pacman.conf`:
+`scripts/pacman-repo-publish.sh` on every release. Packages and the database are signed. Trust the key
+first (check that the fingerprint is `8D9A9E543BB6D88237D174A78BE15C9843ADD341`):
+
+```
+curl -LO https://raw.githubusercontent.com/Belkata/utre/main/packaging/arch/utre-repo.asc
+sudo pacman-key --add utre-repo.asc
+sudo pacman-key --lsign-key 8D9A9E543BB6D88237D174A78BE15C9843ADD341
+```
+
+Then add this to `/etc/pacman.conf` (default signature level):
 
 ```
 [utre]
-SigLevel = Optional TrustAll
 Server = https://github.com/Belkata/utre/releases/download/arch-repo
 ```
 
@@ -20,21 +28,6 @@ systemctl --user daemon-reload && systemctl --user enable --now utre.service
 
 After that `pacman -Syu` or `yay -Syu` updates the app, the daemon and the `utre` CLI. Restart the
 daemon after an update: `systemctl --user restart utre.service`.
-
-### Signed variant (once a signing key exists)
-
-Packages and databases are signed when the publisher sets `UTRE_REPO_GPGKEY`. Then import the key
-(a key file will be kept in this repo) and use the default signature level:
-
-```
-sudo pacman-key --add utre-repo.gpg
-sudo pacman-key --lsign-key <KEYID>
-```
-
-```
-[utre]
-Server = https://github.com/Belkata/utre/releases/download/arch-repo
-```
 
 ## From source
 
