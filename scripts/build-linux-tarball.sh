@@ -42,9 +42,7 @@ install -m644 daemon/utre.service "$stage/$name/share/systemd/utre.service"
 install -m644 app/linux/packaging/dev.utre.utre.desktop app/linux/packaging/dev.utre.utre.svg \
   "$stage/$name/share/"
 install -m644 app/assets/fonts/OFL.txt "$stage/$name/licenses/Manrope-OFL.txt"
-if [[ -f LICENSE ]]; then
-  install -m644 LICENSE "$stage/$name/LICENSE"
-fi
+install -m644 LICENSE "$stage/$name/LICENSE"
 
 echo "== packing"
 mkdir -p dist
