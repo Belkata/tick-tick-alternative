@@ -91,6 +91,8 @@ Then enable the daemon as above. See also [packaging/arch/README.md](packaging/a
 
 Download the latest `utre-X.Y.Z-arm64.apk` from [GitHub Releases](https://github.com/Belkata/utre/releases) and open it on the phone. Android asks you to allow installs from that source (your browser or file manager). Releases are currently marked as pre-releases. Later versions install over the old one as long as they are signed with the same key.
 
+From then on the app updates itself: it checks GitHub Releases once a day on an unmetered network and when it starts, and installs a newer release through Android's package installer (Android 12 and newer can do this without a prompt once Utre installed itself). Open **Updates** in the sidebar to check now, to turn automatic installs off, or to allow installs from Utre if Android asks.
+
 To add the widget, long-press the home screen, choose Widgets, then Utre.
 
 ### macOS
