@@ -11,4 +11,4 @@ PRODUCT_NAME = Utre
 PRODUCT_BUNDLE_IDENTIFIER = dev.utre.utre
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 dev.utre. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 Boris Belev. Licensed under MIT.
