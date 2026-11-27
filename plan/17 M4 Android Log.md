@@ -81,3 +81,14 @@ Back to [[00 Overview]] · [[10 Roadmap]] · [[07 Android App & Widget]] · [[16
 - `SyncWorker`'s foreground notice has its own minimum-importance channel `sync`. `allowBackup=false`: the sync key must not travel through Android backup.
 - `syncSoon` uses APPEND_OR_REPLACE and a process-wide mutex, so rounds never overlap; stale reminder notifications are cancelled after a sync.
 - Build: AGP 9.5.3, Kotlin 2.4.21 (Compose plugin 2.4.21), Gradle 9.9.2.
+
+## In-app updater (2026-11-27, PRs 56, 57)
+- **Feed:** the GitHub releases list. Drafts and tags that are not `vX.Y.Z` (such as `arch-repo`) are skipped; pre-releases are included. A release counts only if it has `utre-X.Y.Z-arm64.apk` (only arm64-v8a is mapped), so **the release step must keep that asset name**.
+- **Code:** `HttpURLConnection` and `org.json`, no new HTTP library. The APK downloads to `noBackupFilesDir/updates` and its size is checked against the release asset before install.
+- **Install:** `PackageInstaller` with `USER_ACTION_NOT_REQUIRED` plus the `UPDATE_PACKAGES_WITHOUT_USER_ACTION` permission. Without that permission Android 12+ always prompts (PR 56 showed status -1 on the emulator). New permissions: `REQUEST_INSTALL_PACKAGES`, `UPDATE_PACKAGES_WITHOUT_USER_ACTION`. Silent installs only work once Utre is the installer of record, so the first install is by hand.
+- **Schedule:** a daily WorkManager check on unmetered networks, plus a check at app start. More, then Updates shows the state and a manual check.
+- **Emulator (API 36):** three updates in a row installed silently, in the foreground and in the background. When the system asks anyway, the app falls back to the confirm dialog or a notification.
+- **After an update:** `MY_PACKAGE_REPLACED`. The existing reminder and widget receivers already handle it; a new receiver re-enqueues `SyncWorker` and `UpdateWorker` and posts "Utre updated to X".
+- **Test hooks:** env vars `UTRE_UPDATE_FEED` and `UTRE_UPDATE_ASSET_SUFFIX` (Gradle `-Putre.updateFeed`, `-Putre.updateAssetSuffix`). Cleartext to 10.0.2.2 and localhost is allowed only in builds that set them.
+- **Unverified:** on the real Xiaomi (MIUI's installer, the permission screen, the live feed).
+- **Worktree gotcha:** `gradlew`, `gradlew.bat`, `local.properties` and `gradle/wrapper/gradle-wrapper.jar` are git-ignored, so a fresh worktree needs them copied, plus `flutter pub get`.
