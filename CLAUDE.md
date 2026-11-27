@@ -182,6 +182,8 @@ Always start with `source scripts/env.sh`. It sets up rustup, which is keg-only 
 | macOS LaunchAgent | `scripts/install-launch-agent.sh ["/Applications/Utre.app"]` (`--remove` to undo) |
 | Publish a test APK | bump `version:` in `app/pubspec.yaml`, build the release APK, then `gh release create vX.Y.Z <apk> --prerelease` (see v0.1.0) |
 | Update this laptop (daemon, `utre`, app) | `scripts/update-desktop.sh`: rebuilds only what changed (daemon and `utre` with `--profile fast`, the app as a Flutter release build), backs up the DB, restarts the daemon and relaunches the app. `--all` rebuilds everything, `--no-restart` only builds |
+| Linux tarball for the AUR (`utre-bin`) | `scripts/build-linux-tarball.sh [--version X.Y.Z]` → `dist/utre-<version>-linux-x86_64.tar.gz`; attach it to the GitHub release |
+| Publish `utre-bin` to the AUR | `scripts/aur-publish.sh X.Y.Z [--dry-run]` (needs the release asset and the user's AUR SSH key) |
 
 The first Gradle build takes about 6 minutes, because cargokit compiles Rust for each Android ABI. Long builds are best run in the background.
 

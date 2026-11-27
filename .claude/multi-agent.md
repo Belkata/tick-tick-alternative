@@ -107,7 +107,12 @@ After a feature batch merges, spawn a release agent with explicit authorisation.
 6. Verify: service active, journal clean, schema version, app window `xwayland: true`, read-only `utre ls`.
 7. Build the APK (`timeout 30m`), copy to `dist/utre-X-arm64.apk`, tag, `gh release create --prerelease`
    (notes with no footer).
-8. Run the reaper again.
+8. Build the Linux tarball (`timeout 30m scripts/build-linux-tarball.sh`, writes
+   `dist/utre-X-linux-x86_64.tar.gz`) and upload it to the same pre-release
+   (`gh release upload vX dist/utre-X-linux-x86_64.tar.gz`).
+9. `scripts/aur-publish.sh X` publishes `utre-bin` to the AUR (`--dry-run` to preview). It needs the user's
+   AUR SSH key; until that exists, skip this step and say so in the report.
+10. Run the reaper again.
 
 - Releases are sequential. Don't start one while another is running.
 - Docs-only or tooling-only changes don't need an app release.
