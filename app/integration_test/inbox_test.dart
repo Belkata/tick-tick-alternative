@@ -262,7 +262,13 @@ void main() {
       await g.moveBy(const Offset(0, -6));
       await tester.pump(const Duration(milliseconds: 16));
     }
-    await g.moveTo(Offset(above.dx + 40, above.dy - 4));
+    // The top edge of "garden", straight up (no level change).
+    await g.moveTo(
+      Offset(
+        tester.getCenter(find.byKey(const Key('drag-tags-garden'))).dx,
+        above.dy + 3,
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 100));
     await g.up();
     await settle(tester);
@@ -275,6 +281,32 @@ void main() {
     expect(
       tester.getTopLeft(find.byKey(const Key('nav-tag-work'))).dy,
       lessThan(tester.getTopLeft(find.byKey(const Key('nav-tag-garden'))).dy),
+    );
+  });
+
+  testWidgets('nest a tag by dropping it on another', (tester) async {
+    final db = await pumpApp(tester);
+    await addTask(tester, 'Plant bulbs');
+    final id = (await db.inbox()).single.id;
+    await db.tag(id: id, path: 'garden');
+    await db.tag(id: id, path: 'home');
+    await settle(tester);
+
+    await tester.tap(find.byKey(const Key('arrange-tags')));
+    await settle(tester);
+    final handle = tester.getCenter(find.byKey(const Key('drag-tags-garden')));
+    final g = await tester.startGesture(handle);
+    final home = tester.getCenter(find.byKey(const Key('nav-tag-home')));
+    for (var i = 1; i <= 8; i++) {
+      await g.moveTo(Offset.lerp(handle, Offset(handle.dx, home.dy), i / 8)!);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await g.up();
+    await settle(tester);
+    final tags = (await db.sidebar()).tags;
+    expect(
+      [for (final t in tags) (t.name, t.depth)],
+      [('home', 0), ('garden', 1)],
     );
   });
 
