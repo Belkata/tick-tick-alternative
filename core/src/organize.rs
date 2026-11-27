@@ -265,6 +265,58 @@ fn sibling_tag(conn: &Connection, parent_id: Option<&str>, name: &str) -> Result
         .optional()?)
 }
 
+fn move_tag_in(w: &mut Writer, id: &str, parent_id: Option<&str>) -> Result<()> {
+    require_tag(w.conn, id)?;
+    if let Some(p) = parent_id {
+        require_tag(w.conn, p)?;
+        if tag_subtree(w.conn, id)?.iter().any(|t| t == p) {
+            return Err(Error::Invalid("a tag can't be under itself".into()));
+        }
+    }
+    // Names are unique among siblings.
+    let name: String = w
+        .conn
+        .query_row("SELECT name FROM tag WHERE id = ?1", [id], |r| r.get(0))?;
+    if sibling_tag(w.conn, parent_id, &name)?.is_some_and(|s| s != id) {
+        return Err(Error::Invalid(format!(
+            "a tag named '{name}' is already there"
+        )));
+    }
+    w.set(Entity::Tag, id, "parent_id", parent_id)
+}
+
+fn place_tag_in(w: &mut Writer, id: &str, before: Option<&str>) -> Result<()> {
+    require_tag(w.conn, id)?;
+    let mut others = tag_siblings(w.conn, id)?;
+    others.retain(|(t, _)| t != id);
+    let at = match before {
+        None => others.len(),
+        Some(b) => others
+            .iter()
+            .position(|(t, _)| t == b)
+            .ok_or_else(|| Error::Invalid(format!("tag {b} isn't a sibling of {id}")))?,
+    };
+    let arranged =
+        others.iter().all(|(_, k)| !k.is_empty()) && others.windows(2).all(|p| p[0].1 < p[1].1);
+    if arranged {
+        let a = at.checked_sub(1).map(|i| others[i].1.as_str());
+        let b = others.get(at).map(|(_, k)| k.as_str());
+        let key = key_between(a, b);
+        // A key this module didn't make (e.g. from a future version) may not fit.
+        if a.is_none_or(|a| a < key.as_str()) && b.is_none_or(|b| key.as_str() < b) {
+            return w.set(Entity::Tag, id, "sort_key", key.as_str());
+        }
+    }
+    // Ties, never-arranged or odd keys: number them all in the order they show now.
+    others.insert(at, (id.to_string(), String::new()));
+    for ((t, old), key) in others.iter().zip(spread_keys(others.len())) {
+        if *old != key {
+            w.set(Entity::Tag, t, "sort_key", key.as_str())?;
+        }
+    }
+    Ok(())
+}
+
 fn create_tag_in(w: &mut Writer, name: &str, parent_id: Option<&str>) -> Result<String> {
     if name.contains('/') {
         return Err(Error::Invalid("tag names can't contain '/'".into()));
@@ -456,51 +508,28 @@ impl Store {
 
     /// Re-nest a tag under `parent_id`, or at the top with `None`. Tasks keep it.
     pub fn move_tag(&self, id: &str, parent_id: Option<&str>) -> Result<()> {
-        self.write(|w| {
-            require_tag(w.conn, id)?;
-            if let Some(p) = parent_id {
-                require_tag(w.conn, p)?;
-                if tag_subtree(w.conn, id)?.iter().any(|t| t == p) {
-                    return Err(Error::Invalid("a tag can't be under itself".into()));
-                }
-            }
-            w.set(Entity::Tag, id, "parent_id", parent_id)
-        })
+        self.write(|w| move_tag_in(w, id, parent_id))
     }
 
     /// Arrange a tag among its siblings: right before `before` (a sibling), or last with
     /// `None`. Usually one op; the first arrangement of a set of siblings numbers them all.
     pub fn place_tag(&self, id: &str, before: Option<&str>) -> Result<()> {
+        self.write(|w| place_tag_in(w, id, before))
+    }
+
+    /// Re-nest a tag under `parent_id` (or at the top) and place it right before `before`,
+    /// one of its new siblings, or last with `None`. The sidebar's drag and drop.
+    pub fn nest_tag(&self, id: &str, parent_id: Option<&str>, before: Option<&str>) -> Result<()> {
         self.write(|w| {
-            require_tag(w.conn, id)?;
-            let mut others = tag_siblings(w.conn, id)?;
-            others.retain(|(t, _)| t != id);
-            let at = match before {
-                None => others.len(),
-                Some(b) => others
-                    .iter()
-                    .position(|(t, _)| t == b)
-                    .ok_or_else(|| Error::Invalid(format!("tag {b} isn't a sibling of {id}")))?,
-            };
-            let arranged = others.iter().all(|(_, k)| !k.is_empty())
-                && others.windows(2).all(|p| p[0].1 < p[1].1);
-            if arranged {
-                let a = at.checked_sub(1).map(|i| others[i].1.as_str());
-                let b = others.get(at).map(|(_, k)| k.as_str());
-                let key = key_between(a, b);
-                // A key this module didn't make (e.g. from a future version) may not fit.
-                if a.is_none_or(|a| a < key.as_str()) && b.is_none_or(|b| key.as_str() < b) {
-                    return w.set(Entity::Tag, id, "sort_key", key.as_str());
-                }
+            let parent: Option<String> =
+                w.conn
+                    .query_row("SELECT parent_id FROM tag WHERE id = ?1", [id], |r| {
+                        r.get(0)
+                    })?;
+            if parent.as_deref() != parent_id {
+                move_tag_in(w, id, parent_id)?;
             }
-            // Ties, never-arranged or odd keys: number them all in the order they show now.
-            others.insert(at, (id.to_string(), String::new()));
-            for ((t, old), key) in others.iter().zip(spread_keys(others.len())) {
-                if *old != key {
-                    w.set(Entity::Tag, t, "sort_key", key.as_str())?;
-                }
-            }
-            Ok(())
+            place_tag_in(w, id, before)
         })
     }
 
@@ -641,6 +670,48 @@ mod tests {
         assert!(s.move_tag(&home, Some(&errands)).is_err(), "loop");
         let tags = s.task_tags(&t.id).unwrap();
         assert_eq!(tags[0].path, "home/shopping");
+    }
+
+    #[test]
+    fn nest_tag_moves_a_subtree_into_place() {
+        let s = Store::open_in_memory().unwrap();
+        let paths =
+            |s: &Store| -> Vec<String> { s.tags().unwrap().into_iter().map(|t| t.path).collect() };
+        let home = s.ensure_tag_path("home").unwrap();
+        let garden = s.ensure_tag_path("home/garden").unwrap();
+        let work = s.ensure_tag_path("work").unwrap();
+        let errands = s.ensure_tag_path("errands").unwrap();
+        s.ensure_tag_path("errands/shop").unwrap();
+        // Into home, before garden: errands brings its child along.
+        s.nest_tag(&errands, Some(&home), Some(&garden)).unwrap();
+        assert_eq!(
+            paths(&s),
+            [
+                "home",
+                "home/errands",
+                "home/errands/shop",
+                "home/garden",
+                "work"
+            ]
+        );
+        // Back to the top, last.
+        s.nest_tag(&errands, None, None).unwrap();
+        assert_eq!(
+            paths(&s),
+            ["home", "home/garden", "work", "errands", "errands/shop"]
+        );
+        // Same parent: only arranges.
+        s.nest_tag(&errands, None, Some(&work)).unwrap();
+        assert_eq!(paths(&s)[2..4], ["errands", "errands/shop"]);
+        // Not under itself, and not next to a sibling with its name.
+        let shop = s.find_tag("errands/shop").unwrap().unwrap().id;
+        assert!(s.nest_tag(&errands, Some(&shop), None).is_err());
+        s.ensure_tag_path("garden").unwrap();
+        assert!(
+            s.nest_tag(&garden, None, None).is_err(),
+            "two top-level 'garden's"
+        );
+        assert!(s.move_tag(&garden, None).is_err());
     }
 
     #[test]
