@@ -35,6 +35,7 @@ Each milestone ends with something usable. Building the core first means the CLI
 - [ ] Tray daemon with socket API and systemd / LaunchAgent setup. 🟡 The socket API is done (slice 2) and so is the systemd user unit (slice 3: restart on failure, clients reconnect, single-instance app). On the Mac (slice 5) the daemon runs with a menu-bar icon and has a LaunchAgent (`scripts/install-launch-agent.sh`). See [[15 M2 Desktop Log]].
 - [ ] Three-pane UI: sidebar, list, detail. Tag tree, lists, filter builder, Completed and Trash. 🟡 Slices 1 and 4 done: sidebar (tag tree, lists, saved filters, Completed, Trash), task cards, detail editing (dates, repeat, reminders), keyboard, the visual filter builder, and tag and list colours and icons. Trash purge waits for the core. See [[15 M2 Desktop Log]].
 - [ ] Desktop notifications with Done and Snooze. 🟡 Linux: dunst (Spike 4). macOS: from the bundled daemon, Done tested, Snooze not yet (M2 slice 5).
+- [ ] README and website icon: replace the old sunrise logo (`docs/logo.svg`, `docs/logo.png`, used by `README.md` and as the logo and favicon of `docs/index.html`) with the u-tick app icon from `packaging/icon/utre-icon.svg` (plan/20 round 8). Asked by the user 2026-11-27.
 - [ ] Packaging: PKGBUILD and a DMG. 🟡 PKGBUILD done (`packaging/arch`, test-built with makepkg); DMG done (`scripts/build-macos.sh`, ad hoc signed, M2 slice 5). Neither installed yet.
 
 **Exit:** usable daily on one machine.
