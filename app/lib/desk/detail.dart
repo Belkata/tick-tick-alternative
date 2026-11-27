@@ -200,7 +200,7 @@ class DetailPane extends StatelessWidget {
                 icon: t.icon,
                 onDeleted: () => c.run(() => db.untag(id: id, tagId: t.id)),
               ),
-            _AddTag(
+            AddTag(
               paths: tagPaths,
               onAdd: (p) => c.run(() => db.tag(id: id, path: p)),
             ),
@@ -1209,18 +1209,18 @@ class _PriorityPicker extends StatelessWidget {
   }
 }
 
-/// `+ tag` that turns into a field with tag-path suggestions.
-class _AddTag extends StatefulWidget {
-  const _AddTag({required this.paths, required this.onAdd});
+/// `+ tag` that turns into a field with tag-path suggestions (public for tests).
+class AddTag extends StatefulWidget {
+  const AddTag({super.key, required this.paths, required this.onAdd});
 
   final List<String> paths;
   final ValueChanged<String> onAdd;
 
   @override
-  State<_AddTag> createState() => _AddTagState();
+  State<AddTag> createState() => _AddTagState();
 }
 
-class _AddTagState extends State<_AddTag> {
+class _AddTagState extends State<AddTag> {
   bool _editing = false;
 
   @override
@@ -1250,12 +1250,7 @@ class _AddTagState extends State<_AddTag> {
     return SizedBox(
       width: 170,
       child: Autocomplete<String>(
-        optionsBuilder: (v) {
-          final q = v.text.toLowerCase();
-          return q.isEmpty
-              ? const []
-              : widget.paths.where((p) => p.toLowerCase().contains(q)).take(8);
-        },
+        optionsBuilder: (v) => _matches(v.text),
         onSelected: _submit,
         fieldViewBuilder: (context, ctl, focus, onSubmit) => TextField(
           key: const Key('tag-field'),
@@ -1265,13 +1260,28 @@ class _AddTagState extends State<_AddTag> {
           style: manrope(12, FontWeight.w500),
           decoration: const InputDecoration(hintText: 'tag or parent/child'),
           onSubmitted: (v) {
-            onSubmit();
-            _submit(v);
+            // Enter takes the highlighted suggestion (via onSelected) when
+            // the dropdown shows one; only otherwise is the typed text a
+            // new tag. Doing both added "ai-saf" next to "ai-safety".
+            if (_matches(v).isEmpty) {
+              _submit(v);
+            } else {
+              onSubmit();
+            }
           },
           onTapOutside: (_) => setState(() => _editing = false),
         ),
       ),
     );
+  }
+
+  Iterable<String> _matches(String text) {
+    final q = text.trim().toLowerCase();
+    if (q.isEmpty) return const [];
+    // An exact match goes first so Enter on a full path picks that path.
+    final hits = widget.paths.where((p) => p.toLowerCase().contains(q));
+    final exact = hits.where((p) => p.toLowerCase() == q);
+    return [...exact, ...hits.where((p) => p.toLowerCase() != q)].take(8);
   }
 
   void _submit(String v) {
