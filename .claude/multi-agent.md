@@ -111,7 +111,7 @@ After a feature batch merges, spawn a release agent with explicit authorisation.
    `dist/utre-X-linux-x86_64.tar.gz`) and upload it to the same pre-release
    (`gh release upload vX dist/utre-X-linux-x86_64.tar.gz`).
 9. `scripts/pacman-repo-publish.sh X` (always; `--dry-run` to preview) adds the package to our pacman
-   repository on the `arch-repo` GitHub release (`packaging/arch/README.md`). Set `UTRE_REPO_GPGKEY` to sign.
+   repository on the `arch-repo` GitHub release (`packaging/arch/README.md`). It signs with the repo key in the keyring (`--unsigned` opts out).
 10. `scripts/aur-publish.sh X` only once the user's AUR account and SSH key exist; until then skip it and
     say so in the report.
 11. Run the reaper again.
