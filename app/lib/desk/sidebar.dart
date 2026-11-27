@@ -10,6 +10,7 @@ import 'controller.dart';
 import 'filter_builder.dart';
 import 'style_dialog.dart';
 import 'tag_order.dart';
+import 'tag_section.dart';
 import 'theme.dart';
 
 /// Inbox, Lists, Filters, the Tags tree, Completed and Trash (plan/08).
@@ -21,6 +22,8 @@ class DeskSidebar extends StatelessWidget {
     this.top = const [],
     this.extras = const [],
     this.viewSelected = true,
+    this.collapsedTags = const {},
+    this.onCollapseTag,
   });
 
   final DeskController c;
@@ -37,6 +40,10 @@ class DeskSidebar extends StatelessWidget {
   /// False while a full-pane page (Calendar, Devices) is open: no task view is current then.
   final bool viewSelected;
 
+  /// Parent tags folded in the sidebar (per device), and how to fold or unfold one.
+  final Set<String> collapsedTags;
+  final void Function(String id, bool collapsed)? onCollapseTag;
+
   @override
   Widget build(BuildContext context) {
     final s = context.soft;
@@ -51,12 +58,14 @@ class DeskSidebar extends StatelessWidget {
       Key? key,
       VoidCallback? onEdit,
       Widget? trail,
+      Widget? expander,
     }) => NavTile(
       key: key,
       label: label,
       lead: lead,
       count: count,
       trail: trail,
+      expander: expander,
       depth: depth,
       selected: viewSelected && c.view == v,
       onTap: () {
@@ -211,22 +220,50 @@ class DeskSidebar extends StatelessWidget {
               onEdit: () => showFilterBuilder(context, c, filterId: f.id),
             ),
           ),
-          if ((sb?.tags ?? const []).isNotEmpty)
-            _ArrangeSection(
+          if (sb != null)
+            TagSection(
               c: c,
-              items: sb!.tags,
-              noun: 'tags',
-              place: (id, before) => c.db.placeTag(id: id, before: before),
-              header: (action) => section('Tags', action: action),
-              tile: (t, trail) => nav(
+              tags: sb.tags,
+              collapsed: collapsedTags,
+              onCollapse: onCollapseTag,
+              empty: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 12, 6),
+                child: Text(
+                  'Add one with +, or tag a task',
+                  style: manrope(11.5, FontWeight.w500, color: s.mute),
+                ),
+              ),
+              header: (arrange) => section(
+                'Tags',
+                action: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _SmallButton(
+                      key: const Key('new-tag'),
+                      icon: Icons.add,
+                      tooltip: 'New tag',
+                      onTap: () => _newTag(context),
+                    ),
+                    ?arrange,
+                  ],
+                ),
+              ),
+              tile: (t, {trail, expander}) => nav(
                 TaskView(kind: ViewKind.tag, id: t.id),
                 t.name,
                 lead: emojiOr(t.icon, dot(t.color)),
                 count: t.count,
                 depth: t.depth,
                 trail: trail,
+                expander: expander,
                 key: Key('nav-tag-${t.name}'),
-                onEdit: () => showStyleDialog(context, c, item: t, isTag: true),
+                onEdit: () => showStyleDialog(
+                  context,
+                  c,
+                  item: t,
+                  isTag: true,
+                  onNewSubTag: () => _newTag(context, parent: t),
+                ),
               ),
             ),
           const SizedBox(height: 10),
@@ -244,6 +281,29 @@ class DeskSidebar extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// A new tag at the top (a `parent/child` path works too) or under `parent`.
+  Future<void> _newTag(BuildContext context, {NavItem? parent}) async {
+    final name = await askText(
+      context,
+      title: parent == null ? 'New tag' : 'New tag under ${parent.name}',
+      hint: parent == null ? 'Name, or parent/child' : 'Name',
+    );
+    if (name == null || name.trim().isEmpty) return;
+    final id = await c.run(
+      () => parent == null
+          ? c.db.ensureTagPath(
+              path: name.split('/').map((p) => p.trim()).join('/'),
+            )
+          : c.db.createTag(name: name.trim(), parentId: parent.id),
+    );
+    if (id == null) return;
+    if (parent != null && collapsedTags.contains(parent.id)) {
+      onCollapseTag?.call(parent.id, false);
+    }
+    c.open(TaskView(kind: ViewKind.tag, id: id));
+    onPicked?.call();
   }
 
   Future<void> _newList(BuildContext context) async {
@@ -410,6 +470,7 @@ class NavTile extends StatelessWidget {
     this.depth = 0,
     this.onEdit,
     this.trail,
+    this.expander,
   });
 
   final String label;
@@ -424,6 +485,9 @@ class NavTile extends StatelessWidget {
 
   /// Shown at the end instead of the count, e.g. a drag handle.
   final Widget? trail;
+
+  /// Shown before the icon, e.g. a parent tag's fold chevron.
+  final Widget? expander;
 
   @override
   Widget build(BuildContext context) {
@@ -446,6 +510,7 @@ class NavTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               child: Row(
                 children: [
+                  ?expander,
                   SizedBox(width: 18, child: Center(child: lead)),
                   const SizedBox(width: 8),
                   Expanded(

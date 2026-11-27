@@ -28,9 +28,11 @@ Future<void> showStyleDialog(
   DeskController c, {
   required NavItem item,
   required bool isTag,
+  VoidCallback? onNewSubTag,
 }) => showDialog<void>(
   context: context,
-  builder: (_) => _StyleDialog(c: c, item: item, isTag: isTag),
+  builder: (_) =>
+      _StyleDialog(c: c, item: item, isTag: isTag, onNewSubTag: onNewSubTag),
 );
 
 class _StyleDialog extends StatefulWidget {
@@ -38,11 +40,15 @@ class _StyleDialog extends StatefulWidget {
     required this.c,
     required this.item,
     required this.isTag,
+    this.onNewSubTag,
   });
 
   final DeskController c;
   final NavItem item;
   final bool isTag;
+
+  /// Tags: closes the dialog and asks for a tag to make under this one.
+  final VoidCallback? onNewSubTag;
 
   @override
   State<_StyleDialog> createState() => _StyleDialogState();
@@ -204,6 +210,15 @@ class _StyleDialogState extends State<_StyleDialog> {
           style: TextButton.styleFrom(foregroundColor: s.late),
           child: const Text('Delete'),
         ),
+        if (widget.onNewSubTag != null)
+          TextButton(
+            key: const Key('style-subtag'),
+            onPressed: () {
+              Navigator.of(context).pop();
+              widget.onNewSubTag!();
+            },
+            child: const Text('New sub-tag'),
+          ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
