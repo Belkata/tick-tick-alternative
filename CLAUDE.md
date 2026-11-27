@@ -157,7 +157,8 @@ tools/uniffi-bindgen/ uniffi-bindgen pinned to the library's UniFFI version
 scripts/              env.sh, gen-kotlin-bindings.sh, install-user-service.sh, install-desktop-entry.sh,
                       build-macos.sh (app + DMG), install-launch-agent.sh
 dist/                 built APKs and DMGs for the user (git-ignored)
-docs/                 multi-agent.md (the playbook, imported above); also the GitHub Pages site files
+docs/                 the utre.party GitHub Pages site (CNAME, index.html, privacy/)
+.claude/              settings.json (the bash-guard hook), multi-agent.md (the playbook, imported below)
 plan/                 Obsidian plan notes + attachments/
 ```
 
@@ -230,7 +231,7 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 
 - **Small commits.** One logical change per commit; never commit large files or big mixed changes at once. Shrink screenshots before committing them (JPEG, about 400 px wide, into `plan/attachments/`).
 - No `Co-Authored-By` trailers or "Generated with" footers in commit messages.
-- Work is orchestrated as described in [docs/multi-agent.md](docs/multi-agent.md) (imported in "Multi-agent workflow").
+- Work is orchestrated as described in [.claude/multi-agent.md](.claude/multi-agent.md) (imported in "Multi-agent workflow").
 - Commit as `belkata.okfo@gmail.com` (this repo's `user.email`; the global git email is a work address). Push with the `Belkata` gh account.
 - Check a library's actual version (lockfile, crates.io, pub.dev, Google Maven) before using its API, and record new versions in `plan/02`. Use the `context7` MCP for docs.
 - Write readable multi-line shell commands with `\` continuations. Use `git -C <path>` outside the repo root.
@@ -241,9 +242,9 @@ The first Gradle build takes about 6 minutes, because cargokit compiles Rust for
 
 ## Multi-agent workflow (decided 2026-11-26)
 
-Every session uses it: the session the user talks to is the orchestrator and integrator; it plans, splits the work by area and briefs **Sonnet 5.5 subagents** (`model: "sonnet"`, in the background), each in its own worktree and PR with green CI before merge. It verifies their reports, answers the user and runs the release step. The full playbook (roles, brief template, release step, long-running command rules, lessons) is [docs/multi-agent.md](docs/multi-agent.md), imported here:
+Every session uses it: the session the user talks to is the orchestrator and integrator; it plans, splits the work by area and briefs **Sonnet 5.5 subagents** (`model: "sonnet"`, in the background), each in its own worktree and PR with green CI before merge. It verifies their reports, answers the user and runs the release step. The full playbook (roles, brief template, release step, long-running command rules, lessons) is [.claude/multi-agent.md](.claude/multi-agent.md), imported here:
 
-@docs/multi-agent.md
+@.claude/multi-agent.md
 
 ## Plugins to use (installed on the account 2026-11-24, not loaded in the session that wrote this)
 
