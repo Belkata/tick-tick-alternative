@@ -94,6 +94,35 @@ class WidgetBridge {
     }
   }
 
+  /// The updater's state (see Updater.kt): `status` (idle, checking, uptodate, downloading,
+  /// installing, ready, needs_permission, error), `latest`, `message`, `current`, `auto`,
+  /// `canInstall`. Null off Android.
+  static Future<Map<String, dynamic>?> updateState() async {
+    if (!supported) return null;
+    try {
+      final m = await _channel.invokeMapMethod<String, dynamic>('updateState');
+      return m;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
+  /// "Check for updates": looks on any network and installs what it finds.
+  static Future<void> updateCheck() => _call<void>('updateCheck');
+
+  /// Whether new releases install on their own (per device).
+  static Future<void> updateSetAuto(bool on) async {
+    if (!supported) return;
+    try {
+      await _channel.invokeMethod<void>('updateSetAuto', on);
+    } on MissingPluginException {
+      // Not on Android.
+    }
+  }
+
+  /// Android's "install unknown apps" screen for Utre.
+  static Future<void> updateInstallSettings() => _call<void>('updateInstallSettings');
+
   /// Ask the launcher to place the widget. Returns false if the launcher can't.
   static Future<bool> pin() async {
     if (!supported) return false;

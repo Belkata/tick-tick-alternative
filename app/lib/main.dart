@@ -12,6 +12,7 @@ import 'calendar/calendar_page.dart';
 import 'desk/devices.dart';
 import 'desk/google.dart';
 import 'desk/shell.dart';
+import 'desk/updates.dart';
 import 'desk/theme.dart';
 import 'src/rust/api/sync.dart';
 import 'src/rust/api/tasks.dart';
@@ -90,6 +91,13 @@ class UtreApp extends StatelessWidget {
           if (peer case final p?)
             ShellPage('Sync (spike)', Icons.sync, (_, _) => SyncPage(peer: p)),
           ShellPage('Devices', Icons.devices, (_, _) => DevicesPage(db: db)),
+          // The phone updates itself from GitHub releases (Updater.kt).
+          if (WidgetBridge.supported)
+            ShellPage(
+              'Updates',
+              Icons.system_update_alt,
+              (_, _) => UpdatesPage(source: BridgeUpdates()),
+            ),
           // Desktop: utre-daemon fetches. Phone: the app does, in-process (plan/19 slice 5).
           ShellPage(
             'Google Calendar',
