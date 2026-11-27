@@ -7,7 +7,7 @@ publish.workspace = true
 
 [dependencies]
 anyhow = "1.0.105"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal", "sync", "process"] }
 utre-api = { path = "../api", features = ["server"] }
 utre-core = { path = "../core" }
 utre-google = { path = "../google" }
