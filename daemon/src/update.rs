@@ -92,7 +92,9 @@ pub fn newer_than(release: Option<Release>, installed: &Version) -> Option<Relea
 /// `(CFBundleIdentifier, CFBundleShortVersionString)` of an `Info.plist` (XML or binary).
 pub fn parse_info_plist(bytes: &[u8]) -> Result<(String, Version)> {
     let value = plist::Value::from_reader(std::io::Cursor::new(bytes)).context("Info.plist")?;
-    let dict = value.as_dictionary().context("Info.plist is not a dictionary")?;
+    let dict = value
+        .as_dictionary()
+        .context("Info.plist is not a dictionary")?;
     let get = |key: &str| {
         dict.get(key)
             .and_then(|v| v.as_string())
@@ -121,6 +123,27 @@ pub fn verify_signature(data: &[u8], sig: &[u8]) -> Result<()> {
     signature
         .verify(&key, data)
         .context("the signature does not match")
+}
+
+/// Replace the directory `current` with `new` (same volume): `current` is renamed to `backup`,
+/// `new` to `current`. If the second rename fails, `current` is put back. On success the
+/// caller removes `backup`.
+pub fn swap_dirs(
+    current: &std::path::Path,
+    new: &std::path::Path,
+    backup: &std::path::Path,
+) -> Result<()> {
+    std::fs::rename(current, backup).context("moving the old app aside")?;
+    if let Err(e) = std::fs::rename(new, current) {
+        return match std::fs::rename(backup, current) {
+            Ok(()) => Err(e).context("moving the new app into place (rolled back)"),
+            Err(e2) => Err(e).context(format!(
+                "moving the new app into place; and the rollback failed ({e2}): the old app is at {}",
+                backup.display()
+            )),
+        };
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -191,6 +214,24 @@ mod tests {
     #[test]
     fn rejects_a_signature_by_another_key() {
         assert!(verify_signature(PAYLOAD, OTHER_SIG).is_err());
+    }
+
+    #[test]
+    fn swaps_directories_and_rolls_back() {
+        let tmp = std::env::temp_dir().join(format!("utre-swap-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(tmp.join("cur")).unwrap();
+        std::fs::create_dir_all(tmp.join("new")).unwrap();
+        std::fs::write(tmp.join("cur/v"), "old").unwrap();
+        std::fs::write(tmp.join("new/v"), "new").unwrap();
+        // A missing replacement rolls back: the current one stays.
+        assert!(swap_dirs(&tmp.join("cur"), &tmp.join("missing"), &tmp.join("bak")).is_err());
+        assert_eq!(std::fs::read_to_string(tmp.join("cur/v")).unwrap(), "old");
+        assert!(!tmp.join("bak").exists());
+        swap_dirs(&tmp.join("cur"), &tmp.join("new"), &tmp.join("bak")).unwrap();
+        assert_eq!(std::fs::read_to_string(tmp.join("cur/v")).unwrap(), "new");
+        assert_eq!(std::fs::read_to_string(tmp.join("bak/v")).unwrap(), "old");
+        std::fs::remove_dir_all(&tmp).unwrap();
     }
 
     #[test]

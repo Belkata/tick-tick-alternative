@@ -7,7 +7,7 @@
 //!
 //! Shows a template icon (the u-check, with its dot while the Inbox has tasks) with
 //! the Inbox count beside it. Menu: the first Inbox tasks, Open, Refresh, the sync status and
-//! Sync now, Quit.
+//! Sync now, the update status and Check for Updates, Quit.
 
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
@@ -52,6 +52,8 @@ struct State {
     icon: Option<TrayIcon>,
     inbox: Vec<Task>,
     sync_line: Option<String>,
+    /// The updater's status; `None` when updates are off (no menu item then).
+    update_line: Option<String>,
 }
 
 thread_local! {
@@ -90,6 +92,7 @@ impl Tray {
                     "open" => Cmd::OpenApp { token: None },
                     "refresh" => Cmd::Refresh,
                     "sync" => Cmd::SyncNow,
+                    "update" => Cmd::CheckUpdates,
                     "quit" => Cmd::Quit,
                     id => match id.strip_prefix("task:").and_then(|id| {
                         let listed = listed.lock().unwrap();
@@ -123,6 +126,7 @@ impl Tray {
                 icon,
                 inbox,
                 sync_line,
+                update_line: None,
             };
             state.redraw();
             STATE.with(|s| *s.borrow_mut() = Some(state));
@@ -137,6 +141,10 @@ impl Tray {
 
     pub async fn set_sync_line(&self, line: String) {
         on_main(move |s| s.sync_line = Some(line));
+    }
+
+    pub async fn set_update_line(&self, line: String) {
+        on_main(move |s| s.update_line = Some(line));
     }
 
     pub async fn shutdown(self) {
@@ -201,6 +209,16 @@ impl State {
             sync_line.is_some(),
             None,
         ));
+        if let Some(line) = &self.update_line {
+            add(&PredefinedMenuItem::separator());
+            add(&MenuItem::new(line.clone(), false, None));
+            add(&MenuItem::with_id(
+                "update",
+                "Check for Updates",
+                true,
+                None,
+            ));
+        }
         add(&PredefinedMenuItem::separator());
         add(&MenuItem::with_id("quit", "Quit Utre daemon", true, None));
         menu
