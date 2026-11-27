@@ -1,0 +1,93 @@
+# Builds the macOS app for a release and attaches it: utre-X.Y.Z-macos.zip on release vX.Y.Z.
+# The daemon's self-updater downloads that zip. It is ad hoc signed here; the detached OpenPGP
+# signature (utre-X.Y.Z-macos.zip.sig) is made on the release laptop afterwards with
+# scripts/macos-release-sign.sh, because the key never goes to CI. Layout: .claude/multi-agent.md
+# section 5. The laptop creates the GitHub release after pushing the tag, so this waits for it.
+name: macOS release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to build and upload to, e.g. v0.8.10"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  GH_TOKEN: ${{ github.token }}
+  LANG: en_US.UTF-8
+  LC_ALL: en_US.UTF-8
+
+jobs:
+  build:
+    name: Build Utre.app (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      # Flutter builds Utre.app for arm64 and x86_64, and cargokit builds the bridge for both.
+      - name: Rust 1.100
+        run: |
+          rustup toolchain install 1.100.0 --profile minimal \
+            --target aarch64-apple-darwin --target x86_64-apple-darwin
+          rustup default 1.100.0
+
+      - name: Flutter 3.50.1
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: "3.50.1"
+          channel: stable
+          cache: true
+          pub-cache-key: pub-${{ hashFiles('app/pubspec.lock') }}
+
+      # CocoaPods ships on the runner image; flutter build macos runs it. UTF-8 locale is set above.
+      - name: Build Utre.app
+        run: scripts/build-macos.sh --no-dmg
+
+      - name: Check the bundle version matches the tag
+        run: |
+          want="${TAG#v}"
+          app="app/build/macos/Build/Products/Release/Utre.app"
+          got="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
+          if [[ "$got" != "$want" ]]; then
+            echo "::error::bundle is version $got but the tag is $TAG"
+            exit 1
+          fi
+
+      - name: Zip
+        run: |
+          want="${TAG#v}"
+          mkdir -p dist
+          cd app/build/macos/Build/Products/Release
+          ditto -c -k --sequesterRsrc --keepParent Utre.app "$GITHUB_WORKSPACE/dist/utre-$want-macos.zip"
+          ls -l "$GITHUB_WORKSPACE/dist"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: utre-macos-zip
+          path: dist/*.zip
+          retention-days: 14
+
+      # The release may not exist yet: the laptop creates it after pushing the tag.
+      - name: Wait for the release
+        run: |
+          for _ in $(seq 60); do
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              exit 0
+            fi
+            echo "release $TAG does not exist yet; waiting 30 s"
+            sleep 30
+          done
+          echo "::error::release $TAG did not appear within 30 minutes"
+          exit 1
+
+      - name: Upload to the release
+        run: gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber dist/*.zip
