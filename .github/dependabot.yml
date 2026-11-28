@@ -9,6 +9,12 @@ updates:
     groups:
       cargo-minor-patch:
         update-types: [minor, patch]
+    # glib 0.18 comes only from tray-icon's Linux side (gtk-rs 0.18); tray-icon is a macOS-only
+    # dependency of the daemon, so glib is never compiled. No version of the tree allows the fixed
+    # glib 0.20, so security update attempts always fail (alert 1, plan/11). Revisit when tray-icon
+    # moves off gtk-rs 0.18.
+    ignore:
+      - dependency-name: glib
   - package-ecosystem: pub
     directory: /app
     schedule: {interval: weekly, day: monday}
