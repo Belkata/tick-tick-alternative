@@ -73,13 +73,12 @@ Split into **M5a** (local calendar on real tasks) and **M5b** (Google). Plan and
 - [x] Google OAuth (desktop loopback PKCE, Android AuthorizationClient). ✅ Both work on real devices (2026-11-26). Keychain storage is still open.
 - [x] Events in: calendar picker, incremental `syncToken` polling, cache. ✅ Desktop and phone (plan/19 slices 2, 3, 5).
 - [ ] Tasks out: "Tasks" calendar, deterministic event ids, idempotent push and reconcile. 🟡 Code merged (plan/19 slice 4, PR 5), tested only against a fake Google: try it with a real account (switch on the Google page).
-- [ ] Put the OAuth app in production to avoid 7-day token expiry.
+- [x] Put the OAuth app in production to avoid 7-day token expiry. ✅ Done by the user (reported 2026-11-28). Google's sign-in screen still says the app isn't verified; it works (calendars show on the phone and laptops). Verification is only needed if other people should sign in without that warning.
 
 **Exit:** the calendar replaces TickTick's for daily time-blocking.
 
 ## M6: Import and switch-over
-- [ ] TickTick CSV importer (dry run first). Recreate the 4 filters.
-- [ ] Use only Utre for a week and fix whatever hurts.
+- [x] Switched over: TickTick data imported, filters recreated, and Utre is the user's only task manager (reported 2026-11-28).
 - [ ] Back up and export the DB (a JSON dump), so I never get locked in.
 
 **Exit:** TickTick uninstalled. 🎉
