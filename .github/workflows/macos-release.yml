@@ -48,6 +48,24 @@ jobs:
           cache: true
           pub-cache-key: pub-${{ hashFiles('app/pubspec.lock') }}
 
+      # Caches saved by cache-warm.yml on main (a tag run can't read other tags' caches, so
+      # nothing is saved here). Keys must match that workflow.
+      - name: Cache cargo registry and target/
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: macos-release
+          save-if: "false"
+
+      - name: Restore cargokit and Pods
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            app/build/macos/Build/Intermediates.noindex/Pods.build/Release/utre_bridge.build/aarch64-apple-darwin
+            app/build/macos/Build/Intermediates.noindex/Pods.build/Release/utre_bridge.build/x86_64-apple-darwin
+            app/macos/Pods
+          key: macos-cargokit-pods-${{ hashFiles('Cargo.lock', 'app/macos/Podfile.lock') }}
+          restore-keys: macos-cargokit-pods-
+
       # CocoaPods ships on the runner image; flutter build macos runs it. UTF-8 locale is set above.
       - name: Build Utre.app
         run: scripts/build-macos.sh --no-dmg
