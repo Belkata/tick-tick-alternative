@@ -16,7 +16,9 @@ on:
       - Cargo.lock
       - app/pubspec.lock
       - app/macos/Podfile.lock
-      - app/android/**
+      - app/android/**/*.gradle
+      - app/android/**/*.gradle.kts
+      - app/android/**/gradle-wrapper.properties
       - .github/workflows/macos-release.yml
       - .github/workflows/android-release.yml
       - .github/workflows/cache-warm.yml
@@ -29,7 +31,8 @@ permissions:
 
 concurrency:
   group: cache-warm-${{ github.ref }}
-  cancel-in-progress: true
+  # A running warm-up (macOS takes ~20 min) must finish; a newer push only replaces a queued one.
+  cancel-in-progress: false
 
 env:
   LANG: en_US.UTF-8
