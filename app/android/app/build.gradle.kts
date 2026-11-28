@@ -120,7 +120,7 @@ dependencies {
 
     // JVM unit tests: the platform's org.json is a stub there
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260814")
 
     // Google Calendar (M5b): Google Identity's AuthorizationClient gives the phone access tokens
     implementation("com.google.android.gms:play-services-auth:22.0.0")
