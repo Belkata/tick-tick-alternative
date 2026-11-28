@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/logo.png" alt="Utre logo" width="120"></p>
+<p align="center"><img src="docs/logo.png" alt="Utre logo: a white u with a check mark on teal" width="120"></p>
 
 # Utre
 
