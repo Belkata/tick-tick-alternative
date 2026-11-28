@@ -102,14 +102,16 @@ After a feature batch merges, spawn a release agent with explicit authorisation.
    migrating; `Store::open` only runs each migration in a transaction, and the user's `pacman -Syu` plus
    daemon restart is what runs it); check `user_version` and `PRAGMA integrity_check`.
 2. Update plan/ notes and the CLAUDE.md "Latest session" line.
-3. Bump `version:` in `app/pubspec.yaml`, commit "app: version X (summary)", push.
-4. Wait for green CI on main.
+3. The bump and the notes go through a release branch and PR (`main` requires PRs since 2026-11-28): branch
+   `release-X` from origin/main, bump `version:` in `app/pubspec.yaml`, commit "app: version X (summary)", open the PR.
+4. Wait for green CI on the PR (the `checks` command with its watch flag, in the background, under `timeout 30m`),
+   `gh pr merge <n> --rebase --delete-branch`, `git switch main && git pull --rebase`, then tag that commit.
 5. Run `scripts/agent-reap.sh`; check stray daemons with `pgrep -af utre-daemon` and each one's `UTRE_DB` in
    `/proc/<pid>/environ`. Do not run `scripts/update-desktop.sh` on this laptop: it refuses (packaged install).
    It is only for machines running the checkout build.
 6. Build the APK with `timeout 30m scripts/build-apk.sh` (it writes `dist/utre-X-arm64.apk` and checks the
-   signing certificate against `packaging/android/release-cert.sha256`; add `--allow-debug` only while that
-   file is empty, and say so in the report), tag, `gh release create --prerelease` (notes with no footer).
+   signing certificate against `packaging/android/release-cert.sha256`; the fingerprint is set now, so never
+   pass `--allow-debug`), tag, `gh release create --prerelease` (notes with no footer).
    If the script reports a key mismatch, stop and report: never publish that APK.
 7. Build the Linux tarball (`timeout 30m scripts/build-linux-tarball.sh`, writes
    `dist/utre-X-linux-x86_64.tar.gz`) and upload it to the same pre-release
