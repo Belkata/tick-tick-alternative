@@ -56,6 +56,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+          cache: gradle
 
       - name: Rust 1.100 with the Android targets
         if: steps.keys.outputs.signed == 'true'
@@ -70,6 +71,8 @@ jobs:
         with:
           flutter-version: "3.50.1"
           channel: stable
+          cache: true
+          pub-cache-key: pub-${{ hashFiles('app/pubspec.lock') }}
 
       - name: Android NDK 28.2
         if: steps.keys.outputs.signed == 'true'
@@ -77,6 +80,15 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358" "platforms;android-36" > /dev/null
 
       # The keystore lives in RUNNER_TEMP, readable only by us, and is deleted at the end.
+      # Saved by cache-warm.yml on main; tag runs only restore. Key must match that workflow.
+      - name: Restore cargokit
+        if: steps.keys.outputs.signed == 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: app/build/utre_bridge/build
+          key: android-cargokit-${{ hashFiles('Cargo.lock') }}
+          restore-keys: android-cargokit-
+
       - name: Release keystore from secrets
         if: steps.keys.outputs.signed == 'true'
         run: |
@@ -92,6 +104,8 @@ jobs:
       - name: Build the APK
         if: steps.keys.outputs.signed == 'true'
         working-directory: app
+        env:
+          UTRE_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.UTRE_GOOGLE_ANDROID_CLIENT_ID }}
         run: flutter build apk --release --target-platform android-arm64
 
       - name: Remove the keystore
