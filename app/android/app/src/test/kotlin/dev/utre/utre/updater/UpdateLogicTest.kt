@@ -87,4 +87,13 @@ class UpdateLogicTest {
         assertNull(UpdateLogic.newer(u, Version(0, 9, 0)))
         assertNull(UpdateLogic.newer(null, Version(0, 1, 0)))
     }
+
+    @Test fun incompatibleSignatureIsRecognised() {
+        assertTrue(UpdateLogic.isIncompatibleSignature(7, null))
+        assertTrue(UpdateLogic.isIncompatibleSignature(1, "INSTALL_FAILED_UPDATE_INCOMPATIBLE: Existing package dev.utre.utre signatures do not match"))
+        assertTrue(UpdateLogic.isIncompatibleSignature(1, "Package has inconsistent signatures: INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES"))
+        assertTrue(!UpdateLogic.isIncompatibleSignature(1, "INSTALL_FAILED_INSUFFICIENT_STORAGE"))
+        assertTrue(!UpdateLogic.isIncompatibleSignature(4, null))
+        assertTrue(!UpdateLogic.isIncompatibleSignature(1, null))
+    }
 }

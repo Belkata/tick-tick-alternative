@@ -52,6 +52,7 @@ object Updater {
     private const val NOTE_READY = 0x7a21
     private const val NOTE_DONE = 0x7a22
     private const val NOTE_FAIL = 0x7a23
+    private const val NOTE_KEY = 0x7a24
     private const val CHECK_EVERY_MS = 6 * 60 * 60 * 1000L
     private const val FEED = "https://api.github.com/repos/Belkata/utre/releases?per_page=30"
 
@@ -175,6 +176,11 @@ object Updater {
                 return
             }
             val v = update.version.toString()
+            if (p.getString("wrongKey", null) == v) {
+                // This version was already refused for its signing key: don't download it again.
+                set(ctx, "wrong_key", v, wrongKeyText(v))
+                return
+            }
             if (!ctx.packageManager.canRequestPackageInstalls()) {
                 set(ctx, "needs_permission", v)
                 notifyReady(ctx, v, installSettingsIntent(ctx), "Allow installs, then check again")
@@ -293,8 +299,27 @@ object Updater {
                 set(ctx, "needs_permission", v)
                 notifyReady(ctx, v ?: "update", installSettingsIntent(ctx), "Allow installs, then check again")
             }
-            else -> fail(ctx, "Install failed${message?.let { ": $it" } ?: ""}", manual)
+            else -> if (UpdateLogic.isIncompatibleSignature(status, message)) {
+                onWrongKey(ctx)
+            } else {
+                fail(ctx, "Install failed${message?.let { ": $it" } ?: ""}", manual)
+            }
         }
+    }
+
+    private fun wrongKeyText(v: String) =
+        "This update is signed with Utre's new release key. Sync your tasks, then uninstall Utre " +
+            "and install $v from GitHub once; updates work again after that."
+
+    /** The new APK has another signing key: remember the version so it isn't retried. */
+    private fun onWrongKey(ctx: Context) {
+        val p = prefs(ctx)
+        val v = p.getString("installing", null) ?: p.getString("latest", null) ?: "update"
+        val already = p.getString("wrongKey", null) == v
+        p.edit().remove("installing").putString("wrongKey", v).apply()
+        set(ctx, "wrong_key", v, wrongKeyText(v))
+        // One notification per version, for manual and automatic checks alike.
+        if (!already) notify(ctx, NOTE_KEY, "Utre $v needs a one-time reinstall", wrongKeyText(v), null)
     }
 
     /** The new build is running: tell the user, once, if this app started the update. */
