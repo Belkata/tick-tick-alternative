@@ -68,4 +68,12 @@ void main() {
     expect(u.calls, ['settings']);
     await t.pumpWidget(const SizedBox());
   });
+
+  testWidgets('a release-key update explains the one-time reinstall', (t) async {
+    final u = FakeUpdates({...base, 'status': 'wrong_key', 'latest': '0.9.0'});
+    await t.pumpWidget(_app(u));
+    await t.pump();
+    expect(find.textContaining('uninstall Utre and install 0.9.0 from GitHub'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+  });
 }

@@ -67,6 +67,23 @@ object UpdateLogic {
         return best
     }
 
+    /** PackageInstaller.STATUS_FAILURE_INCOMPATIBLE, spelled out so plain JVM tests can use it. */
+    const val STATUS_INCOMPATIBLE = 7
+
+    /**
+     * True when an install failed because the new APK is signed with a different key than
+     * the installed app (the switch from the debug key to the release key). Android reports
+     * STATUS_FAILURE_INCOMPATIBLE, and some builds only put INSTALL_FAILED_UPDATE_INCOMPATIBLE
+     * (or a "signatures do not match" text) in the status message.
+     */
+    fun isIncompatibleSignature(status: Int, message: String?): Boolean {
+        if (status == STATUS_INCOMPATIBLE) return true
+        val m = message ?: return false
+        return m.contains("INSTALL_FAILED_UPDATE_INCOMPATIBLE") ||
+            m.contains("INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES") ||
+            m.contains("signatures do not match", ignoreCase = true)
+    }
+
     /** Newer than what is installed, or null. */
     fun newer(update: Update?, installed: Version?): Update? =
         if (update != null && installed != null && update.version > installed) update else null

@@ -95,7 +95,7 @@ class WidgetBridge {
   }
 
   /// The updater's state (see Updater.kt): `status` (idle, checking, uptodate, downloading,
-  /// installing, ready, needs_permission, error), `latest`, `message`, `current`, `auto`,
+  /// installing, ready, needs_permission, wrong_key, error), `latest`, `message`, `current`, `auto`,
   /// `canInstall`. Null off Android.
   static Future<Map<String, dynamic>?> updateState() async {
     if (!supported) return null;

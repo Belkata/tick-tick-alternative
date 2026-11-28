@@ -81,6 +81,10 @@ class _UpdatesPageState extends State<UpdatesPage> with WidgetsBindingObserver {
         return 'Ready to install $latest';
       case 'needs_permission':
         return 'Utre $latest is available. Allow installs to update.';
+      case 'wrong_key':
+        return (s['message'] as String?) ??
+            "This update is signed with Utre's new release key. Sync your tasks, then "
+                "uninstall Utre and install $latest from GitHub once; updates work again after that.";
       case 'error':
         return (s['message'] as String?) ?? 'Something went wrong';
       case 'uptodate':
@@ -109,8 +113,8 @@ class _UpdatesPageState extends State<UpdatesPage> with WidgetsBindingObserver {
           Row(
             children: [
               Icon(
-                s['status'] == 'error' ? Icons.error_outline : Icons.system_update_alt,
-                color: s['status'] == 'error' ? soft.late : soft.accent,
+                const {'error', 'wrong_key'}.contains(s['status']) ? Icons.error_outline : Icons.system_update_alt,
+                color: const {'error', 'wrong_key'}.contains(s['status']) ? soft.late : soft.accent,
               ),
               const SizedBox(width: 12),
               Expanded(
