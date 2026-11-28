@@ -1,2 +1,3 @@
 # SHA-256 of the Android release signing certificate (apksigner --print-certs), one line, colons optional.
 # While this has no fingerprint, scripts/build-apk.sh needs --allow-debug and releases are debug-signed.
+60:98:6D:2D:09:D0:59:5A:47:6E:C5:3C:EB:6A:6C:00:CE:EA:4C:B2:45:40:51:9E:21:ED:75:6D:D7:CE:F5:C3
